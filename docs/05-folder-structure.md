@@ -92,7 +92,7 @@ apps/web/
 │   ├── features/               # mirrors mobile feature folders where shared
 │   └── lib/
 ├── public/
-├── next.config.js
+├── next.config.ts
 └── package.json
 ```
 

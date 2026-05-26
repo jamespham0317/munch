@@ -85,8 +85,10 @@ enabled = true
 # The maximum length in bytes of HTTP request headers. (default: 4096)
 # max_header_length = 4096
 
+# Disabled for local dev: not needed for the Phase 0 connectivity smoke (db + auth +
+# rest + kong). Re-enable to use the Studio UI locally.
 [studio]
-enabled = true
+enabled = false
 # Port to use for Supabase Studio.
 port = 54323
 # External URL of the API server that frontend connects to.
@@ -106,8 +108,10 @@ port = 54324
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Disabled for local dev: Munch has no file uploads in v1, and it's not needed for the
+# Phase 0 connectivity smoke. Re-enable if/when storage is used.
 [storage]
-enabled = true
+enabled = false
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
@@ -381,8 +385,11 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Disabled for local dev: the analytics (Logflare) + vector log stack is flaky and
+# blocks `supabase start` from going healthy; it is not needed for Phase 0. Re-enable
+# if/when log analytics is wanted locally.
 [analytics]
-enabled = true
+enabled = false
 port = 54327
 # Configure one of the supported backends: `postgres`, `bigquery`.
 backend = "postgres"

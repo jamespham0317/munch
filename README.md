@@ -48,3 +48,16 @@ pnpm format:check      # Prettier (use `pnpm format` to auto-fix)
 pnpm dev:web           # Next.js web app
 pnpm dev:mobile        # Expo mobile app
 ```
+
+The web app reads the seeded smoke-test row from a local Supabase. First time:
+
+```sh
+supabase start                          # needs the Supabase CLI + Docker
+supabase db reset                       # apply migrations + seed/seed.sql
+cp .env.example apps/web/.env.local     # then set NEXT_PUBLIC_SUPABASE_URL /
+                                        # NEXT_PUBLIC_SUPABASE_ANON_KEY to the
+                                        # values printed by `supabase start`
+pnpm dev:web
+```
+
+On load the page signs in anonymously and renders the seeded restaurant read under RLS.
