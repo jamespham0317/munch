@@ -56,4 +56,12 @@ export default tseslint.config(
     files: ["**/*.{js,mjs,cjs}"],
     ...tseslint.configs.disableTypeChecked,
   },
+  {
+    // CommonJS config files (e.g. metro.config.js, babel.config.js) legitimately
+    // use require()/module.exports — that's the format their tooling expects.
+    files: ["**/*.{js,cjs}"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 );
