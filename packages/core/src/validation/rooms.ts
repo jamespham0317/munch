@@ -1,0 +1,105 @@
+import { z } from "zod";
+
+import {
+  displayNameSchema,
+  joinCodeSchema,
+  latSchema,
+  lngSchema,
+  radiusMSchema,
+} from "./common";
+import { memberRoleSchema } from "./enums";
+import { roomFiltersSchema } from "./filters";
+
+/**
+ * Request/response schemas for the room + membership endpoints in
+ * docs/04-api-specification.md §3.1–§3.4. Wire shapes are snake_case.
+ */
+
+// 3.1 create_room
+export const createRoomRequestSchema = z.object({
+  host_display_name: displayNameSchema,
+  anchor_label: z.string(),
+  anchor_lat: latSchema,
+  anchor_lng: lngSchema,
+  filters: roomFiltersSchema,
+  default_radius_m: radiusMSchema,
+});
+export type CreateRoomRequest = z.infer<typeof createRoomRequestSchema>;
+
+export const createRoomResponseSchema = z.object({
+  room: z.object({ id: z.uuid(), code: joinCodeSchema }),
+  member: z.object({
+    id: z.uuid(),
+    role: memberRoleSchema,
+    display_name: z.string(),
+  }),
+});
+export type CreateRoomResponse = z.infer<typeof createRoomResponseSchema>;
+
+// 3.2 join_room
+export const joinRoomRequestSchema = z.object({
+  code: joinCodeSchema,
+  display_name: displayNameSchema,
+});
+export type JoinRoomRequest = z.infer<typeof joinRoomRequestSchema>;
+
+export const joinRoomResponseSchema = z.object({
+  room: z.object({
+    id: z.uuid(),
+    code: joinCodeSchema,
+    anchor_label: z.string(),
+  }),
+  member: z.object({
+    id: z.uuid(),
+    role: memberRoleSchema,
+    display_name: z.string(),
+  }),
+  members: z.array(
+    z.object({
+      id: z.uuid(),
+      display_name: z.string(),
+      role: memberRoleSchema,
+      is_present: z.boolean(),
+    }),
+  ),
+});
+export type JoinRoomResponse = z.infer<typeof joinRoomResponseSchema>;
+
+// 3.3 update_room_filters (host only) — all fields optional; only provided fields change.
+export const updateRoomFiltersRequestSchema = z.object({
+  anchor_label: z.string().optional(),
+  anchor_lat: latSchema.optional(),
+  anchor_lng: lngSchema.optional(),
+  filters: roomFiltersSchema.partial().optional(),
+  default_radius_m: radiusMSchema.optional(),
+});
+export type UpdateRoomFiltersRequest = z.infer<
+  typeof updateRoomFiltersRequestSchema
+>;
+
+// The response echoes the updated room; the doc leaves the exact shape open, so we
+// echo the editable fields (docs/04 §3.3).
+export const updateRoomFiltersResponseSchema = z.object({
+  room: z.object({
+    id: z.uuid(),
+    anchor_label: z.string(),
+    anchor_lat: latSchema,
+    anchor_lng: lngSchema,
+    filters: roomFiltersSchema,
+    default_radius_m: radiusMSchema,
+  }),
+});
+export type UpdateRoomFiltersResponse = z.infer<
+  typeof updateRoomFiltersResponseSchema
+>;
+
+// 3.4 set_presence
+export const setPresenceRequestSchema = z.object({
+  is_present: z.boolean(),
+});
+export type SetPresenceRequest = z.infer<typeof setPresenceRequestSchema>;
+
+export const setPresenceResponseSchema = z.object({
+  member: z.object({ id: z.uuid(), is_present: z.boolean() }),
+});
+export type SetPresenceResponse = z.infer<typeof setPresenceResponseSchema>;
