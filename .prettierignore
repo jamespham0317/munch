@@ -1,0 +1,13 @@
+node_modules
+pnpm-lock.yaml
+
+# Build outputs
+dist
+.next
+.expo
+.turbo
+coverage
+
+# Hand-authored reference docs — not Prettier-owned
+docs
+CLAUDE.md
