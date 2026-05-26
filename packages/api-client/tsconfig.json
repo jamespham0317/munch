@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // @munch/api-client ships as source (no build step) and is consumed by
+    // bundlers (Next.js, Metro). "Bundler" resolution lets those tools — and this
+    // package's own typecheck — import @munch/core's source via extensionless paths.
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
+  },
+  "include": ["src"]
+}

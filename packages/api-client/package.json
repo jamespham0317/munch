@@ -1,0 +1,23 @@
+{
+  "name": "@munch/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Typed Supabase wrapper for Munch: the only package that knows endpoint names/shapes. Anonymous auth + the Phase 0 connectivity read.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint . --max-warnings 0"
+  },
+  "dependencies": {
+    "@munch/core": "workspace:*",
+    "@supabase/supabase-js": "^2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.2"
+  }
+}
