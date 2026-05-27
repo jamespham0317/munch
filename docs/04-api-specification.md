@@ -268,10 +268,13 @@ Host accepts the top pick or widens criteria.
 
 ### 3.10 `leave_room` / `end_room`
 
-- `leave_room` — marks the calling member not present and sets `left_at`. If the host
-  leaves, host role may transfer or the room may close (define policy in build).
+- `leave_room` — marks the calling member not present and sets `left_at`. **If the host
+  leaves, the room ends:** any non-terminal session for the room transitions to `cancelled`,
+  the room is soft-closed (`is_active = false`), ephemeral session data is cleaned up, and a
+  realtime event notifies remaining members that the host ended the session. Host role is
+  **not** transferred (this is the resolved policy for the former CLAUDE.md §9 open decision).
 - `end_room` (host) — soft-closes the room (`is_active = false`) and triggers cleanup of
-  ephemeral session data.
+  ephemeral session data. A host leaving via `leave_room` produces the same outcome.
 
 ---
 
@@ -281,7 +284,8 @@ Clients subscribe to per-room channels for live state. Recommended events:
 
 - **`room:{room_id}` presence** — member join/leave/presence changes.
 - **`session:{session_id}` changes** — status transitions
-  (`lobby → active → awaiting_host_resolution → matched/resolved`).
+  (`lobby → active → awaiting_host_resolution → matched/resolved`, or `→ cancelled` when the
+  host leaves/ends the room).
 - **`session:{session_id}` progress** — aggregate swipe progress (counts only, never other
   members' individual decisions), used for "X of Y have finished the deck" UI.
 - **`match` event** — fired on the session channel when a match/resolution occurs, carrying

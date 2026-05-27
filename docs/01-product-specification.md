@@ -141,6 +141,16 @@ premise than raw like count.
 - While the host is deciding, the room enters a brief **"waiting on host"** state so
   members are not swiping into a void.
 
+### Host departure (session ends)
+
+Only the host can start and resolve sessions, so the room cannot continue without one. If
+the **host leaves mid-session**, the session ends immediately in a terminal **cancelled**
+state and the room closes; remaining members are notified live and returned to an ended
+state. Host role is **not** transferred and the session is **not** handed to another member.
+This applies whether the session is `active` or `awaiting_host_resolution`; a host who leaves
+while the room is still in the lobby simply closes the room. This keeps the room from getting
+stuck host-less, consistent with §13's "never an ambiguous or stuck state."
+
 ---
 
 ## 8. Filters and preferences

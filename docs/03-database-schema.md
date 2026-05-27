@@ -150,6 +150,10 @@ create index on sessions (status);
 
 - A session snapshots the filters/radius so later room edits don't mutate an in-flight
   session.
+- A session moves to the terminal **`cancelled`** status when the **host leaves
+  mid-session** (or ends the room) — there is no host left to resolve it, so the room is
+  soft-closed (`rooms.is_active = false`) and the session ends with no decision. `cancelled`
+  is a terminal state for retention/cleanup (§7). Host role is not transferred.
 - **RLS:** selectable by members of the session's room; status transitions performed by
   Edge Functions / host-only RPCs.
 
@@ -342,7 +346,7 @@ order by pass_count asc, r.rating desc nulls last;  -- distance tiebreak applied
 ## 7. Retention & cleanup
 
 - `restaurants` rows purged after `expires_at` (provider ToS compliance).
-- `swipes` and `cached_decks` purged when a session reaches a terminal state (no long-term
-  swipe logging).
+- `swipes` and `cached_decks` purged when a session reaches a terminal state (`matched`,
+  `resolved`, or `cancelled` — e.g. the host left mid-session) — no long-term swipe logging.
 - `match_history` retained for signed-in users until they delete it or their account.
 - Guest `room_members` rows and ephemeral data cleared after the room closes.

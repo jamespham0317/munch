@@ -49,7 +49,9 @@ If a task seems to require breaking one, stop and flag it rather than proceeding
 3. **Server-authoritative match check.** Whether a restaurant has a unanimous like is
    decided **server-side, transactionally** (Edge Function / RPC). Clients may compute
    optimistic UI but must never declare a match. "Every member" is relative to **currently
-   present** members — re-evaluate when membership changes.
+   present** members — re-evaluate when membership changes. One exception: if the **host**
+   leaves mid-session, the session ends (status `cancelled`) and the room closes rather than
+   re-evaluating — see `docs/01` §7 and `docs/04` §3.10.
 
 4. **Closest-to-unanimous ranking.** Host-resolution ranking is by **fewest passes**, not
    most raw likes. Tiebreak order: fewest passes → highest average rating → nearest
@@ -157,9 +159,11 @@ Monorepo (pnpm/Turborepo). Full tree in `docs/05-folder-structure.md`. The rule 
 
 These are genuinely undecided; if a task touches one, ask rather than inventing a default:
 
-- **Host leaves mid-session:** transfer host role vs. close the room — undecided.
 - **Provider pricing/ToS:** must be re-verified on the provider's own page before launch;
   exact current numbers are not assumed in code.
+
+(Resolved: *host leaves mid-session* — the session ends (`cancelled`) and the room closes;
+host role is **not** transferred. See invariant 3 above and `docs/01` §7 / `docs/04` §3.10.)
 
 ---
 

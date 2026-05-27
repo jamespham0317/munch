@@ -132,7 +132,9 @@ a durable copy of provider content.
 - On match, a `matches` row is written and the session is marked ended; Realtime broadcasts
   the change to all members, which drives the match-announcement UI.
 - Membership changes mid-session (someone leaves) must re-evaluate the unanimous condition,
-  since "every member" is relative to current membership.
+  since "every member" is relative to current membership. The exception is the **host**
+  leaving: that ends the session (status `cancelled`) and closes the room rather than
+  re-evaluating, since only the host can start/resolve sessions (see §6 and product spec §7).
 
 ---
 
@@ -151,12 +153,17 @@ a durable copy of provider content.
      | host accepts top pick    \ host widens criteria
      v                           v
    resolved (end)              active (fresh unseen cards appended)
+
+   (any non-terminal state) ---- host leaves the room ----> cancelled (end)
 ```
 
 - `lobby` — members joining; no deck yet.
 - `active` — deck cached; members swiping.
 - `awaiting_host_resolution` — deck exhausted; members in "waiting on host" state.
 - `matched` / `resolved` — terminal states with a chosen restaurant.
+- `cancelled` — terminal state with no decision; entered when the **host leaves**
+  mid-session (or ends the room). The room is soft-closed and ephemeral session data is
+  purged. Host role is not transferred.
 
 ---
 

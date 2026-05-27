@@ -89,7 +89,8 @@ restaurants and resumes swiping.
 
 - Host-controlled filters wired end-to-end: open-now, cuisine, price range.
 - Match history for signed-in users (`match_history`) + a simple history screen.
-- Empty/edge states: sparse areas, tiny rooms, everyone-passes, host leaves.
+- Empty/edge states: sparse areas, tiny rooms, everyone-passes, host leaves mid-session
+  (session ends as `cancelled`, room closes — no host transfer).
 - UI polish on the swipe feel, match reveal, and lobby.
 
 **Exit criteria:** filters visibly shape the deck; signed-in users see past matches; guests
