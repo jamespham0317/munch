@@ -49,7 +49,7 @@ pnpm dev:web           # Next.js web app
 pnpm dev:mobile        # Expo mobile app
 ```
 
-The web app reads the seeded smoke-test row from a local Supabase. First time:
+The apps talk to a local Supabase. First time:
 
 ```sh
 supabase start                          # needs the Supabase CLI + Docker
@@ -60,4 +60,6 @@ cp .env.example apps/web/.env.local     # then set NEXT_PUBLIC_SUPABASE_URL /
 pnpm dev:web
 ```
 
-On load the page signs in anonymously and renders the seeded restaurant read under RLS.
+The home screen lets a guest create or join a room; it signs in anonymously, then the lobby
+shows the room's members updating live via Realtime (Phase 1). The Phase-0 connectivity-smoke
+row and its read were removed in migration `0007`.

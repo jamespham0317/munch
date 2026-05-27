@@ -59,6 +59,16 @@ shape, never surfaced.
 Naming below is logical; implement as Supabase RPC (`rpc/<name>`) or Edge Function
 (`functions/v1/<name>`) as convenient. All take/return JSON.
 
+**Implementation note (Phase 1).** A privileged write needs a `security definer` RPC **only**
+when it crosses an RLS boundary. `create_room`, `join_room`, and `update_room_filters` do
+(`rooms` / `room_members` have no insert policy on purpose, and `join_room` must read a room by
+code that the caller is not yet a member of), so they are RPCs (`supabase/migrations/0005`).
+`set_presence`, `leave_room`, and `end_room` do **not**: they only touch the caller's own
+`room_members` row or, for the host, `rooms.is_active` — both already permitted by the 0003
+policies (`room_members_update_own`, `rooms_update_host`). So they are implemented as **direct
+RLS-scoped table writes in the api-client** (`packages/api-client/src/endpoints/rooms.ts`), not
+RPCs — the smallest change that satisfies the contract.
+
 ### 3.1 `create_room`
 
 Creates a room and the host member row.
@@ -129,6 +139,8 @@ Marks the calling member present/away in the lobby or session.
 
 - **Request:** `{ "is_present": true }`
 - **Response:** `{ "member": { "id": "uuid", "is_present": true } }`
+- **Implementation:** a direct RLS-scoped update of the caller's own `room_members` row (not an
+  RPC) — see the §3 implementation note.
 
 ---
 
@@ -288,6 +300,11 @@ Host accepts the top pick or widens criteria.
   **not** transferred (this is the resolved policy for the former CLAUDE.md §9 open decision).
 - `end_room` (host) — soft-closes the room (`is_active = false`) and triggers cleanup of
   ephemeral session data. A host leaving via `leave_room` produces the same outcome.
+- **Implementation:** both are direct RLS-scoped table writes in the api-client (not RPCs) — see
+  the §3 implementation note. `leave_room` updates the caller's own `room_members` row; if that
+  caller is the host it also flips `rooms.is_active = false` (same outcome as `end_room`).
+  **Phase 1 has no sessions yet**, so the session-cancel/cleanup/realtime-`match` steps above are
+  forward-looking — they land in Phase 2; in Phase 1 a host leaving simply closes the room.
 
 ---
 
@@ -337,7 +354,15 @@ interface RestaurantProvider {
 
 ## 6. Rate limiting & abuse
 
-- `create_room` and `join_room` are rate-limited per auth identity / IP.
+- `create_room` and `join_room` are rate-limited **per auth identity**, enforced inside the
+  RPCs (`supabase/migrations/0005`) by counting the caller's recent activity in the existing
+  tables over a rolling window — no new table. `create_room` counts rooms the identity created
+  (`rooms.host_member_id → room_members.user_id`); `join_room` counts the identity's recent
+  member joins (`room_members.user_id`, role `member`). Defaults: **10 per hour** each (tunable
+  via the constants in 0005); the next call raises `RATE_LIMITED`.
+- **IP-based** rate limiting is **deferred to the edge/gateway** — it belongs at the network
+  boundary, not in an RPC that only sees the auth identity. (Supabase already rate-limits
+  anonymous sign-ins per IP; see `supabase/config.toml [auth.rate_limit]`.)
 - Guest display names are length-limited and lightly moderated.
 - `submit_swipe` is idempotent and cheap (no provider call), but still rate-limited to
   guard against scripted abuse.
