@@ -7,9 +7,25 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "associatedDomains": ["applinks:munch.app"]
     },
-    "android": {},
+    "android": {
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "category": ["BROWSABLE", "DEFAULT"],
+          "data": [
+            {
+              "scheme": "https",
+              "host": "munch.app",
+              "pathPrefix": "/room/join"
+            }
+          ]
+        }
+      ]
+    },
     "plugins": ["expo-router", "expo-status-bar"]
   }
 }

@@ -49,7 +49,9 @@ apps/mobile/
 │   ├── index.tsx               # entry / home
 │   ├── room/
 │   │   ├── create.tsx
-│   │   ├── join.tsx
+│   │   ├── join/
+│   │   │   ├── index.tsx       # manual code entry
+│   │   │   └── [code].tsx      # link/QR deep-link target (path-parity with web)
 │   │   └── [roomId]/
 │   │       ├── lobby.tsx
 │   │       ├── session.tsx     # the swiping screen
@@ -70,6 +72,10 @@ apps/mobile/
 
 - Consumes `@munch/core` and `@munch/api-client`. No business logic duplicated here.
 - Deterministic deck shuffle lives in `core`; the screen just renders the order.
+- The `/room/join/{code}` link opens `join/[code].tsx`. The `munch://` scheme works in
+  dev (Expo Go / dev client); the https universal link declared in `app.json`
+  (`ios.associatedDomains` / `android.intentFilters`) needs a deployed domain serving an
+  AASA / assetlinks file to verify, so its verification is deferred to launch.
 
 ---
 

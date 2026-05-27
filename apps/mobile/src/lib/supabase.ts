@@ -15,10 +15,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * service-role key and any provider key are server-only and must never reach the
  * app bundle.
  *
- * Phase 0: no AsyncStorage — an in-memory anonymous session per launch is all the
- * connectivity smoke test needs. Session persistence (and the storage adapter it
- * requires) is a Phase 1 concern, handled by extending the api-client factory, not
- * by constructing a second client here.
+ * Session storage: no AsyncStorage yet — the in-memory anonymous session lives for
+ * the app launch, which is all the Phase 1 guest flows need (create → lobby and
+ * join → lobby happen within one launch, keeping a stable auth.uid()). Persisting a
+ * guest's identity across launches is a deliberate follow-up: it belongs in the
+ * shared api-client factory (a storage adapter), not in a second client here.
  */
 let client: SupabaseClient | undefined;
 
