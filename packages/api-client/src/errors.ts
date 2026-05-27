@@ -43,6 +43,13 @@ function isPostgrestError(error: unknown): error is PostgrestError {
   );
 }
 
+/** A GoTrue auth error (`@supabase/auth-js`); carries `__isAuthError` and an HTTP `status`. */
+function isAuthError(error: unknown): error is { status?: number } {
+  return (
+    typeof error === "object" && error !== null && "__isAuthError" in error
+  );
+}
+
 /**
  * Error codes the room RPCs raise as their exception MESSAGE (the convention pinned at the
  * top of supabase/migrations/0005_room_rpcs.sql). A `raise exception 'ROOM_NOT_FOUND'` reaches
@@ -88,9 +95,23 @@ export function toApiError(
       raw.code === "42501"
         ? "FORBIDDEN"
         : (asRpcErrorCode(raw.message) ?? fallback);
+  } else if (isAuthError(raw)) {
+    // GoTrue auth errors (sign-in / OTP / guest upgrade): surface only a coarse, safe
+    // classification — HTTP 429 is the email/OTP rate limit; everything else uses `fallback`.
+    // The raw message (which can contain an email) is never surfaced.
+    code = raw.status === 429 ? "RATE_LIMITED" : fallback;
   }
   // Log the raw error for diagnostics; never surface it (docs/06 §8 "log the rest").
   console.error("[api-client] supabase error mapped to", code, raw);
+  return { error: { code, message: DEFAULT_MESSAGE[code] } };
+}
+
+/**
+ * Build a safe `ApiError` for a known code with no raw source error — for a client-side guard
+ * that fails before any Supabase call (e.g. refusing to create a profile for a still-anonymous
+ * user). Uses the same canonical, never-raw message as {@link toApiError}.
+ */
+export function makeApiError(code: ErrorCode): ApiError {
   return { error: { code, message: DEFAULT_MESSAGE[code] } };
 }
 

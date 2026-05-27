@@ -32,12 +32,25 @@ Common error codes: `UNAUTHENTICATED`, `FORBIDDEN`, `ROOM_NOT_FOUND`, `ROOM_CLOS
 
 ## 2. Auth
 
-Handled by Supabase Auth SDK on the client.
+Handled by Supabase Auth SDK on the client. Verification is by **6-digit email OTP**, which
+works identically on web and mobile and keeps the caller on the same client/session — important
+on mobile, where the anonymous session is in-memory for the launch (no persistence yet), so a
+guest keeps their `auth.uid()` (and room membership) through an upgrade. The api-client owns the
+helpers (`packages/api-client/src/auth.ts`); raw auth errors are mapped to the safe `ApiError`
+shape, never surfaced.
 
 - **Guest:** `signInAnonymously()` → an anonymous session used to create the
   `room_members` row. No profile created.
-- **Account (optional):** email magic link or OAuth → creates `auth.users` + `profiles`.
-- A guest may later "upgrade" to an account; match history begins accruing from that point.
+- **Account (optional):** email OTP — `signInWithOtp({ email })` → `verifyOtp(type:'email')`
+  creates `auth.users` + a `profiles` row. This is for a **fresh** account.
+- **Guest → account upgrade:** `updateUser({ email })` links an email to the *current*
+  anonymous user (GoTrue converts it in place) → `verifyOtp(type:'email_change')` → a `profiles`
+  row is written with the chosen display name. The `user_id` is **unchanged**, so the guest
+  keeps their room membership; match history begins accruing from that point. The
+  guest/account distinction is the **presence of a `profiles` row**, not the `user_id`.
+- **Deferred (post-Phase 1):** OAuth providers and magic-link (tappable-link) verification.
+  Magic link would need mobile session persistence to preserve the anonymous identity across the
+  redirect; OTP avoids that. See `docs/07-initial-roadmap.md`.
 
 ---
 

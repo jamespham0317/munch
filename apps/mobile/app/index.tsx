@@ -1,16 +1,22 @@
 import { Link } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text } from "react-native";
 
+import { AuthPanel } from "../src/features/auth/auth-panel";
 import { colors, spacing } from "../src/theme";
 
 /**
  * Home screen. Thin by design (CLAUDE.md §4): it offers the two guest-by-default entry
  * points — create a room or join one — and routes into those flows, which own all data
  * access via @munch/api-client. Anonymous sign-in happens inside the create/join flows.
+ * An optional account (guest is never required, docs/01 §10) unlocks saved matches.
  */
 export default function HomeScreen() {
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.title}>Munch</Text>
       <Text style={styles.subtitle}>
         Swipe through nearby restaurants with friends until everyone likes the
@@ -22,16 +28,17 @@ export default function HomeScreen() {
       <Link href="/room/join" style={[styles.button, styles.buttonSecondary]}>
         Join a room
       </Link>
-    </View>
+      {/* Signing in here creates a fresh account; guests upgrade in the lobby instead. */}
+      <AuthPanel mode="signin" />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { backgroundColor: colors.background },
   container: {
-    flex: 1,
-    alignItems: "center",
+    flexGrow: 1,
     justifyContent: "center",
-    backgroundColor: colors.background,
     padding: spacing.lg,
     gap: spacing.md,
   },

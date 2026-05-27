@@ -1,5 +1,6 @@
 "use client";
 
+import { AuthPanel } from "../auth/auth-panel";
 import { InvitePanel } from "./invite-panel";
 import { MemberList } from "./member-list";
 import { useRoomLobby } from "./use-room-lobby";
@@ -10,7 +11,8 @@ import { useRoomLobby } from "./use-room-lobby";
  * Screens stay thin — all data access is in @munch/api-client (CLAUDE.md §4).
  */
 export function LobbyView({ roomId }: { roomId: string }) {
-  const { roomQuery, membersQuery, currentUserId } = useRoomLobby(roomId);
+  const { roomQuery, membersQuery, currentUserId, isGuest } =
+    useRoomLobby(roomId);
 
   if (roomQuery.isPending || membersQuery.isPending) {
     return <p>Loading lobby…</p>;
@@ -41,6 +43,9 @@ export function LobbyView({ roomId }: { roomId: string }) {
       ) : (
         <p>Waiting for the host to start the session…</p>
       )}
+      {/* Optional upgrade for guests — keeps their room membership (same user_id) and
+          unlocks saved matches (CLAUDE.md §3). Never blocks the guest flow. */}
+      {isGuest ? <AuthPanel mode="upgrade" /> : null}
     </section>
   );
 }

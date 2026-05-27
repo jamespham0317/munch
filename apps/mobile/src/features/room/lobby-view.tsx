@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { InvitePanel } from "../../components/invite-panel";
 import { MemberList } from "../../components/member-list";
 import { colors, spacing } from "../../theme";
+import { AuthPanel } from "../auth/auth-panel";
 import { useRoomLobby } from "./use-room-lobby";
 
 /**
@@ -12,7 +13,8 @@ import { useRoomLobby } from "./use-room-lobby";
  * @munch/api-client (CLAUDE.md §4).
  */
 export function LobbyView({ roomId }: { roomId: string }) {
-  const { roomQuery, membersQuery, currentUserId } = useRoomLobby(roomId);
+  const { roomQuery, membersQuery, currentUserId, isGuest } =
+    useRoomLobby(roomId);
 
   if (roomQuery.isPending || membersQuery.isPending) {
     return <Text style={styles.muted}>Loading lobby…</Text>;
@@ -54,6 +56,9 @@ export function LobbyView({ roomId }: { roomId: string }) {
           Waiting for the host to start the session…
         </Text>
       )}
+      {/* Optional upgrade for guests — keeps their room membership (same user_id) and
+          unlocks saved matches (CLAUDE.md §3). Never blocks the guest flow. */}
+      {isGuest ? <AuthPanel mode="upgrade" /> : null}
     </View>
   );
 }
