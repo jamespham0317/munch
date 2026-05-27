@@ -103,3 +103,30 @@ export const setPresenceResponseSchema = z.object({
   member: z.object({ id: z.uuid(), is_present: z.boolean() }),
 });
 export type SetPresenceResponse = z.infer<typeof setPresenceResponseSchema>;
+
+// 3.10 leave_room — acts on the caller's own membership; no mutable body. The
+// target room is identified by the api-client's roomId argument (path-style) +
+// RLS, mirroring how set_presence carries no room_id (docs/04 §3.10).
+export const leaveRoomRequestSchema = z.object({});
+export type LeaveRoomRequest = z.infer<typeof leaveRoomRequestSchema>;
+
+export const leaveRoomResponseSchema = z.object({
+  member: z.object({
+    id: z.uuid(),
+    is_present: z.boolean(), // false after leaving
+    left_at: z.string().nullable(),
+  }),
+  // True when the caller was host: leaving soft-closes the room (resolved
+  // host-leave policy, was CLAUDE.md §9). Host role is not transferred.
+  room_ended: z.boolean(),
+});
+export type LeaveRoomResponse = z.infer<typeof leaveRoomResponseSchema>;
+
+// 3.10 end_room (host) — no mutable body; returns the soft-closed room.
+export const endRoomRequestSchema = z.object({});
+export type EndRoomRequest = z.infer<typeof endRoomRequestSchema>;
+
+export const endRoomResponseSchema = z.object({
+  room: z.object({ id: z.uuid(), is_active: z.boolean() }), // is_active=false
+});
+export type EndRoomResponse = z.infer<typeof endRoomResponseSchema>;
