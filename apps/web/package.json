@@ -2,7 +2,7 @@
   "name": "@munch/web",
   "version": "0.0.0",
   "private": true,
-  "description": "Munch web app (Next.js App Router). Consumes @munch/core + @munch/api-client; proves the Phase 0 exit criterion in the browser (anonymous session + seeded read under RLS).",
+  "description": "Munch web app (Next.js App Router). Consumes @munch/core + @munch/api-client; Phase 1 guest create/join + live-presence room lobby.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -16,6 +16,7 @@
     "@supabase/supabase-js": "^2",
     "@tanstack/react-query": "^5.100.14",
     "next": "^16.2.6",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
