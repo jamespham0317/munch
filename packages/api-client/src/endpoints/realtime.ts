@@ -1,20 +1,52 @@
-import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
+import type {
+  RealtimeChannel,
+  RealtimePostgresChangesPayload,
+  SupabaseClient,
+} from "@supabase/supabase-js";
 
 import { notImplemented } from "../errors";
 
 /**
- * Realtime channel helpers (docs/04 §4). Clients subscribe to per-room/session
- * channels for live state; authoritative reads still come from RPC/table reads
- * under RLS. Only aggregate progress is ever exposed — never another member's
- * individual swipes (CLAUDE.md §3). Stubs only in Phase 0.
+ * Realtime channel helpers (docs/04 §4). Clients subscribe to per-room/session channels for
+ * live state; authoritative reads still come from RPC/table reads under RLS. Realtime respects
+ * RLS, so only aggregate/co-member data is ever delivered — never another member's individual
+ * swipes (CLAUDE.md §3; none exist in Phase 1).
  */
 
-/** Subscribe to a room channel: member join/leave/presence (`room:{room_id}`). */
+/** A row-change event on `room_members` delivered to a `subscribeRoom` callback. */
+export type RoomMemberChange = RealtimePostgresChangesPayload<{
+  id: string;
+  room_id: string;
+  display_name: string;
+  role: string;
+  is_present: boolean;
+}>;
+
+/**
+ * Subscribe to a room's presence changes (`room:{room_id}`). Fires `onChange` on any
+ * insert/update/delete of a `room_members` row for this room so the lobby can refresh its
+ * member list. room_members_select_same_room (0003) means a subscriber only receives changes
+ * for rooms it belongs to. Returns the channel; the caller unsubscribes via
+ * `client.removeChannel(channel)` on teardown.
+ */
 export function subscribeRoom(
-  _client: SupabaseClient,
-  _roomId: string,
+  client: SupabaseClient,
+  roomId: string,
+  onChange: (payload: RoomMemberChange) => void,
 ): RealtimeChannel {
-  return notImplemented("room realtime subscription", "Phase 2");
+  return client
+    .channel(`room:${roomId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "room_members",
+        filter: `room_id=eq.${roomId}`,
+      },
+      onChange,
+    )
+    .subscribe();
 }
 
 /**
