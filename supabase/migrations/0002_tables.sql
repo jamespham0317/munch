@@ -36,11 +36,15 @@ create table rooms (
 create index idx_rooms_code on rooms (code);
 
 -- 3.3 room_members -----------------------------------------------------------
--- A participant in a room; guests (user_id null) and signed-in users both appear here.
+-- A participant in a room; both guests and signed-in users appear here. Every member has a
+-- user_id: guests get the id of their anonymous auth.users row (from signInAnonymously),
+-- signed-in users get their permanent one. The guest/account distinction is the presence of
+-- a profiles row, NOT a null user_id. RLS (0003) keys entirely off user_id = auth.uid(), so a
+-- guest with a null user_id could not read their own room — the join RPC must always set it.
 create table room_members (
   id           uuid primary key default gen_random_uuid(),
   room_id      uuid not null references rooms (id) on delete cascade,
-  user_id      uuid references auth.users (id) on delete set null, -- null for guests
+  user_id      uuid references auth.users (id) on delete set null, -- anon uid for guests; null only if that auth user is later deleted
   display_name text not null,
   role         member_role not null default 'member',
   is_present   boolean not null default true,          -- lobby/live presence

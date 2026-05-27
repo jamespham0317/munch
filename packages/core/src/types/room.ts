@@ -29,7 +29,10 @@ export interface Room {
 export interface RoomMember {
   id: string;
   roomId: string;
-  /** Null for guests. */
+  /**
+   * The member's auth.users id — the anonymous uid for guests, the permanent one for
+   * signed-in users. Null only if that auth user was later deleted (DB `on delete set null`).
+   */
   userId: string | null;
   displayName: string;
   role: MemberRole;

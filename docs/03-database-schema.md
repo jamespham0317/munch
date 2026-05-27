@@ -98,7 +98,7 @@ A participant in a room. Guests and signed-in users both appear here.
 create table room_members (
   id          uuid primary key default gen_random_uuid(),
   room_id     uuid not null references rooms(id) on delete cascade,
-  user_id     uuid references auth.users(id) on delete set null, -- null for guests
+  user_id     uuid references auth.users(id) on delete set null, -- anon uid for guests; null only if that auth user is deleted
   display_name text not null,
   role        member_role not null default 'member',
   is_present  boolean not null default true,    -- lobby/live presence
@@ -111,6 +111,14 @@ create unique index on room_members (room_id, user_id)
   where user_id is not null;                     -- a user joins a room once
 ```
 
+- **Every member has a `user_id`.** Guests sign in anonymously (`signInAnonymously`, see
+  doc 04 §2), which creates an `auth.users` row; that anonymous id is stored as the guest's
+  `user_id`. Signed-in users store their permanent id. The guest-vs-account distinction is
+  the presence of a `profiles` row, **not** a null `user_id`. `user_id` goes null only if the
+  underlying auth user is later deleted (`on delete set null`); the partial unique index
+  tolerates those orphaned rows. The join RPC must always set `user_id` — the RLS policies
+  below match on `user_id = auth.uid()`, so a member with a null `user_id` could not read
+  even their own room.
 - **RLS:** a member may select other members of the same room; may update only their own
   row (e.g. presence). Inserts go through a join RPC that validates the code.
 
