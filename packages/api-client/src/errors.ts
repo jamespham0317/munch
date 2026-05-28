@@ -51,14 +51,17 @@ function isAuthError(error: unknown): error is { status?: number } {
 }
 
 /**
- * Error codes the room RPCs raise as their exception MESSAGE (the convention pinned at the
- * top of supabase/migrations/0005_room_rpcs.sql). A `raise exception 'ROOM_NOT_FOUND'` reaches
- * us as a PostgrestError with code `P0001` and message `ROOM_NOT_FOUND`, so we map the message
- * onto the matching `ErrorCode`. Codes not in this set (FORBIDDEN, PROVIDER_ERROR) are never
- * raised this way — they are classified by other signals (42501) or belong to other phases.
+ * Error codes the RPCs raise as their exception MESSAGE (the convention pinned at the top of
+ * supabase/migrations/0005_room_rpcs.sql and reused by 0010/0011). A `raise exception 'X'`
+ * reaches us as a PostgrestError with code `P0001` and message `X`, so we map the message onto
+ * the matching `ErrorCode`. `FORBIDDEN` lands here because submit_swipe (0010) raises it as a
+ * message for a non-member of the session's room; a Postgres 42501 RLS denial still maps to
+ * FORBIDDEN via the code path above. PROVIDER_ERROR is never raised from an RPC — only the
+ * start-session Edge Function surfaces it (see sessions.ts).
  */
 const RPC_ERROR_CODES: ReadonlySet<ErrorCode> = new Set([
   "UNAUTHENTICATED",
+  "FORBIDDEN",
   "ROOM_NOT_FOUND",
   "ROOM_CLOSED",
   "NOT_HOST",

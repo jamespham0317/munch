@@ -1,4 +1,5 @@
 import type {
+  ApiError,
   CreateRoomRequest,
   JoinRoomRequest,
   MemberRole,
@@ -244,10 +245,11 @@ export async function setPresence(
 
 /**
  * leave_room (docs/04 §3.10): member self-leave — set is_present=false, left_at=now() on the
- * caller's own row. If the caller is the host, the room ends: soft-close it (is_active=false),
- * the same outcome as endRoom. This is the resolved host-leave policy (was CLAUDE.md §9); host
- * role is NOT transferred. Phase 2 will additionally cancel any in-flight session — there are
- * none to cancel in Phase 1.
+ * caller's own row. If the caller is the host, the room ends: soft-close it (is_active=false)
+ * AND any non-terminal session for the room moves to `cancelled` via cancel_active_session
+ * (0011). This is the resolved host-leave policy (was CLAUDE.md §9); host role is NOT
+ * transferred. The session-cancel half is a no-op when the host leaves from the lobby
+ * (no session yet) so this works for both Phase-1 and Phase-2 flows.
  */
 export async function leaveRoom(
   client: SupabaseClient,
@@ -278,6 +280,10 @@ export async function leaveRoom(
     if (closeError) {
       return { data: null, error: toApiError(closeError) };
     }
+    const cancelError = await cancelActiveSession(client, roomId);
+    if (cancelError) {
+      return { data: null, error: cancelError };
+    }
     roomEnded = true;
   }
 
@@ -290,7 +296,11 @@ export async function leaveRoom(
   };
 }
 
-/** end_room (docs/04 §3.10, host): soft-close the room. RLS (rooms_update_host) gates this. */
+/**
+ * end_room (docs/04 §3.10, host): soft-close the room (RLS rooms_update_host gates this) and
+ * cancel any non-terminal session via cancel_active_session (0011). The session-cancel step
+ * is a no-op when there isn't one.
+ */
 export async function endRoom(
   client: SupabaseClient,
   roomId: string,
@@ -305,10 +315,30 @@ export async function endRoom(
   if (error) {
     return { data: null, error: toApiError(error) };
   }
+  const cancelError = await cancelActiveSession(client, roomId);
+  if (cancelError) {
+    return { data: null, error: cancelError };
+  }
   return {
     data: { room: { id: data.id, isActive: data.is_active } },
     error: null,
   };
+}
+
+/**
+ * Helper — call cancel_active_session (0011) for the host-leave / end-room paths. Returns the
+ * mapped ApiError on failure, or null on success (incl. the no-op case where there is no
+ * non-terminal session). NOT_HOST should not occur on these paths (the caller is the host by
+ * the time we get here) but we surface it cleanly via toApiError if it does.
+ */
+async function cancelActiveSession(
+  client: SupabaseClient,
+  roomId: string,
+): Promise<ApiError | null> {
+  const { error } = (await client.rpc("cancel_active_session", {
+    p_room_id: roomId,
+  })) as RpcResult<{ cancelled_session_id: string | null }>;
+  return error ? toApiError(error) : null;
 }
 
 // --- lobby read helpers (RLS-scoped; no business logic) ---------------------
