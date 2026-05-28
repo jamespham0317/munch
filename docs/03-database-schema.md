@@ -184,12 +184,21 @@ create table restaurants (
   expires_at    timestamptz not null             -- enforce short-lived caching
 );
 
-create index on restaurants (provider, provider_ref);
+create unique index on restaurants (provider, provider_ref);  -- unique: see note below
 create index on restaurants (expires_at);
 ```
 
 - A background job (or check on read) purges/refreshes rows past `expires_at` to respect
   provider terms. Restaurants are not a permanent local mirror of the provider.
+- The `(provider, provider_ref)` index is **unique**: a place is identified by its provider +
+  provider id, and `start_session` upserts with `on conflict (provider, provider_ref)` to dedupe
+  a restaurant across sessions. (Migration `0002` first created it as a plain index; `0013`
+  made it unique so the upsert's `ON CONFLICT` resolves.)
+- **RLS:** `restaurants_select_deck_member` (migration `0009`) — a row is selectable only when
+  it appears in a `cached_decks` row for a session whose room the caller belongs to (mirrors
+  `cached_decks_select_member`). No `anon` grant. `distance_m` for the `get_deck` response is
+  computed server-side by the `haversine_m(lat1, lng1, lat2, lng2)` immutable helper (also
+  `0009`) against the room anchor, via the `get_deck_for_session` security-invoker read RPC.
 
 ---
 
@@ -325,6 +334,9 @@ select (select count(*) from present_members) > 0
      = (select count(*) from likers
         where member_id in (select id from present_members)) as is_unanimous;
 ```
+
+Implemented as `check_unanimous_match(p_session_id, p_restaurant_id)` (security definer, so it
+can read all members' swipes) in migration `0010`, called inside the `submit_swipe` transaction.
 
 ## 6. Key query: closest-to-unanimous ranking (host resolution)
 

@@ -34,9 +34,9 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { EdgeError, errorBody, statusForCode } from "../_shared/errors.ts";
 import {
   getProvider,
+  getProviderCallCount,
   type NormalizedRestaurant,
 } from "../_shared/provider/index.ts";
-import { getProviderCallCount } from "../_shared/provider/google-places.ts";
 
 // Radius bounds mirror packages/core/src/constants.ts (RADIUS_MIN_M / RADIUS_MAX_M).
 // Duplicated here so the Edge Function (Deno) doesn't need a cross-runtime import
@@ -229,8 +229,11 @@ async function resolveHostRoom(
 ): Promise<RoomRow> {
   const { data, error } = await admin
     .from("room_members")
+    // Disambiguate the embed: room_members has TWO FKs to rooms (room_members.room_id →
+    // rooms.id, and rooms.host_member_id → room_members.id), so PostgREST needs the explicit
+    // relationship name or it raises PGRST201. We want the room this membership belongs to.
     .select(
-      "joined_at, rooms!inner(id, anchor_lat, anchor_lng, filter_open_now, filter_cuisines, filter_price_levels, is_active)",
+      "joined_at, rooms!room_members_room_id_fkey!inner(id, anchor_lat, anchor_lng, filter_open_now, filter_cuisines, filter_price_levels, is_active)",
     )
     .eq("user_id", userId)
     .eq("role", "host")

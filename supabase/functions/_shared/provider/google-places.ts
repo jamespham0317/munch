@@ -52,20 +52,6 @@ const FIELD_MASK = [
 /** Caps: v1 Nearby Search currently returns up to 20 places per request. */
 const MAX_RESULT_COUNT = 20;
 
-/**
- * Module-private call counter — incremented inside `fetchRestaurants` on every
- * attempted provider HTTP call (success OR failure). The Edge Function reads the
- * delta around its single call site and logs `provider_calls = 1` as the §2.1
- * invariant verifier. Prompt 7's FakeProvider exposes the same counter shape so
- * the integration-test assertion is uniform across providers.
- */
-let callCount = 0;
-
-/** Read the current process-lifetime call count. Test/observability hook. */
-export function getProviderCallCount(): number {
-  return callCount;
-}
-
 interface GoogleNearbyResponse {
   places?: GooglePlace[];
 }
@@ -109,8 +95,6 @@ export class GooglePlacesProvider implements RestaurantProvider {
       },
     };
     if (priceLevels) body.priceLevels = priceLevels;
-
-    callCount += 1;
 
     let json: GoogleNearbyResponse;
     try {

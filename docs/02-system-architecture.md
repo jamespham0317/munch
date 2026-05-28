@@ -106,7 +106,11 @@ viable.
    room's anchor + filters, normalizes the results, and writes them to a `cached_decks`
    record tied to the session.
 2. Every member's swipe operates against this **cached deck**, in their own shuffled order.
-   No swipe triggers a provider call.
+   No swipe triggers a provider call. Members read the deck through the
+   `restaurants_select_deck_member` RLS policy (migration `0009`), which scopes visibility to
+   restaurants in a cached deck for a session in one of the caller's rooms; the per-card
+   `distance_m` is computed server-side at read time by the `haversine_m` SQL helper against the
+   room anchor, so the client never needs the anchor coordinates.
 3. The app is therefore billed roughly **per session created**, not per swipe — orders of
    magnitude cheaper for a swipe-heavy app.
 4. **Widening** the criteria during host resolution triggers exactly one additional

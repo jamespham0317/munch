@@ -16,7 +16,6 @@ import {
   type StartSessionRequest,
   type StartSessionResponse,
 } from "@munch/core";
-import { FunctionsHttpError } from "@supabase/functions-js";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 
 import {
@@ -85,33 +84,41 @@ export async function startSession(
 }
 
 /**
- * Map a FunctionsHttpError (non-2xx) by reading its response body — the Edge Function
- * surfaces the standard `{ error: { code, message } }` envelope (supabase/functions/
- * _shared/errors.ts). We honor the code (incl. PROVIDER_ERROR) but ALWAYS replace the
- * message with the canonical safe one so raw text never leaks (docs/06 §8/§9). Any other
- * error (FunctionsFetchError network failure, FunctionsRelayError) falls through to
- * toApiError with a PROVIDER_ERROR fallback — start-session's only off-platform dependency
- * is the provider, so a transport failure is most usefully classified as one.
+ * Map a non-2xx invoke result by reading the Edge Function's `{ error: { code, message } }`
+ * envelope (supabase/functions/_shared/errors.ts). We honor the code (incl. PROVIDER_ERROR)
+ * but ALWAYS replace the message with the canonical safe one so raw text never leaks
+ * (docs/06 §8/§9). A genuine transport error (FunctionsFetchError / FunctionsRelayError) has
+ * no envelope and falls through to PROVIDER_ERROR — start-session's only off-platform
+ * dependency is the provider, so that's the most useful classification.
  */
 async function mapInvokeError(error: unknown) {
-  if (error instanceof FunctionsHttpError) {
-    const code = await readEnvelopeCode(error);
-    if (code) {
-      console.error("[api-client] start-session error", code);
-      return makeApiError(code);
-    }
+  const code = await readEnvelopeCode(error);
+  if (code) {
+    console.error("[api-client] start-session error", code);
+    return makeApiError(code);
   }
   return toApiError(error, "PROVIDER_ERROR");
 }
 
-/** Best-effort parse of the Edge Function's `{ error: { code, message } }` body. */
-async function readEnvelopeCode(
-  error: FunctionsHttpError,
-): Promise<ErrorCode | null> {
+/**
+ * Best-effort parse of the Edge Function's `{ error: { code, message } }` body. We duck-type
+ * the error's `context` (the underlying Response) rather than relying on
+ * `instanceof FunctionsHttpError`: supabase-js carries its own bundled @supabase/functions-js,
+ * so an error it throws is often a DIFFERENT class instance than the one this package imports,
+ * and `instanceof` then silently fails — collapsing every edge error onto the PROVIDER_ERROR
+ * fallback. Reading `context.json()` is robust to that.
+ */
+async function readEnvelopeCode(error: unknown): Promise<ErrorCode | null> {
+  const context = (error as { context?: unknown } | null | undefined)?.context;
+  if (
+    context === null ||
+    typeof context !== "object" ||
+    typeof (context as { json?: unknown }).json !== "function"
+  ) {
+    return null;
+  }
   try {
-    // FunctionsHttpError.context is typed `any` upstream but in practice is the Response.
-    const response = error.context as { json: () => Promise<unknown> };
-    const body = await response.json();
+    const body = await (context as { json: () => Promise<unknown> }).json();
     const raw =
       typeof body === "object" && body !== null && "error" in body
         ? (body as { error?: { code?: unknown } }).error?.code

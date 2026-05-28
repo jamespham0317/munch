@@ -164,6 +164,11 @@ Transitions room to `active`, fetches the deck once via the provider, caches it.
   abstraction **once**; normalizes and writes `restaurants` + `cached_decks`
   (`added_round = 0`). The deck itself is read via subscription/table read, not returned
   inline beyond its size.
+- **Implementation:** an **Edge Function** (`supabase/functions/start-session/`), not an RPC,
+  because the provider key is server-only (CLAUDE.md §2.1, §3) and must never reach a client
+  bundle — only an Edge Function can hold it. It is the **only** Phase-2 endpoint that touches
+  the provider; it emits a structured `start_session.ok` log line carrying `provider_calls`
+  (must be `1`) as the §2.1 invariant verifier.
 - **Errors:** `NOT_HOST`, `SESSION_INVALID_STATE`, `PROVIDER_ERROR`.
 
 ---
@@ -226,6 +231,12 @@ Records a like/pass and runs the authoritative match check. This is the hot path
   members. If so, writes `matches`, sets session `matched`, and emits a realtime event.
   When the deck is exhausted for all members with no match, the session moves to
   `awaiting_host_resolution` (may be detected here or by a lightweight check).
+- **Implementation:** a **security-definer RPC** (`submit_swipe`, migration 0010). It is
+  security definer because the authoritative match check must read **all** members' swipes in
+  one transaction, which the per-member `swipes_select_own` RLS policy would otherwise block
+  (CLAUDE.md §2.3). Failures are raised as the bare error code in the exception message
+  (`UNAUTHENTICATED` / `FORBIDDEN` / `SESSION_INVALID_STATE` / `VALIDATION_ERROR`); the
+  api-client maps them and never surfaces raw DB text.
 - **Errors:** `SESSION_INVALID_STATE`, `VALIDATION_ERROR`.
 
 ---
@@ -302,9 +313,14 @@ Host accepts the top pick or widens criteria.
   ephemeral session data. A host leaving via `leave_room` produces the same outcome.
 - **Implementation:** both are direct RLS-scoped table writes in the api-client (not RPCs) — see
   the §3 implementation note. `leave_room` updates the caller's own `room_members` row; if that
-  caller is the host it also flips `rooms.is_active = false` (same outcome as `end_room`).
-  **Phase 1 has no sessions yet**, so the session-cancel/cleanup/realtime-`match` steps above are
-  forward-looking — they land in Phase 2; in Phase 1 a host leaving simply closes the room.
+  caller is the host it also flips `rooms.is_active = false` (same outcome as `end_room`). The
+  session-cancel half goes through `cancel_active_session(p_room_id)` — a **security-definer RPC**
+  (migration 0011) the host-leave and end-room paths call to move any non-terminal session for
+  the room to `cancelled`. It is the only path that mutates `sessions.status` outside of
+  `start_session` and `submit_swipe` (and Phase 3's `resolve_session`), because `sessions` has no
+  update RLS policy by design. It raises `NOT_HOST` for a non-host caller and is a no-op (no
+  raise) when the room has no non-terminal session — so a host leaving from the lobby still
+  succeeds.
 
 ---
 

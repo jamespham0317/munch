@@ -163,7 +163,10 @@ These are genuinely undecided; if a task touches one, ask rather than inventing 
   exact current numbers are not assumed in code.
 
 (Resolved: *host leaves mid-session* — the session ends (`cancelled`) and the room closes;
-host role is **not** transferred. See invariant 3 above and `docs/01` §7 / `docs/04` §3.10.)
+host role is **not** transferred. See invariant 3 above and `docs/01` §7 / `docs/04` §3.10.
+Both halves are now implemented: Phase 1 soft-closed the room; Phase 2 added the
+session-cancel half via the `cancel_active_session` RPC, wired into the api-client
+`leaveRoom`/`endRoom` host paths.)
 
 ---
 

@@ -1,0 +1,62 @@
+[
+  {
+    "provider": "fake",
+    "provider_ref": "fake-001",
+    "name": "Test Trattoria",
+    "lat": 37.7752,
+    "lng": -122.4191,
+    "rating": 4.5,
+    "price_level": "2",
+    "cuisines": ["italian"],
+    "photo_url": null,
+    "is_open_now": true
+  },
+  {
+    "provider": "fake",
+    "provider_ref": "fake-002",
+    "name": "Mock Ramen House",
+    "lat": 37.7766,
+    "lng": -122.4205,
+    "rating": 4.2,
+    "price_level": "1",
+    "cuisines": ["ramen", "japanese"],
+    "photo_url": null,
+    "is_open_now": true
+  },
+  {
+    "provider": "fake",
+    "provider_ref": "fake-003",
+    "name": "Fixture Taqueria",
+    "lat": 37.7731,
+    "lng": -122.4168,
+    "rating": 4.0,
+    "price_level": "1",
+    "cuisines": ["mexican"],
+    "photo_url": null,
+    "is_open_now": false
+  },
+  {
+    "provider": "fake",
+    "provider_ref": "fake-004",
+    "name": "Stub Steakhouse",
+    "lat": 37.7788,
+    "lng": -122.4212,
+    "rating": 4.7,
+    "price_level": "4",
+    "cuisines": ["steak", "american"],
+    "photo_url": null,
+    "is_open_now": true
+  },
+  {
+    "provider": "fake",
+    "provider_ref": "fake-005",
+    "name": "Sample Sushi Bar",
+    "lat": 37.7719,
+    "lng": -122.4149,
+    "rating": null,
+    "price_level": "3",
+    "cuisines": ["sushi", "japanese"],
+    "photo_url": null,
+    "is_open_now": null
+  }
+]

@@ -9,6 +9,7 @@
 // surfaces to apps/* or packages/*. The Phase-0 CI guard (scripts/check-secrets.sh)
 // enforces this.
 
+import { FakeProvider } from "./fake.ts";
 import { GooglePlacesProvider } from "./google-places.ts";
 
 /**
@@ -64,12 +65,39 @@ export interface RestaurantProvider {
 }
 
 /**
+ * Process-lifetime count of provider fetches, incremented at the abstraction boundary so it
+ * is PROVIDER-AGNOSTIC: the start_session Edge Function reads the delta around its single
+ * call site and logs `provider_calls` (must be 1) as the load-bearing §2.1 invariant verifier
+ * (CLAUDE.md §2.1). Counting here — rather than inside each provider — means the check holds
+ * identically for GooglePlacesProvider in production and FakeProvider in tests.
+ */
+let providerCallCount = 0;
+
+/** Read the current process-lifetime provider-fetch count. Test/observability hook. */
+export function getProviderCallCount(): number {
+  return providerCallCount;
+}
+
+/**
  * Factory: returns the configured provider implementation for this deployment.
- * Phase 2: always GooglePlacesProvider. The `PROVIDER=fake` hook for the FakeProvider
- * used in Prompt-7 integration tests lands when that file exists — the env flag is
- * read here so production deployment env (which doesn't set it) always gets the real
- * provider. Future providers swap here, nowhere else (docs/02 §3.3, docs/04 §5).
+ * Phase 2: GooglePlacesProvider, EXCEPT when PROVIDER=fake — then the deterministic
+ * FakeProvider used by the Prompt-7 integration tests (CLAUDE.md §7: tests never call
+ * the real provider). Production deployment env must never set PROVIDER, so it always
+ * gets the real provider. Future providers swap here, nowhere else (docs/02 §3.3,
+ * docs/04 §5).
+ *
+ * The returned value wraps the implementation in a thin counting decorator so every
+ * fetch — by any provider — is tallied at this boundary (see providerCallCount above).
  */
 export function getProvider(): RestaurantProvider {
-  return new GooglePlacesProvider();
+  const impl =
+    Deno.env.get("PROVIDER") === "fake"
+      ? new FakeProvider()
+      : new GooglePlacesProvider();
+  return {
+    fetchRestaurants(params: FetchRestaurantsParams) {
+      providerCallCount += 1;
+      return impl.fetchRestaurants(params);
+    },
+  };
 }
