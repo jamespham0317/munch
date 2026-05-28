@@ -6,9 +6,13 @@ import {
   type GetDeckResponse,
   type GetResolutionRankingRequest,
   type GetResolutionRankingResponse,
+  type MatchInfo,
+  type MatchResolution,
   type PriceLevel,
   type ResolveSessionRequest,
   type ResolveSessionResponse,
+  type Session,
+  type SessionStatus,
   type StartSessionRequest,
   type StartSessionResponse,
 } from "@munch/core";
@@ -170,6 +174,130 @@ function mapDeckRow(row: RawDeckRow): DeckRestaurant {
     photo_url: row.photo_url,
     is_open_now: row.is_open_now,
     distance_m: Number(row.distance_m),
+  };
+}
+
+// --- session + match read helpers (Phase 2 UI plumbing) ---------------------
+
+const SESSION_COLUMNS =
+  "id, room_id, status, radius_m, filter_open_now, filter_cuisines, " +
+  "filter_price_levels, started_at, ended_at, matched_restaurant_id, created_at";
+
+interface SessionRow {
+  id: string;
+  room_id: string;
+  status: SessionStatus;
+  radius_m: number;
+  filter_open_now: boolean;
+  filter_cuisines: string[];
+  filter_price_levels: PriceLevel[];
+  started_at: string | null;
+  ended_at: string | null;
+  matched_restaurant_id: string | null;
+  created_at: string;
+}
+
+function mapSessionRow(row: SessionRow): Session {
+  return {
+    id: row.id,
+    roomId: row.room_id,
+    status: row.status,
+    radiusM: row.radius_m,
+    filterOpenNow: row.filter_open_now,
+    filterCuisines: row.filter_cuisines,
+    filterPriceLevels: row.filter_price_levels,
+    startedAt: row.started_at,
+    endedAt: row.ended_at,
+    matchedRestaurantId: row.matched_restaurant_id,
+    createdAt: row.created_at,
+  };
+}
+
+/**
+ * Read the room's latest non-terminal session (lobby/active), if any. RLS
+ * (sessions_select_member from 0003) scopes this to rooms the caller belongs to.
+ * Used by the lobby to decide whether to auto-route members into the swipe screen
+ * when the host starts a session. Returns `null` when no such session exists.
+ */
+export async function getActiveSession(
+  client: SupabaseClient,
+  roomId: string,
+): Promise<ClientResult<Session | null>> {
+  const { data, error } = await client
+    .from("sessions")
+    .select(SESSION_COLUMNS)
+    .eq("room_id", roomId)
+    .in("status", ["lobby", "active"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .returns<SessionRow[]>();
+  if (error) {
+    return { data: null, error: toApiError(error) };
+  }
+  const row = data[0];
+  return { data: row ? mapSessionRow(row) : null, error: null };
+}
+
+/** The matched restaurant payload returned by getMatch — the result screen's data. */
+export interface MatchWithRestaurant {
+  match: MatchInfo;
+  restaurant: DeckRestaurant;
+}
+
+interface RawMatchRow {
+  restaurant_id: string;
+  resolution: MatchResolution;
+}
+
+/**
+ * Read the session's match outcome plus the matched restaurant card under RLS
+ * (matches_select_member + restaurants_select_deck_member from 0003/0009). Used by
+ * the result screen so it works for the swiper (who already has the payload from
+ * submit_swipe's response, but may refresh) and for co-members who entered via the
+ * subscribeSession match event. Returns `null` when no match has been recorded yet.
+ */
+export async function getMatch(
+  client: SupabaseClient,
+  sessionId: string,
+): Promise<ClientResult<MatchWithRestaurant | null>> {
+  const { data: matchData, error: matchError } = await client
+    .from("matches")
+    .select("restaurant_id, resolution")
+    .eq("session_id", sessionId)
+    .maybeSingle()
+    .returns<RawMatchRow | null>();
+  if (matchError) {
+    return { data: null, error: toApiError(matchError) };
+  }
+  if (!matchData) {
+    return { data: null, error: null };
+  }
+  const deck = await getDeck(client, { session_id: sessionId });
+  if (deck.error) {
+    return { data: null, error: deck.error };
+  }
+  const restaurant = deck.data.restaurants.find(
+    (r) => r.id === matchData.restaurant_id,
+  );
+  if (!restaurant) {
+    // The matched restaurant must be in the session's cached deck; if it isn't, the
+    // session state is inconsistent — surface a safe VALIDATION_ERROR rather than the
+    // raw "row missing" to the UI.
+    console.error(
+      "[api-client] getMatch: matched restaurant not in cached deck",
+    );
+    return { data: null, error: toApiError(null) };
+  }
+  return {
+    data: {
+      match: {
+        restaurant_id: matchData.restaurant_id,
+        restaurant_name: restaurant.name,
+        resolution: matchData.resolution,
+      },
+      restaurant,
+    },
+    error: null,
   };
 }
 

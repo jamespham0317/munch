@@ -3,11 +3,16 @@ import {
   getRoomMembers,
   setPresence,
   subscribeRoom,
+  subscribeRoomSessions,
 } from "@munch/api-client";
 import type { Room, RoomMember } from "@munch/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
+import {
+  activeSessionKey,
+  useActiveSession,
+} from "@/features/session/use-active-session";
 import { getSupabaseClient } from "@/lib/supabase";
 
 /**
@@ -72,12 +77,29 @@ export function useRoomLobby(roomId: string) {
     retry: false,
   });
 
+  const sessionQuery = useActiveSession(roomId);
+
   // Live presence: refetch the member list whenever a room_members row changes.
   // subscribeRoom only delivers co-member rows for this room (RLS); no swipes exist.
   useEffect(() => {
     const client = getSupabaseClient();
     const channel = subscribeRoom(client, roomId, () => {
       void queryClient.invalidateQueries({ queryKey: membersKey(roomId) });
+    });
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [roomId, queryClient]);
+
+  // Watch the room's session row so the lobby learns about a host-initiated session
+  // start (and any later status transitions while everyone is still in the lobby —
+  // e.g. cancelled if the host bails). RLS scopes deliveries to rooms we belong to.
+  useEffect(() => {
+    const client = getSupabaseClient();
+    const channel = subscribeRoomSessions(client, roomId, () => {
+      void queryClient.invalidateQueries({
+        queryKey: activeSessionKey(roomId),
+      });
     });
     return () => {
       void client.removeChannel(channel);
@@ -97,6 +119,8 @@ export function useRoomLobby(roomId: string) {
   return {
     roomQuery,
     membersQuery,
+    sessionQuery,
+    activeSession: sessionQuery.data ?? null,
     currentUserId: userQuery.data?.id ?? null,
     isGuest: userQuery.data?.isAnonymous ?? false,
   };
