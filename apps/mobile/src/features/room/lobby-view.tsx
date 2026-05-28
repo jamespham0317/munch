@@ -1,20 +1,39 @@
-import { StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { useEffect } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { InvitePanel } from "../../components/invite-panel";
 import { MemberList } from "../../components/member-list";
 import { colors, spacing } from "../../theme";
 import { AuthPanel } from "../auth/auth-panel";
+import { useStartSession } from "../session/use-start-session";
 import { useRoomLobby } from "./use-room-lobby";
 
 /**
  * Room lobby (RN parity with apps/web's LobbyView): an initial getRoom + getRoomMembers
  * read kept live by subscribeRoom, an invite affordance, and the host-only "Start
- * session" placeholder (Phase 2). Screens stay thin — all data access is in
- * @munch/api-client (CLAUDE.md §4).
+ * session" control. Once any member sees an active session for the room (via the
+ * lobby's session subscription), they auto-route to the swipe screen. Screens stay
+ * thin — all data access is in @munch/api-client (CLAUDE.md §4).
  */
 export function LobbyView({ roomId }: { roomId: string }) {
-  const { roomQuery, membersQuery, currentUserId, isGuest } =
+  const router = useRouter();
+  const { roomQuery, membersQuery, activeSession, currentUserId, isGuest } =
     useRoomLobby(roomId);
+  const startSession = useStartSession(roomId);
+
+  // Any member: route to the swipe screen the moment an active session exists. The
+  // host also navigates via the start-session mutation's onSuccess, so this effect is
+  // a no-op for them in the common path (router.replace is idempotent on the same URL)
+  // and the safety net for non-host members.
+  useEffect(() => {
+    if (activeSession && activeSession.status === "active") {
+      router.replace({
+        pathname: "/room/[roomId]/session",
+        params: { roomId, sessionId: activeSession.id },
+      });
+    }
+  }, [activeSession, roomId, router]);
 
   if (roomQuery.isPending || membersQuery.isPending) {
     return <Text style={styles.muted}>Loading lobby…</Text>;
@@ -41,16 +60,35 @@ export function LobbyView({ roomId }: { roomId: string }) {
     : undefined;
   const isHost = me?.role === "host";
 
+  function handleStart() {
+    startSession.mutate({ radius_m: room.defaultRadiusM });
+  }
+
+  const startError = startSession.isError ? startSession.error.message : null;
+  const startDisabled = startSession.isPending || activeSession !== null;
+
   return (
     <View style={styles.container}>
       <InvitePanel code={room.code} />
       <Text style={styles.heading}>Members</Text>
       <MemberList members={members} />
       {isHost ? (
-        // Disabled placeholder — sessions arrive in Phase 2 (shared preamble).
-        <View style={[styles.button, styles.buttonDisabled]}>
-          <Text style={styles.buttonText}>Start session (Phase 2)</Text>
-        </View>
+        <>
+          <Pressable
+            style={[styles.button, startDisabled && styles.buttonDisabled]}
+            onPress={handleStart}
+            disabled={startDisabled}
+          >
+            <Text style={styles.buttonText}>
+              {startSession.isPending ? "Starting…" : "Start session"}
+            </Text>
+          </Pressable>
+          {startError ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {startError}
+            </Text>
+          ) : null}
+        </>
       ) : (
         <Text style={styles.muted}>
           Waiting for the host to start the session…

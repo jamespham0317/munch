@@ -53,6 +53,9 @@ importers:
       '@munch/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@react-native-community/slider':
+        specifier: ^4.5.5
+        version: 4.5.7
       '@supabase/supabase-js':
         specifier: ^2
         version: 2.106.2
@@ -1307,6 +1310,9 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  '@react-native-community/slider@4.5.7':
+    resolution: {integrity: sha512-WMDDZjNF2Bd8M8TrSqKf5xhM9ikdfCHtSPur64Ow3bB/OVrKufUQZ59NmYdNZNeGPvcHHTsafuYTY8zfZfbchQ==}
 
   '@react-native-masked-view/masked-view@0.3.2':
     resolution: {integrity: sha512-XwuQoW7/GEgWRMovOQtX3A4PrXhyaZm0lVUiY8qJDvdngjLms9Cpdck6SmGAUNqQwcj2EadHC1HwL0bEyoa/SQ==}
@@ -5449,6 +5455,8 @@ snapshots:
       react: 19.2.3
     optionalDependencies:
       '@types/react': 19.2.15
+
+  '@react-native-community/slider@4.5.7': {}
 
   '@react-native-masked-view/masked-view@0.3.2(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.3))(react@19.2.3)':
     dependencies:
