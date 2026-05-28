@@ -20,6 +20,10 @@ export default tseslint.config(
       "**/.expo/**",
       "**/.turbo/**",
       "**/coverage/**",
+      // supabase/functions/ is a Deno project (deno_version=2 in config.toml),
+      // intentionally outside the TS workspace — no tsconfig, no @typescript-eslint
+      // projectService lookup. Linting is the runtime's job (`deno check`).
+      "supabase/**",
     ],
   },
   js.configs.recommended,
