@@ -7,8 +7,10 @@
  *   2. highest rating
  *   3. nearest distance
  *
- * TODO(Phase 3): expand alongside the server ranking RPC and add thorough tests
- * (ties at each level, deck exhaustion, missing ratings).
+ * Pass (and like) counts are scoped to the CURRENTLY PRESENT members — the same
+ * cohort the unanimous check evaluates against (see `matching.ts` and CLAUDE.md
+ * §2.3). The authoritative ranking runs server-side in `get_resolution_ranking`
+ * (docs/04 §3.8); this is the shared sort the server and clients agree on.
  */
 
 export interface ResolutionRankingEntry {
