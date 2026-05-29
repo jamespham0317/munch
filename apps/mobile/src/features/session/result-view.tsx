@@ -8,7 +8,9 @@ import { useMatch } from "./use-match";
  * Match announcement screen (RN parity with apps/web's ResultView). Both entry paths
  * (the swiper's own submit_swipe response and a co-member's subscribeSession match
  * event) pre-seed the same query cache key before navigating, so the common case
- * renders instantly; a fresh fetch only runs on a direct or refreshed entry.
+ * renders instantly; a fresh fetch only runs on a direct or refreshed entry. Renders both
+ * terminal outcomes the same way — a unanimous match and a host-accepted top pick
+ * (resolution `host_accepted_top`) — differing only in the headline copy.
  */
 export function ResultView({ sessionId }: { sessionId: string }) {
   const matchQuery = useMatch(sessionId);
@@ -24,11 +26,15 @@ export function ResultView({ sessionId }: { sessionId: string }) {
     );
   }
 
-  const { restaurant } = matchQuery.data;
+  const { match, restaurant } = matchQuery.data;
+  const headline =
+    match.resolution === "host_accepted_top"
+      ? "The host picked"
+      : "It’s a match!";
 
   return (
     <View style={styles.container}>
-      <Text style={styles.headline}>It’s a match!</Text>
+      <Text style={styles.headline}>{headline}</Text>
       {restaurant.photo_url ? (
         <Image
           source={{ uri: restaurant.photo_url }}

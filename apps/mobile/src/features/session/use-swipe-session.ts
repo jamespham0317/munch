@@ -7,6 +7,7 @@ import {
 import {
   type DeckRestaurant,
   type RoomMember,
+  type SessionStatus,
   shuffleDeck,
   type SubmitSwipeRequest,
   type SubmitSwipeResponse,
@@ -16,6 +17,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { getSupabaseClient } from "../../lib/supabase";
+import { deckKey } from "./use-deck";
 import { matchKey } from "./use-match";
 
 /**
@@ -27,11 +29,16 @@ import { matchKey } from "./use-match";
  *   3. Submit each Like/Pass via the submit_swipe RPC; on a `match` response, seed the
  *      result-screen cache and route to the result screen.
  *   4. Subscribe to subscribeSession so co-members receive the same match event and
- *      route to the same result screen; route to /lobby on a `cancelled` status.
+ *      track the authoritative session status. The status drives the screen (the swipe
+ *      UI vs. the host-resolution view, owned by SessionView); a `matched`/`resolved`
+ *      status routes everyone to the result screen, a `cancelled` status routes to /lobby,
+ *      and an `awaiting_host_resolution → active` transition is a host widen (see below).
  *
- * Per CLAUDE.md §2.1 the deck is fetched ONCE (see useDeck); no swipe ever triggers a
- * refetch. Per CLAUDE.md §2.3 the server is the only thing that declares a match — the
- * client never derives one from local swipe state.
+ * Per CLAUDE.md §2.1 the deck is fetched ONCE at session start (see useDeck) and again only
+ * when the host WIDENS — the one extra provider call lives server-side in resolve-session,
+ * and on the resulting `active` status we re-read the (now larger) cached deck via getDeck;
+ * no swipe ever triggers a refetch. Per CLAUDE.md §2.3 the server is the only thing that
+ * declares a match — the client never derives one from local swipe state.
  */
 
 const membersKey = (roomId: string) => ["room-members", roomId] as const;
@@ -71,6 +78,10 @@ export interface SwipeSession {
   error: Error | null;
   /** True once every card in the radius-filtered deck has been swiped this session. */
   isExhausted: boolean;
+  /** Live, server-authoritative session status (seeded from the initial read, then realtime). */
+  status: SessionStatus;
+  /** True when the caller is the room host — gates the host-resolution controls. */
+  isHost: boolean;
 }
 
 export function useSwipeSession(
@@ -78,6 +89,7 @@ export function useSwipeSession(
   sessionId: string,
   deck: DeckRestaurant[],
   sessionRadiusM: number,
+  initialStatus: SessionStatus,
 ): SwipeSession {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -93,13 +105,18 @@ export function useSwipeSession(
     retry: false,
   });
 
-  const memberId = useMemo(() => {
+  const me = useMemo(() => {
     const userId = userQuery.data?.id;
     if (!userId || !membersQuery.data) return null;
-    return (
-      membersQuery.data.find((member) => member.userId === userId)?.id ?? null
-    );
+    return membersQuery.data.find((member) => member.userId === userId) ?? null;
   }, [membersQuery.data, userQuery.data]);
+  const memberId = me?.id ?? null;
+  const isHost = me?.role === "host";
+
+  // Live session status. Seeded from the initial active-session read and advanced by the
+  // realtime channel below; SessionView renders the swipe UI vs. the host-resolution view
+  // off this value (CLAUDE.md §2.3 — status is server-authoritative, never derived locally).
+  const [status, setStatus] = useState<SessionStatus>(initialStatus);
 
   const shuffled = useMemo(() => {
     if (!memberId) return [];
@@ -175,8 +192,11 @@ export function useSwipeSession(
 
   // Subscribe to the session's authoritative state. The realtime helper already fetches
   // the matched DeckRestaurant for SessionMatchEvent, so co-members and the swiper land
-  // on the result screen with the same payload. A status transition to `cancelled`
-  // (host left mid-session) routes back to the lobby.
+  // on the result screen with the same payload. Status transitions drive the rest:
+  //   * matched / resolved  → result screen (a unanimous match or the host accepting a top pick);
+  //   * cancelled           → /lobby  (host left mid-session, CLAUDE.md §2.3 exception);
+  //   * awaiting_host_resolution → SessionView swaps in the host-resolution view (no nav);
+  //   * active (arriving after awaiting) → a host WIDEN: re-read the now-larger cached deck.
   useEffect(() => {
     const client = getSupabaseClient();
     const channel = subscribeSession(
@@ -194,14 +214,27 @@ export function useSwipeSession(
           });
           return;
         }
-        if (
-          event.payload.status === "cancelled" ||
-          event.payload.status === "resolved"
-        ) {
+        const nextStatus = event.payload.status;
+        setStatus(nextStatus);
+        if (nextStatus === "matched" || nextStatus === "resolved") {
+          router.replace({
+            pathname: "/room/[roomId]/result",
+            params: { roomId, sessionId },
+          });
+        } else if (nextStatus === "cancelled") {
           router.replace({
             pathname: "/room/[roomId]/lobby",
             params: { roomId },
           });
+        } else if (nextStatus === "active") {
+          // A widen round just appended unseen cards to cached_decks (the single extra
+          // provider call happened server-side in resolve-session — CLAUDE.md §2.1).
+          // Invalidate the one-shot deck read so useDeck refetches the larger deck; the
+          // shuffled/remaining memos above filter out this member's already-swiped ids,
+          // so only the newly-appended cards surface. The status event only carries
+          // `active` on a real change (subscribeSession de-dupes), so this never fires at
+          // mount — it is exclusively the awaiting_host_resolution → active resume.
+          void queryClient.invalidateQueries({ queryKey: deckKey(sessionId) });
         }
       },
     );
@@ -219,5 +252,7 @@ export function useSwipeSession(
     isSubmitting: mutation.isPending,
     error: mutation.error,
     isExhausted,
+    status,
+    isHost,
   };
 }
