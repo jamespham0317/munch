@@ -9,6 +9,7 @@ import {
   type MatchInfo,
   type MatchResolution,
   type PriceLevel,
+  type RankingEntry,
   type ResolveSessionRequest,
   type ResolveSessionResponse,
   type Session,
@@ -18,18 +19,13 @@ import {
 } from "@munch/core";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 
-import {
-  type ClientResult,
-  makeApiError,
-  notImplemented,
-  toApiError,
-} from "../errors";
+import { type ClientResult, makeApiError, toApiError } from "../errors";
 
 /**
- * Session endpoints (docs/04 §3.5–§3.6, §3.8–§3.9). Phase-2 lights up startSession
- * (Edge Function call — the provider key is server-only, CLAUDE.md §2.1) and
- * getDeck (security-invoker RPC read; RLS via cached_decks_select_member +
- * restaurants_select_deck_member). §3.8/§3.9 remain Phase-3 stubs.
+ * Session endpoints (docs/04 §3.5–§3.6, §3.8–§3.9). startSession (§3.5) and resolveSession
+ * (§3.9) call Edge Functions — the provider key is server-only (CLAUDE.md §2.1); getDeck
+ * (§3.6) and getResolutionRanking (§3.8) are RPC reads (the ranking RPC is security-definer
+ * and host-only, raising NOT_HOST/SESSION_INVALID_STATE as its exception message).
  */
 
 type RpcResult<T> = { data: T | null; error: PostgrestError | null };
@@ -68,7 +64,7 @@ export async function startSession(
       body: { radius_m: req.radius_m },
     })) as InvokeResult<RawStartSessionResponse>;
   if (error || !data) {
-    return { data: null, error: await mapInvokeError(error) };
+    return { data: null, error: await mapInvokeError(error, "start-session") };
   }
   return {
     data: {
@@ -88,13 +84,14 @@ export async function startSession(
  * envelope (supabase/functions/_shared/errors.ts). We honor the code (incl. PROVIDER_ERROR)
  * but ALWAYS replace the message with the canonical safe one so raw text never leaks
  * (docs/06 §8/§9). A genuine transport error (FunctionsFetchError / FunctionsRelayError) has
- * no envelope and falls through to PROVIDER_ERROR — start-session's only off-platform
- * dependency is the provider, so that's the most useful classification.
+ * no envelope and falls through to PROVIDER_ERROR — the provider is the only off-platform
+ * dependency of either Edge Function (start-session, and resolve-session's widen), so that's
+ * the most useful classification and the one widen needs to offer retry copy.
  */
-async function mapInvokeError(error: unknown) {
+async function mapInvokeError(error: unknown, fn: string) {
   const code = await readEnvelopeCode(error);
   if (code) {
-    console.error("[api-client] start-session error", code);
+    console.error(`[api-client] ${fn} error`, code);
     return makeApiError(code);
   }
   return toApiError(error, "PROVIDER_ERROR");
@@ -308,21 +305,104 @@ export async function getMatch(
   };
 }
 
-// --- 3.8 / 3.9 stay stubbed until Phase 3 -----------------------------------
+// --- 3.8 get_resolution_ranking --------------------------------------------
 
-export function getResolutionRanking(
-  _client: SupabaseClient,
-  _req: GetResolutionRankingRequest,
-): Promise<ClientResult<GetResolutionRankingResponse>> {
-  // TODO(Phase 3): closest-to-unanimous ranking — fewest passes → rating →
-  // distance, NOT raw like count (CLAUDE.md §2.4).
-  return notImplemented("get_resolution_ranking", "Phase 3");
+/**
+ * Raw row shape of the `get_resolution_ranking` RPC (0015). snake_case == RankingEntry.
+ * Like mapDeckRow, the numeric/integer columns can arrive as string from PostgREST.
+ */
+interface RawRankingRow {
+  restaurant_id: string;
+  name: string;
+  pass_count: number | string;
+  like_count: number | string;
+  member_count: number | string;
+  rating: number | string | null;
+  distance_m: number | string;
 }
 
-export function resolveSession(
-  _client: SupabaseClient,
-  _req: ResolveSessionRequest,
+/**
+ * getResolutionRanking (docs/04 §3.8, host only). Thin call to the security-definer
+ * `get_resolution_ranking` RPC, which reads ALL present members' swipes and orders the deck
+ * closest-to-unanimous server-side (fewest passes → highest rating → nearest distance,
+ * CLAUDE.md §2.4). The RPC raises NOT_HOST / SESSION_INVALID_STATE / UNAUTHENTICATED as its
+ * exception message; toApiError maps each onto the matching ErrorCode (raw text never leaks).
+ */
+export async function getResolutionRanking(
+  client: SupabaseClient,
+  req: GetResolutionRankingRequest,
+): Promise<ClientResult<GetResolutionRankingResponse>> {
+  const { data: raw, error } = (await client.rpc("get_resolution_ranking", {
+    p_session_id: req.session_id,
+  })) as RpcResult<RawRankingRow[]>;
+  if (error) {
+    return { data: null, error: toApiError(error) };
+  }
+  return {
+    data: { ranking: (raw ?? []).map(mapRankingRow) },
+    error: null,
+  };
+}
+
+function mapRankingRow(row: RawRankingRow): RankingEntry {
+  return {
+    restaurant_id: row.restaurant_id,
+    name: row.name,
+    pass_count: Number(row.pass_count),
+    like_count: Number(row.like_count),
+    member_count: Number(row.member_count),
+    rating: row.rating === null ? null : Number(row.rating),
+    distance_m: Number(row.distance_m),
+  };
+}
+
+// --- 3.9 resolve_session ----------------------------------------------------
+
+/**
+ * Raw success body of the resolve-session Edge Function (docs/04 §3.9, verbatim). Both arms
+ * are already the snake_case wire shape == @munch/core's ResolveSessionResponse; the action
+ * is discriminated server-side, so the body is one of these two shapes per request.
+ */
+type RawResolveSessionResponse =
+  | { session: { status: SessionStatus }; match: MatchInfo }
+  | { session: { status: SessionStatus }; new_restaurants: number };
+
+/**
+ * resolveSession (docs/04 §3.9, host only). Calls the resolve-session Edge Function, passing
+ * the discriminated-union request straight through — the server validates and dispatches by
+ * `action`. accept_top makes ZERO provider calls; widen makes EXACTLY ONE (the only new
+ * provider call this phase, CLAUDE.md §2.1) — both live server-side because widen needs the
+ * server-only provider key. A transport failure maps to PROVIDER_ERROR so the UI can offer
+ * widen-retry copy; envelope codes (NOT_HOST, SESSION_INVALID_STATE, …) map via mapInvokeError.
+ */
+export async function resolveSession(
+  client: SupabaseClient,
+  req: ResolveSessionRequest,
 ): Promise<ClientResult<ResolveSessionResponse>> {
-  // TODO(Phase 3): accept_top, or widen with ONE extra provider fetch (CLAUDE.md §2.1).
-  return notImplemented("resolve_session", "Phase 3");
+  const { data, error } =
+    (await client.functions.invoke<RawResolveSessionResponse>(
+      "resolve-session",
+      { body: req },
+    )) as InvokeResult<RawResolveSessionResponse>;
+  if (error || !data) {
+    return {
+      data: null,
+      error: await mapInvokeError(error, "resolve-session"),
+    };
+  }
+  // Structural narrow on the discriminated body (same approach as startSession): the wire
+  // shape is already snake_case, so we pass each arm through unchanged.
+  if ("match" in data) {
+    return {
+      data: { session: { status: data.session.status }, match: data.match },
+      error: null,
+    };
+  }
+  return {
+    data: {
+      session: { status: data.session.status },
+      new_restaurants: data.new_restaurants,
+    },
+    error: null,
+  };
 }
