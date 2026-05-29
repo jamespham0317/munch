@@ -218,10 +218,14 @@ function mapSessionRow(row: SessionRow): Session {
 }
 
 /**
- * Read the room's latest non-terminal session (lobby/active), if any. RLS
- * (sessions_select_member from 0003) scopes this to rooms the caller belongs to.
- * Used by the lobby to decide whether to auto-route members into the swipe screen
- * when the host starts a session. Returns `null` when no such session exists.
+ * Read the room's latest non-terminal session, if any. RLS (sessions_select_member from
+ * 0003) scopes this to rooms the caller belongs to. Used by the lobby to decide whether to
+ * auto-route members into the swipe screen when the host starts a session, and by the swipe
+ * screen to seed the live session status on (re)entry — including `awaiting_host_resolution`,
+ * which is non-terminal (the host can still widen back to `active`), so a refresh during host
+ * resolution lands on the resolution view rather than bouncing to the lobby. The terminal
+ * states (`matched`/`resolved`/`cancelled`) are excluded. Returns `null` when no such session
+ * exists.
  */
 export async function getActiveSession(
   client: SupabaseClient,
@@ -231,7 +235,7 @@ export async function getActiveSession(
     .from("sessions")
     .select(SESSION_COLUMNS)
     .eq("room_id", roomId)
-    .in("status", ["lobby", "active"])
+    .in("status", ["lobby", "active", "awaiting_host_resolution"])
     .order("created_at", { ascending: false })
     .limit(1)
     .returns<SessionRow[]>();
