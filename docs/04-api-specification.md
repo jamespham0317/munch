@@ -229,12 +229,18 @@ Records a like/pass and runs the authoritative match check. This is the hot path
 - **Behavior:** upserts the swipe (idempotent on `(session, member, restaurant)`); on a
   `like`, transactionally checks whether the restaurant now has likes from all present
   members. If so, writes `matches`, sets session `matched`, and emits a realtime event.
-  When the deck is exhausted for all members with no match, the session moves to
-  `awaiting_host_resolution` (may be detected here or by a lightweight check).
-- **Implementation:** a **security-definer RPC** (`submit_swipe`, migration 0010). It is
-  security definer because the authoritative match check must read **all** members' swipes in
-  one transaction, which the per-member `swipes_select_own` RLS policy would otherwise block
-  (CLAUDE.md §2.3). Failures are raised as the bare error code in the exception message
+  When the swipe produces **no** match, a lightweight exhaustion check runs: if every
+  currently present member has now swiped every card in the session's `cached_decks`, the
+  session moves `active → awaiting_host_resolution` (non-terminal — no `ended_at`). The match
+  check runs **first**, so a swipe that is simultaneously the last card and the last unanimous
+  like ends `matched`, never `awaiting_host_resolution`. The client learns of the transition
+  via the realtime status event, not this response (whose shape is unchanged).
+- **Implementation:** a **security-definer RPC** (`submit_swipe`, migration 0010, replaced via
+  `create or replace` in migration 0014 to add the exhaustion tail). It is security definer
+  because the authoritative match check must read **all** members' swipes in one transaction,
+  which the per-member `swipes_select_own` RLS policy would otherwise block (CLAUDE.md §2.3).
+  The exhaustion check is the `is_deck_exhausted(session)` helper (0014), present-member-scoped
+  like the match check. Failures are raised as the bare error code in the exception message
   (`UNAUTHENTICATED` / `FORBIDDEN` / `SESSION_INVALID_STATE` / `VALIDATION_ERROR`); the
   api-client maps them and never surfaces raw DB text.
 - **Errors:** `SESSION_INVALID_STATE`, `VALIDATION_ERROR`.
@@ -263,8 +269,18 @@ Returns the closest-to-unanimous ranking for the host resolution prompt.
     ]
   }
   ```
-- **Notes:** ordered by `pass_count asc`, then `rating desc`, then `distance_m asc`
-  (closest-to-unanimous). Top item is the suggested pick.
+- **Notes:** ordered by `pass_count asc`, then `rating desc` (nulls last), then `distance_m asc`
+  (closest-to-unanimous, CLAUDE.md §2.4). Top item is the suggested pick.
+- **Implementation:** a **security-definer RPC** (`get_resolution_ranking`, migration 0015,
+  replacing the 0004 stub). Security definer because it must read **all** present members'
+  swipes (broader than `swipes_select_own`, like `submit_swipe`). **Host-only:** the internal
+  host check raises `NOT_HOST` for a non-host (and `UNAUTHENTICATED` if unauthenticated) as the
+  bare exception message; non-host members never call it — their UI is the passive
+  "waiting on host" state keyed off the realtime status. **Present-member-scoped:** `pass_count`
+  / `like_count` count only currently present members and `member_count` is the present-member
+  count. `distance_m` is computed in SQL via `haversine_m` against the room anchor (not deferred
+  to the app).
+- **Errors:** `UNAUTHENTICATED`, `NOT_HOST`.
 
 ---
 
@@ -289,16 +305,34 @@ Host accepts the top pick or widens criteria.
 - **Response (accept):**
   ```json
   { "session": { "status": "resolved" },
-    "match": { "restaurant_id": "uuid", "resolution": "host_accepted_top" } }
+    "match": { "restaurant_id": "uuid", "restaurant_name": "Pizzeria Libretto",
+               "resolution": "host_accepted_top" } }
   ```
 - **Response (widen):**
   ```json
   { "session": { "status": "active" }, "new_restaurants": 17 }
   ```
-- **Behavior (widen):** one additional provider fetch for restaurants **not already in the
-  deck**; appends them to `cached_decks` with `added_round = n+1`; returns session to
-  `active`. Existing likes still count.
-- **Errors:** `NOT_HOST`, `SESSION_INVALID_STATE`, `PROVIDER_ERROR`.
+- **Behavior (accept):** writes `matches` (`resolution = 'host_accepted_top'`, idempotent on
+  `session_id`), sets the session `resolved` with `matched_restaurant_id` + `ended_at`, and
+  announces it to all members via the realtime status/match events. **Zero** provider calls.
+  The `restaurant_id` must be a card already in the session's deck (`VALIDATION_ERROR` else).
+- **Behavior (widen):** **exactly one** additional provider fetch for restaurants **not already
+  in the deck** (`excludeProviderRefs` = every deck `provider_ref`); appends them to
+  `cached_decks` with `added_round = n+1`; persists the widened `radius_m`/`filters` onto the
+  session snapshot (omitted fields keep their current value); returns the session to `active`.
+  Earlier swipes/likes are never deleted — they still count toward a later unanimous match.
+- **Implementation:** a single **Edge Function** (`resolve-session/`) handling **both** actions.
+  It lives server-side because `widen` requires the server-only provider key (CLAUDE.md §2.1/§3);
+  `accept_top` rides along in the same function (service-role writes to `matches` + `sessions`)
+  so there is one endpoint and the host check + `awaiting_host_resolution` state guard are shared.
+  Both actions are **host-only** (`NOT_HOST` otherwise) and reject unless the session is in
+  `awaiting_host_resolution` (`SESSION_INVALID_STATE`). It mirrors `start_session`: a user JWT
+  identifies the caller, a service-role client does the privileged work, the provider call is
+  counted at the boundary, and a structured log line (`resolve_session.accept.ok` with
+  `provider_calls: 0`, or `resolve_session.widen.ok` with `provider_calls: 1`) is the §2.1
+  invariant verifier. The restaurant-upsert / cached-deck-insert helpers are shared with
+  `start_session` via `supabase/functions/_shared/deck.ts`.
+- **Errors:** `NOT_HOST`, `SESSION_INVALID_STATE`, `VALIDATION_ERROR`, `PROVIDER_ERROR`.
 
 ---
 

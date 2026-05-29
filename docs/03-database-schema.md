@@ -356,6 +356,15 @@ group by r.id
 order by pass_count asc, r.rating desc nulls last;  -- distance tiebreak applied in app
 ```
 
+> **Implementation note (migration 0015 `get_resolution_ranking`).** The conceptual query
+> above is superseded by the shipped security-definer RPC, which differs in two ways:
+> it is **present-member-scoped** — `pass_count` / `like_count` count only currently present
+> members (`room_members.is_present = true`), and `member_count` is the present-member count,
+> consistent with the unanimous match check (CLAUDE.md §2.3); and `distance_m` is computed **in
+> SQL** via `haversine_m(anchor_lat, anchor_lng, r.lat, r.lng)` against the room anchor (the
+> same helper `get_deck_for_session` uses), not deferred to the app. The full order is
+> `pass_count asc, rating desc nulls last, distance_m asc` (CLAUDE.md §2.4). See docs/04 §3.8.
+
 ---
 
 ## 7. Retention & cleanup

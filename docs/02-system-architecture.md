@@ -163,8 +163,16 @@ a durable copy of provider content.
 
 - `lobby` — members joining; no deck yet.
 - `active` — deck cached; members swiping.
-- `awaiting_host_resolution` — deck exhausted; members in "waiting on host" state.
-- `matched` / `resolved` — terminal states with a chosen restaurant.
+- `awaiting_host_resolution` — deck exhausted; members in "waiting on host" state. The
+  `active → awaiting_host_resolution` transition is detected in `submit_swipe` (migration 0014)
+  via the present-member-scoped `is_deck_exhausted(session)` helper, after a swipe that produced
+  no match. It is **non-terminal** (no `ended_at`).
+- `matched` / `resolved` — terminal states with a chosen restaurant. `resolved` is reached when
+  the host accepts the top pick via the `resolve_session` Edge Function (`host_accepted_top`).
+- The `awaiting_host_resolution → active` edge is a **widen**: `resolve_session` makes exactly
+  one additional provider fetch for unseen restaurants and appends them to `cached_decks` with
+  `added_round = n+1`. Earlier swipes/likes are never deleted — they still count toward a later
+  unanimous match (a like recorded before the widen can complete a unanimous match after it).
 - `cancelled` — terminal state with no decision; entered when the **host leaves**
   mid-session (or ends the room). The room is soft-closed and ephemeral session data is
   purged. Host role is not transferred.

@@ -166,7 +166,10 @@ supabase/
 │   └── _shared/
 │       ├── provider/           # RestaurantProvider interface
 │       │   ├── index.ts
-│       │   └── google-places.ts
+│       │   ├── google-places.ts
+│       │   └── fake.ts         # deterministic test provider (PROVIDER=fake)
+│       ├── deck.ts             # shared restaurant-upsert / cached-deck-insert (start + widen)
+│       ├── errors.ts           # EdgeError / errorBody / statusForCode
 │       └── normalize.ts        # provider payload -> NormalizedRestaurant
 └── seed/
 ```
