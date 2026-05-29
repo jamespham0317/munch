@@ -31,11 +31,15 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  insertCachedDeck,
+  RESTAURANT_TTL_MS,
+  upsertRestaurants,
+} from "../_shared/deck.ts";
 import { EdgeError, errorBody, statusForCode } from "../_shared/errors.ts";
 import {
   getProvider,
   getProviderCallCount,
-  type NormalizedRestaurant,
 } from "../_shared/provider/index.ts";
 
 // Radius bounds mirror packages/core/src/constants.ts (RADIUS_MIN_M / RADIUS_MAX_M).
@@ -43,11 +47,6 @@ import {
 // of @munch/core; keep these two in sync if the constants change.
 const RADIUS_MIN_M = 500;
 const RADIUS_MAX_M = 20_000;
-
-/** Provider TTL for the `restaurants.expires_at` column. Conservative 24h under
- *  typical provider caching terms (CLAUDE.md §3); a row rediscovered by a later
- *  session keeps the LARGER of (existing, new) so we never shorten a TTL. */
-const RESTAURANT_TTL_MS = 24 * 60 * 60 * 1000;
 
 /** Non-terminal session statuses — start_session refuses if one already exists. */
 const NON_TERMINAL_STATUSES = ["lobby", "active", "awaiting_host_resolution"];
@@ -59,10 +58,6 @@ interface RoomRow {
   filter_open_now: boolean;
   filter_cuisines: string[];
   filter_price_levels: ("1" | "2" | "3" | "4")[];
-}
-
-interface RestaurantInsertRow extends NormalizedRestaurant {
-  expires_at: string;
 }
 
 Deno.serve(async (req) => {
@@ -113,9 +108,12 @@ Deno.serve(async (req) => {
     // succeeded; the rest is local DB plumbing.
     const sessionId = await insertLobbySession(admin, room, radiusM);
     const restaurantIds =
-      places.length > 0 ? await upsertRestaurants(admin, places) : [];
+      places.length > 0
+        ? await upsertRestaurants(admin, places, RESTAURANT_TTL_MS)
+        : [];
     if (restaurantIds.length > 0) {
-      await insertCachedDeck(admin, sessionId, restaurantIds);
+      // Initial deck is round 0; widen rounds (resolve-session) append n+1.
+      await insertCachedDeck(admin, sessionId, restaurantIds, 0);
     }
     await activateSession(admin, sessionId);
 
@@ -288,66 +286,6 @@ async function insertLobbySession(
     .single();
   if (error || !data) throw new EdgeError("VALIDATION_ERROR", error);
   return data.id as string;
-}
-
-/**
- * Upsert restaurants by (provider, provider_ref). The Postgres unique index
- * lives on (provider, provider_ref) (0002), so the conflict target is exact.
- * On conflict we update the volatile columns (name/lat/lng/rating/photo_url/
- * is_open_now) and the metadata; expires_at is kept as the LARGER of the new
- * computed TTL and the existing row's value (handled via two-step: select
- * existing, then build the insert payload) — but supabase-js .upsert() doesn't
- * support a conditional on conflict, so we just write the new expires_at and
- * accept that the TTL "resets" each time a session re-fetches a restaurant.
- * That's strictly conservative under provider caching terms (CLAUDE.md §3).
- *
- * Returns the inserted/updated restaurant ids in input order.
- */
-async function upsertRestaurants(
-  admin: SupabaseClient,
-  places: NormalizedRestaurant[],
-): Promise<string[]> {
-  const expiresAt = new Date(Date.now() + RESTAURANT_TTL_MS).toISOString();
-  const rows: RestaurantInsertRow[] = places.map((p) => ({
-    ...p,
-    expires_at: expiresAt,
-  }));
-  const { data, error } = await admin
-    .from("restaurants")
-    .upsert(rows, { onConflict: "provider,provider_ref" })
-    .select("id, provider_ref");
-  if (error || !data) throw new EdgeError("VALIDATION_ERROR", error);
-  // Re-align ids to input order via provider_ref. supabase upsert doesn't
-  // guarantee return order matches input order.
-  const byRef = new Map<string, string>();
-  for (const r of data as { id: string; provider_ref: string }[]) {
-    byRef.set(r.provider_ref, r.id);
-  }
-  const ids: string[] = [];
-  for (const p of places) {
-    const id = byRef.get(p.provider_ref);
-    if (id) ids.push(id);
-  }
-  return ids;
-}
-
-async function insertCachedDeck(
-  admin: SupabaseClient,
-  sessionId: string,
-  restaurantIds: string[],
-): Promise<void> {
-  const rows = restaurantIds.map((restaurant_id) => ({
-    session_id: sessionId,
-    restaurant_id,
-    added_round: 0,
-  }));
-  // `do nothing` on conflict — safety belt against a duplicate id slipping
-  // through (cached_decks has a unique (session_id, restaurant_id), 0002).
-  const { error } = await admin.from("cached_decks").upsert(rows, {
-    onConflict: "session_id,restaurant_id",
-    ignoreDuplicates: true,
-  });
-  if (error) throw new EdgeError("VALIDATION_ERROR", error);
 }
 
 async function activateSession(
