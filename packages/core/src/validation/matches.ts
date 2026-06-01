@@ -12,3 +12,26 @@ export const matchInfoSchema = z.object({
   resolution: matchResolutionSchema,
 });
 export type MatchInfo = z.infer<typeof matchInfoSchema>;
+
+/**
+ * The wire shape of one `match_history` row (snake_case; docs/03 §3.9). This is the
+ * read contract for the history screen; the api-client maps it to the camelCase
+ * `MatchHistory` type (docs/06 §5). Written only for signed-in members (CLAUDE.md §3).
+ */
+export const matchHistoryEntrySchema = z.object({
+  id: z.uuid(),
+  match_id: z.uuid(),
+  restaurant_name: z.string(),
+  restaurant_photo_url: z.url().nullable(),
+  participant_names: z.array(z.string()),
+  decided_at: z.string(),
+  created_at: z.string(),
+});
+export type MatchHistoryEntry = z.infer<typeof matchHistoryEntrySchema>;
+
+export const getMatchHistoryResponseSchema = z.object({
+  history: z.array(matchHistoryEntrySchema),
+});
+export type GetMatchHistoryResponse = z.infer<
+  typeof getMatchHistoryResponseSchema
+>;
