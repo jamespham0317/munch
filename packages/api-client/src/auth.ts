@@ -38,12 +38,15 @@ export async function ensureGuestSession(
   return signInAnonymously(client);
 }
 
-// --- optional accounts (docs/04 §2; CLAUDE.md §3) ---------------------------
-// Verification is by 6-digit email OTP, which works identically on web and mobile and
-// keeps the caller on the SAME Supabase client/session — important on mobile, where the
-// anonymous session is in-memory for the launch, so the guest keeps their auth.uid()
-// (and room membership) through an upgrade. A profiles row is the guest/account boundary
-// (CLAUDE.md §3): created only here, only for a permanent (non-anonymous) user.
+// --- accounts (docs/04 §2; CLAUDE.md §3) ------------------------------------
+// Two account methods sit beside the guest flow: email + password (register with email
+// confirmation, sign in, password reset) and Google OAuth. Auth happens only OUTSIDE a room
+// (home + /history); there is no in-place guest->account upgrade — a guest who joined a room
+// stays a guest for that room (CLAUDE.md §3). Every account is its own fresh/existing real
+// user (`auth.uid()`), established before creating or joining a room. A profiles row is the
+// guest/account boundary: written only by `ensureProfile`, only for a permanent
+// (non-anonymous) user. Raw GoTrue errors are mapped to a safe `ApiError` (UNAUTHENTICATED),
+// never surfaced — a bad password or unconfirmed email reads as UNAUTHENTICATED.
 
 interface ProfileRow {
   id: string;
@@ -62,36 +65,43 @@ function mapProfileRow(row: ProfileRow): Profile {
 }
 
 /**
- * Start a FRESH email account: email the caller a 6-digit OTP (creating the user if new).
- * Distinct from the guest upgrade — this signs in as a brand-new permanent user, so it is for
- * the home "sign in" entry, NOT for a guest already in a room (that would abandon their
- * anonymous session and room membership; use {@link upgradeGuestToAccount} there). Verify the
- * emailed code with {@link verifyEmailOtp}.
+ * Register a FRESH email + password account (docs/04 §2). `displayName` is carried into the
+ * user metadata (`display_name`) so it survives the email-confirmation round-trip and is
+ * available to {@link ensureProfile} after the user confirms and signs in. With email
+ * confirmation enabled, `signUp` returns a user but NO session, so no profile is written here —
+ * the result only reports whether confirmation is still required. Confirm, then
+ * {@link signInWithEmailPassword}.
  */
-export async function signInWithEmail(
+export async function registerWithEmailPassword(
   client: SupabaseClient,
-  email: string,
-): Promise<ClientResult<void>> {
-  const { error } = await client.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: true },
+  params: { email: string; password: string; displayName: string },
+): Promise<ClientResult<{ needsEmailConfirmation: boolean }>> {
+  const { data, error } = await client.auth.signUp({
+    email: params.email,
+    password: params.password,
+    options: { data: { display_name: params.displayName } },
   });
   if (error) {
     return { data: null, error: toApiError(error, "UNAUTHENTICATED") };
   }
-  return { data: undefined, error: null };
+  return {
+    data: { needsEmailConfirmation: data.session === null },
+    error: null,
+  };
 }
 
-/** Verify the 6-digit OTP from {@link signInWithEmail}; returns the new permanent session. */
-export async function verifyEmailOtp(
+/**
+ * Sign in to an existing email + password account; returns the new session. A bad password or
+ * an unconfirmed email maps to UNAUTHENTICATED — the raw GoTrue text (which can echo the email)
+ * is never surfaced.
+ */
+export async function signInWithEmailPassword(
   client: SupabaseClient,
-  email: string,
-  token: string,
+  params: { email: string; password: string },
 ): Promise<ClientResult<Session>> {
-  const { data, error } = await client.auth.verifyOtp({
-    email,
-    token,
-    type: "email",
+  const { data, error } = await client.auth.signInWithPassword({
+    email: params.email,
+    password: params.password,
   });
   if (error || !data.session) {
     return { data: null, error: toApiError(error, "UNAUTHENTICATED") };
@@ -100,16 +110,69 @@ export async function verifyEmailOtp(
 }
 
 /**
- * Begin upgrading the CURRENT anonymous guest to an email account: link `email` to the existing
- * anonymous user (GoTrue converts it in place), emailing a 6-digit confirmation OTP. The
- * user_id is unchanged, so the guest keeps their room membership (CLAUDE.md §3). Finish with
- * {@link confirmGuestUpgrade}, which verifies the code and writes the profiles row.
+ * Begin Google OAuth (docs/04 §2): returns the provider authorization URL for the caller to
+ * open. On web, pass `skipBrowserRedirect: false` to let supabase-js perform the redirect (the
+ * session is then detected from the callback URL). On mobile, keep the default
+ * `skipBrowserRedirect: true`, open the returned URL in an auth session, capture the
+ * `munch://` redirect, and finish with {@link exchangeOAuthCode} (PKCE).
  */
-export async function upgradeGuestToAccount(
+export async function signInWithGoogle(
   client: SupabaseClient,
-  email: string,
+  params: { redirectTo: string; skipBrowserRedirect?: boolean },
+): Promise<ClientResult<{ url: string | null }>> {
+  const { data, error } = await client.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: params.redirectTo,
+      skipBrowserRedirect: params.skipBrowserRedirect ?? true,
+    },
+  });
+  if (error) {
+    return { data: null, error: toApiError(error, "UNAUTHENTICATED") };
+  }
+  return { data: { url: data.url }, error: null };
+}
+
+/**
+ * Exchange an OAuth authorization `code` for a session (PKCE). Used by mobile after capturing
+ * the `munch://` redirect from {@link signInWithGoogle}; web's supabase-js detects the session
+ * from the URL directly and does not need this.
+ */
+export async function exchangeOAuthCode(
+  client: SupabaseClient,
+  code: string,
+): Promise<ClientResult<Session>> {
+  const { data, error } = await client.auth.exchangeCodeForSession(code);
+  if (error || !data.session) {
+    return { data: null, error: toApiError(error, "UNAUTHENTICATED") };
+  }
+  return { data: data.session, error: null };
+}
+
+/**
+ * Send a password-reset (recovery) email (docs/04 §2). `redirectTo` is the app surface that
+ * lands the recovery session on a "set a new password" screen, which calls
+ * {@link updatePassword}. Google accounts manage their own credentials and don't use this.
+ */
+export async function requestPasswordReset(
+  client: SupabaseClient,
+  params: { email: string; redirectTo: string },
 ): Promise<ClientResult<void>> {
-  const { error } = await client.auth.updateUser({ email });
+  const { error } = await client.auth.resetPasswordForEmail(params.email, {
+    redirectTo: params.redirectTo,
+  });
+  if (error) {
+    return { data: null, error: toApiError(error, "UNAUTHENTICATED") };
+  }
+  return { data: undefined, error: null };
+}
+
+/** Set a new password on the current (recovery) session — the second half of the reset flow. */
+export async function updatePassword(
+  client: SupabaseClient,
+  params: { password: string },
+): Promise<ClientResult<void>> {
+  const { error } = await client.auth.updateUser({ password: params.password });
   if (error) {
     return { data: null, error: toApiError(error, "UNAUTHENTICATED") };
   }
@@ -117,35 +180,16 @@ export async function upgradeGuestToAccount(
 }
 
 /**
- * Confirm a guest upgrade: verify the `email_change` OTP from {@link upgradeGuestToAccount},
- * then ensure a profiles row exists with `displayName`. On success the same user is now a
- * permanent account (same user_id, new profile).
- */
-export async function confirmGuestUpgrade(
-  client: SupabaseClient,
-  email: string,
-  token: string,
-  displayName: string,
-): Promise<ClientResult<Profile>> {
-  const { error } = await client.auth.verifyOtp({
-    email,
-    token,
-    type: "email_change",
-  });
-  if (error) {
-    return { data: null, error: toApiError(error, "UNAUTHENTICATED") };
-  }
-  return ensureProfile(client, displayName);
-}
-
-/**
- * Upsert the caller's own profiles row (docs/03 §3.1; RLS profiles_insert_own / _update_own).
- * Refuses while the user is still anonymous — guests stay profile-less (CLAUDE.md §3), and this
- * is the app-side gate the insert policy intentionally relies on (supabase/migrations/0008).
+ * Upsert the caller's own profiles row on first sign-in (docs/03 §3.1; RLS profiles_insert_own
+ * / _update_own). The display name is resolved from the current user's metadata first —
+ * `display_name` for password accounts (carried through {@link registerWithEmailPassword}),
+ * `full_name`/`name` for Google — falling back to `fallbackDisplayName`. Refuses while the user
+ * is still anonymous: guests stay profile-less (CLAUDE.md §3), and this is the app-side gate the
+ * insert policy intentionally relies on (supabase/migrations/0008).
  */
 export async function ensureProfile(
   client: SupabaseClient,
-  displayName: string,
+  fallbackDisplayName?: string,
 ): Promise<ClientResult<Profile>> {
   const { data: userData, error: userError } = await client.auth.getUser();
   const user = userData?.user;
@@ -154,6 +198,15 @@ export async function ensureProfile(
   }
   if (user.is_anonymous) {
     return { data: null, error: makeApiError("FORBIDDEN") };
+  }
+  const metadata = user.user_metadata ?? {};
+  const displayName =
+    asNonEmptyString(metadata.display_name) ??
+    asNonEmptyString(metadata.full_name) ??
+    asNonEmptyString(metadata.name) ??
+    fallbackDisplayName;
+  if (!displayName) {
+    return { data: null, error: makeApiError("VALIDATION_ERROR") };
   }
   const { data, error } = await client
     .from("profiles")
@@ -165,4 +218,11 @@ export async function ensureProfile(
     return { data: null, error: toApiError(error) };
   }
   return { data: mapProfileRow(data), error: null };
+}
+
+/** Narrow an unknown user_metadata field to a non-empty trimmed string, else undefined. */
+function asNonEmptyString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0
+    ? value
+    : undefined;
 }
