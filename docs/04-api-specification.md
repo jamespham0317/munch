@@ -47,8 +47,9 @@ the helpers (`packages/api-client/src/auth.ts`); raw auth errors are mapped to t
   written with the chosen display name on first sign-in. Returning users sign in directly with
   `signInWithPassword`.
 - **Account — Google OAuth:** `signInWithOAuth({ provider: 'google' })` returns an
-  authenticated session via the provider redirect (web: standard OAuth redirect; mobile: the
-  Expo auth-session redirect). A `profiles` row is written on first sign-in.
+  authenticated session via the provider redirect (web: standard OAuth redirect; mobile: open
+  the provider URL with `expo-web-browser`, capture the `munch://` deep link, then
+  `exchangeCodeForSession` for the PKCE round-trip). A `profiles` row is written on first sign-in.
 - **Password reset (email accounts):** `resetPasswordForEmail(email)` sends a recovery link;
   the user sets a new password via `updateUser({ password })` on the recovery session. Google
   accounts manage their own credentials.

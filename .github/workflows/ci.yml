@@ -11,14 +11,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  secret-scan:
-    name: Secret leak check
+  static-guards:
+    name: Static guards (secrets + legacy auth)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       # Server-only keys must never reach a client bundle (CLAUDE.md §3).
       - name: Scan apps/ and packages/ for provider / service-role keys
         run: bash scripts/check-secrets.sh
+      # Phase 4.5 removed the OTP account path + guest->account upgrade (docs/04 §2).
+      - name: Scan apps/ and packages/ for superseded OTP / upgrade symbols
+        run: bash scripts/check-no-legacy-auth.sh
 
   build:
     name: typecheck / lint / format / test / build
