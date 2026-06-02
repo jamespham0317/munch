@@ -40,6 +40,8 @@ seeded row under RLS.
 
 - `create_room`, `join_room`, `update_room_filters`, `set_presence`, `leave_room`.
 - Guest flow (name only) and optional account flow; guest→account upgrade path.
+  *(The OTP account flow and in-place upgrade are superseded in Phase 4.5 — email+password &
+  Google OAuth, no mid-room sign-in.)*
 - Room lobby UI with live presence via Realtime.
 - 6-digit code generation + join, and the link/QR join path resolving to the same code.
 - Rate-limit room creation/joins.
@@ -95,6 +97,33 @@ restaurants and resumes swiping.
 
 **Exit criteria:** filters visibly shape the deck; signed-in users see past matches; guests
 remain ephemeral; common edge cases have defined, non-broken behavior.
+
+---
+
+## 6.5 Phase 4.5 — Account auth: email+password & Google OAuth
+
+**Goal:** replace OTP-based accounts with email+password and Google sign-in, and confine
+authentication to outside a room.
+
+- Replace email OTP with **email + password** registration and sign-in
+  (`signUp` / `signInWithPassword`), with **email confirmation** on register and a
+  **password-reset** path (`resetPasswordForEmail` → `updateUser`).
+- **Google OAuth** sign-in (`signInWithOAuth({ provider: 'google' })`) on web and mobile
+  (Expo auth-session redirect).
+- **No mid-room sign-in:** the auth surface is available only on the home/landing screen.
+  Once a member joins a room (lobby **or** session), auth is hidden and their identity is fixed
+  for that room. The in-place guest→account upgrade — and its `updateUser` /
+  `verifyOtp(type:'email_change')` machinery — is **removed**; a guest who joined as a guest
+  stays a guest for that room.
+- Update `@munch/core` auth validation (password rules), the api-client auth helpers, and the
+  auth-panel placement on both apps.
+
+**Exit criteria:** a user can register with email+password (confirming via email) or sign in
+with Google from the home screen, then create/join a room as a signed-in user; the auth surface
+is absent inside a room; a guest cannot upgrade mid-room; match history accrues for the
+signed-in account.
+
+**Supersedes:** the Phase 1 OTP account flow and the guest→account upgrade path (§3).
 
 ---
 

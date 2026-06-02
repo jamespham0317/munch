@@ -1,60 +1,52 @@
 import { z } from "zod";
 
-import { displayNameSchema, emailOtpSchema, emailSchema } from "./common";
+import { displayNameSchema, emailSchema, passwordSchema } from "./common";
 
 /**
- * Request/response schemas for the optional-account flows in docs/04-api-specification.md §2:
- * email sign-in (a fresh account) and the guest->account upgrade (linking an email to the
- * current anonymous user, in place). Verification is by 6-digit email OTP — see the api-client
- * auth helpers. Wire shapes are snake_case (docs/06 §5); the api-client maps to camelCase.
+ * Request/response schemas for the account-auth flows in docs/04-api-specification.md §2:
+ * email+password register/sign-in (with email confirmation on register), a password-reset
+ * round-trip, and Google OAuth. Google needs no request schema — it is a redirect, not a form
+ * post — so only its profile result flows through here. Wire shapes are snake_case (docs/06 §5);
+ * the api-client maps to camelCase.
  *
- * Phase 1 keeps this lean (a sign-in/upgrade hook, not full account UX — docs/07; that and the
- * history screen are Phase 4). Guest stays the default identity and is never required.
+ * Auth lives only outside a room (home + /history); a guest who joined a room stays a guest
+ * (CLAUDE.md §3). There is no in-place guest->account upgrade.
  */
 
-// --- fresh email account ----------------------------------------------------
+// --- email + password account -----------------------------------------------
 
-/** Step 1: request a sign-in OTP for `email` (creates the user if new). */
-export const signInWithEmailRequestSchema = z.object({
+/** Register a fresh account; `display_name` is carried into user metadata for the profile. */
+export const registerRequestSchema = z.object({
   email: emailSchema,
-});
-export type SignInWithEmailRequest = z.infer<
-  typeof signInWithEmailRequestSchema
->;
-
-/** Step 2: verify the 6-digit OTP emailed for a fresh sign-in. */
-export const verifyEmailOtpRequestSchema = z.object({
-  email: emailSchema,
-  token: emailOtpSchema,
-});
-export type VerifyEmailOtpRequest = z.infer<typeof verifyEmailOtpRequestSchema>;
-
-// --- guest -> account upgrade -----------------------------------------------
-
-/**
- * Step 1: link `email` to the CURRENT anonymous user and choose the display name to persist.
- * The user_id is unchanged by the upgrade (CLAUDE.md §3); only a profiles row is added on
- * confirmation. `display_name` is carried through to step 2 so the profile gets it.
- */
-export const upgradeGuestRequestSchema = z.object({
-  email: emailSchema,
+  password: passwordSchema,
   display_name: displayNameSchema,
 });
-export type UpgradeGuestRequest = z.infer<typeof upgradeGuestRequestSchema>;
+export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 
-/** Step 2: confirm the email-change OTP and persist the chosen display name to the profile. */
-export const confirmGuestUpgradeRequestSchema = z.object({
+/** Sign in to an existing email+password account. */
+export const signInRequestSchema = z.object({
   email: emailSchema,
-  token: emailOtpSchema,
-  display_name: displayNameSchema,
+  password: passwordSchema,
 });
-export type ConfirmGuestUpgradeRequest = z.infer<
-  typeof confirmGuestUpgradeRequestSchema
->;
+export type SignInRequest = z.infer<typeof signInRequestSchema>;
+
+// --- password reset ---------------------------------------------------------
+
+/** Request a password-reset (recovery) email for `email`. */
+export const passwordResetRequestSchema = z.object({
+  email: emailSchema,
+});
+export type PasswordResetRequest = z.infer<typeof passwordResetRequestSchema>;
+
+/** Set a new password on the current recovery session. */
+export const updatePasswordRequestSchema = z.object({
+  password: passwordSchema,
+});
+export type UpdatePasswordRequest = z.infer<typeof updatePasswordRequestSchema>;
 
 // --- profile response -------------------------------------------------------
 
-/** The profile row created/ensured on confirmation (docs/03 §3.1). Echoed snake_case. */
+/** The profile row created/ensured on first sign-in (docs/03 §3.1). Echoed snake_case. */
 export const profileResponseSchema = z.object({
   id: z.uuid(),
   display_name: z.string(),

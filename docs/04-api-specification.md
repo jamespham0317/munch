@@ -11,7 +11,8 @@
 
 The backend is Supabase. The client interacts with the system three ways:
 
-1. **Auth** — Supabase Auth (anonymous for guests, email/OAuth for accounts).
+1. **Auth** — Supabase Auth (anonymous for guests; email + password or Google OAuth for
+   accounts, signed in only outside a room).
 2. **Realtime** — Supabase Realtime subscriptions for live room/session state.
 3. **RPCs / Edge Functions** — for all writes that need server authority (joining,
    starting sessions, swiping + match check, resolution, provider calls).
@@ -32,25 +33,39 @@ Common error codes: `UNAUTHENTICATED`, `FORBIDDEN`, `ROOM_NOT_FOUND`, `ROOM_CLOS
 
 ## 2. Auth
 
-Handled by Supabase Auth SDK on the client. Verification is by **6-digit email OTP**, which
-works identically on web and mobile and keeps the caller on the same client/session — important
-on mobile, where the anonymous session is in-memory for the launch (no persistence yet), so a
-guest keeps their `auth.uid()` (and room membership) through an upgrade. The api-client owns the
-helpers (`packages/api-client/src/auth.ts`); raw auth errors are mapped to the safe `ApiError`
-shape, never surfaced.
+Handled by the Supabase Auth SDK on the client. There are three identity paths — an
+anonymous guest and two account methods (email + password, Google OAuth). The api-client owns
+the helpers (`packages/api-client/src/auth.ts`); raw auth errors are mapped to the safe
+`ApiError` shape, never surfaced.
 
 - **Guest:** `signInAnonymously()` → an anonymous session used to create the
-  `room_members` row. No profile created.
-- **Account (optional):** email OTP — `signInWithOtp({ email })` → `verifyOtp(type:'email')`
-  creates `auth.users` + a `profiles` row. This is for a **fresh** account.
-- **Guest → account upgrade:** `updateUser({ email })` links an email to the *current*
-  anonymous user (GoTrue converts it in place) → `verifyOtp(type:'email_change')` → a `profiles`
-  row is written with the chosen display name. The `user_id` is **unchanged**, so the guest
-  keeps their room membership; match history begins accruing from that point. The
-  guest/account distinction is the **presence of a `profiles` row**, not the `user_id`.
-- **Deferred (post-Phase 1):** OAuth providers and magic-link (tappable-link) verification.
-  Magic link would need mobile session persistence to preserve the anonymous identity across the
-  redirect; OTP avoids that. See `docs/07-initial-roadmap.md`.
+  `room_members` row. No profile created. A guest joins with a name only and **stays a guest**
+  for the life of any room they join (see "No mid-room sign-in" below).
+- **Account — email + password:** `signUp({ email, password })` registers a new account and,
+  with email confirmation enabled, sends a confirmation email; after the user confirms,
+  `signInWithPassword({ email, password })` establishes the session. A `profiles` row is
+  written with the chosen display name on first sign-in. Returning users sign in directly with
+  `signInWithPassword`.
+- **Account — Google OAuth:** `signInWithOAuth({ provider: 'google' })` returns an
+  authenticated session via the provider redirect (web: standard OAuth redirect; mobile: the
+  Expo auth-session redirect). A `profiles` row is written on first sign-in.
+- **Password reset (email accounts):** `resetPasswordForEmail(email)` sends a recovery link;
+  the user sets a new password via `updateUser({ password })` on the recovery session. Google
+  accounts manage their own credentials.
+
+**No mid-room sign-in.** Authentication (register, sign in, Google) is available **only outside
+a room** — on the home/landing surface. Once a member has joined a room (lobby **or** active
+session), the auth surface is hidden and their identity is **fixed for that room**. There is
+**no in-place guest→account upgrade**: a guest who joined with a name remains a guest for that
+room, and signing in is always a fresh/existing real account (its own `auth.uid()`) established
+**before** creating or joining a room. This removes the earlier OTP design's in-place
+anonymous-upgrade machinery (`updateUser`/`verifyOtp(type:'email_change')`); because no flow
+converts an anonymous identity in place, OAuth/password redirects never need to preserve the
+anonymous session. The guest-vs-account distinction remains the **presence of a `profiles`
+row**, not a null `user_id`.
+
+- **Deferred (post-v1):** additional OAuth providers (e.g. Apple) and magic-link (tappable-link)
+  verification. See `docs/07-initial-roadmap.md`.
 
 ---
 

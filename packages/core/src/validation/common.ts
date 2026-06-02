@@ -25,16 +25,14 @@ export const joinCodeSchema = z
   .regex(/^\d+$/, "Join code must be digits only.");
 /** A member's chosen display name (guest or account); length-limited (docs/04 §6). */
 export const displayNameSchema = z.string().min(1).max(50);
-/** An account email for optional sign-in / guest upgrade (docs/04 §2). */
+/** An account email for sign-in / registration (docs/04 §2). */
 export const emailSchema = z.email();
 /**
- * The 6-digit email OTP used for email sign-in and the guest->account upgrade. Length is
- * pinned to `otp_length = 6` in supabase/config.toml; keep the two in sync if that changes.
+ * An account password. Source of truth for the 8-char minimum; Prompt 3 sets
+ * `minimum_password_length = 8` in supabase/config.toml to match (docs/06 §3). No complexity
+ * rules in v1 — that is a Phase 5 hardening knob.
  */
-export const emailOtpSchema = z
-  .string()
-  .length(6)
-  .regex(/^\d+$/, "Code must be 6 digits.");
+export const passwordSchema = z.string().min(8);
 
 /** Common error codes shared by all endpoints (docs/04 §1). */
 export const errorCodeSchema = z.enum([

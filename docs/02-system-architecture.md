@@ -73,8 +73,9 @@
 
 ### 3.2 Backend (Supabase)
 
-- **Auth.** Anonymous sessions for guests; email (or OAuth) for optional accounts.
-  Guest identities are scoped to a room and not persisted beyond the session.
+- **Auth.** Anonymous sessions for guests; **email + password or Google OAuth** for optional
+  accounts, established **outside a room** (no mid-room sign-in). Guest identities are scoped to
+  a room and not persisted beyond the session.
 - **Postgres.** System of record for rooms, members, sessions, swipes, matches, cached
   decks, and (for signed-in users) match history. See the database schema doc.
 - **Realtime.** Room and session state changes are pushed to all members over WebSocket

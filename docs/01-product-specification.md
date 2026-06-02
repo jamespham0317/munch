@@ -191,8 +191,10 @@ Rich card content is explicitly a nice-to-have, not a launch blocker.
 ## 10. Identity and persistence
 
 - **Guest by default.** Members can join with only a name; no account required.
-- **Optional accounts.** A lightweight optional account unlocks persistence and is the
-  primary funnel for retention.
+- **Optional accounts.** A lightweight optional account — created with **email + password or
+  Google sign-in** — unlocks persistence and is the primary funnel for retention. Accounts are
+  created / signed into **outside a room**; a member who joined a room as a guest stays a guest
+  for that room (no mid-room sign-in or upgrade).
 - **Sessions are ephemeral.** Nothing is retained for guests after a session ends.
 - **Match history** is saved only for signed-in users (e.g. "You matched on Pizzeria
   Libretto with Sara and Tom on May 12").

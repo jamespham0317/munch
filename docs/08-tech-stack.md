@@ -18,7 +18,7 @@
 | Backend | **Supabase** | Managed Postgres + Realtime + Auth + Edge Functions; minimal ops. |
 | Database | **Postgres** (via Supabase) | Relational fit for rooms/members/sessions/swipes; RLS. |
 | Realtime | **Supabase Realtime** | Live lobby presence and instant match broadcast. |
-| Auth | **Supabase Auth** | Anonymous guests + optional email/OAuth accounts. |
+| Auth | **Supabase Auth** | Anonymous guests + optional email+password / Google OAuth accounts (sign-in only outside a room). |
 | Data provider | **Google Places** (v1) behind an abstraction | Broad coverage, gentler per-call price; swappable. |
 | Validation | **Zod** (in `@munch/core`) | One schema source for client + server. |
 | Tooling | ESLint, Prettier, Vitest/Jest, GitHub Actions | Standard, low-friction quality gates. |

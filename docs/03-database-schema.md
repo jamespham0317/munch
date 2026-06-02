@@ -56,8 +56,9 @@ create table profiles (
 
 - **RLS:** a user may select/update/insert only their own profile row (`id = auth.uid()`).
   The insert policy (`profiles_insert_own`, migration `0008`) lets a signed-in user create their
-  own profile, completing the guest→account upgrade. Anonymous-only users get **no** profile —
-  that is gated in the api-client (`ensureProfile` refuses while `is_anonymous`), not the DB.
+  own profile — written on first sign-in when a user registers or signs in (email + password or
+  Google), which happens **outside a room** (docs/04 §2). Anonymous-only users get **no** profile
+  — that is gated in the api-client (`ensureProfile` refuses while `is_anonymous`), not the DB.
 
 ---
 
