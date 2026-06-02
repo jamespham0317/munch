@@ -93,7 +93,9 @@ restaurants and resumes swiping.
 - Match history for signed-in users (`match_history`) + a simple history screen.
 - Empty/edge states: sparse areas, tiny rooms, everyone-passes, host leaves mid-session
   (session ends as `cancelled`, room closes — no host transfer).
-- UI polish on the swipe feel, match reveal, and lobby.
+- UI polish on the swipe feel, match reveal, and lobby. The full visual reskin to the
+  "Munch Visual Language" is planned in detail in `docs/ui-roadmap.md` (tokens in `@munch/ui`,
+  Quicksand, Tailwind v4 on web), against `docs/design-system.md` and `docs/pages.md`.
 
 **Exit criteria:** filters visibly shape the deck; signed-in users see past matches; guests
 remain ephemeral; common edge cases have defined, non-broken behavior.

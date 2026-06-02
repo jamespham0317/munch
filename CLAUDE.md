@@ -24,6 +24,9 @@ doubt about *what* to build, read the spec; this file tells you *how* to work he
 - `docs/06-coding-standards.md` — the detailed standards this file summarizes
 - `docs/07-initial-roadmap.md` — phasing and what is deferred
 - `docs/08-tech-stack.md` — stack and the reasoning behind each choice
+- `docs/design-system.md` — visual language: tokens, primitives, UI invariants (the reskin)
+- `docs/pages.md` — screen inventory: routes, components, wiring, per-page invariants
+- `docs/ui-roadmap.md` — phased UI reskin plan (layers on Phase 4 polish)
 
 If code and docs disagree, that is a bug. Stop and reconcile — update whichever is wrong in
 the same PR. Do not silently let them drift.
@@ -89,6 +92,10 @@ Monorepo (pnpm/Turborepo). Full tree in `docs/05-folder-structure.md`. The rule 
   shuffle, a `Restaurant`/`Session` type) inside an app. If two apps need it, it belongs in
   a package.
 - `packages/api-client` is the **only** place that knows endpoint names/shapes.
+- **Design tokens live once in `packages/ui`** (`@munch/ui`) — platform-agnostic constants
+  (colors, type, spacing, radii, shadows), no RN/DOM imports. Both apps consume them; never
+  re-define the palette per app. Component **implementations** stay per-app (no
+  `react-native-web`). See `docs/design-system.md`.
 - Provider code lives **only** in `supabase/functions/_shared/provider/` behind the
   `RestaurantProvider` interface. To add/swap a provider, add a class there — do not call a
   provider from anywhere else.
