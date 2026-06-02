@@ -13,6 +13,7 @@
   "dependencies": {
     "@munch/api-client": "workspace:*",
     "@munch/core": "workspace:*",
+    "@munch/ui": "workspace:*",
     "@supabase/supabase-js": "^2",
     "@tanstack/react-query": "^5.100.14",
     "next": "^16.2.6",

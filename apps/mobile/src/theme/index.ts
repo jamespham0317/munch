@@ -1,3 +1,13 @@
+import { colors as munchColors } from "@munch/ui";
+
+/**
+ * Phase A seam (docs/ui-roadmap.md §2): proves `@munch/ui` resolves and typechecks
+ * from the mobile app. Phase B repoints this theme at the shared light palette and
+ * loads Quicksand; until then the dark placeholder below and its consumers are
+ * unchanged.
+ */
+export const munchBrand = munchColors.brand;
+
 /**
  * Minimal design tokens for Phase 0 (docs/05-folder-structure.md §3). Intentionally
  * tiny — there is no UI system yet; this expands into a real theme in later phases.
