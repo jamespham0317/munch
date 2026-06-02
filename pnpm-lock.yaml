@@ -187,6 +187,12 @@ importers:
         specifier: ^4.1.7
         version: 4.1.7(@types/node@22.19.19)(vite@8.0.14(@types/node@22.19.19)(terser@5.48.0)(yaml@2.9.0))
 
+  packages/ui:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
 packages:
 
   '@adobe/css-tools@4.5.0':
