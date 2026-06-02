@@ -6,7 +6,6 @@ import { useEffect } from "react";
 
 import { useStartSession } from "@/features/session/use-start-session";
 
-import { AuthPanel } from "../auth/auth-panel";
 import { InvitePanel } from "./invite-panel";
 import { LobbyFiltersPanel } from "./lobby-filters-panel";
 import { MemberList } from "./member-list";
@@ -21,7 +20,7 @@ import { useRoomLobby } from "./use-room-lobby";
  */
 export function LobbyView({ roomId }: { roomId: string }) {
   const router = useRouter();
-  const { roomQuery, membersQuery, activeSession, currentUserId, isGuest } =
+  const { roomQuery, membersQuery, activeSession, currentUserId } =
     useRoomLobby(roomId);
   const startSession = useStartSession(roomId);
 
@@ -99,9 +98,8 @@ export function LobbyView({ roomId }: { roomId: string }) {
       ) : (
         <p>Waiting for the host to start the session…</p>
       )}
-      {/* Optional upgrade for guests — keeps their room membership (same user_id) and
-          unlocks saved matches (CLAUDE.md §3). Never blocks the guest flow. */}
-      {isGuest ? <AuthPanel mode="upgrade" /> : null}
+      {/* No mid-room sign-in (CLAUDE.md §3): a guest who joined this room stays a guest for it.
+          Auth lives only outside a room (home + /history) — no auth control belongs here. */}
     </section>
   );
 }

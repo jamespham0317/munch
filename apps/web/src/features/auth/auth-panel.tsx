@@ -1,155 +1,154 @@
 "use client";
 
-import {
-  confirmGuestUpgradeRequestSchema,
-  signInWithEmailRequestSchema,
-  upgradeGuestRequestSchema,
-  verifyEmailOtpRequestSchema,
-} from "@munch/core";
+import { registerRequestSchema, signInRequestSchema } from "@munch/core";
+import Link from "next/link";
 import { type FormEvent, useState } from "react";
 
 import { useEmailSignIn } from "./use-email-sign-in";
-import { useUpgradeGuest } from "./use-upgrade-guest";
 
 /**
- * Optional-account panel: a lean two-step email → 6-digit-code flow shared by the home
- * "sign in" entry (mode="signin", a fresh account) and the lobby "save my matches" entry
- * (mode="upgrade", links an email to the current guest). Intentionally minimal — full account
- * UX and the history screen are Phase 4 (docs/07). Guest stays the default and is never blocked.
- * Screens stay thin: all data access is in @munch/api-client (CLAUDE.md §4); inputs are
- * validated against the @munch/core schemas (docs/06 §3), and the server re-validates.
+ * Account panel for the home/landing surface and /history (docs/01 §10) — both OUTSIDE a room.
+ * Toggles between signing in and registering an email+password account, with a "Continue with
+ * Google" button and a "Forgot password?" link. There is NO mid-room sign-in and no guest
+ * upgrade: signing in here is always a fresh/existing real account (CLAUDE.md §3); guest stays
+ * the default elsewhere and is never blocked. Screens stay thin — data access is in
+ * @munch/api-client (CLAUDE.md §4); inputs validate against the @munch/core schemas (docs/06 §3)
+ * and the server re-validates.
  */
-export function AuthPanel({ mode }: { mode: "signin" | "upgrade" }) {
-  const signIn = useEmailSignIn();
-  const upgrade = useUpgradeGuest();
+export function AuthPanel({ mode }: { mode: "signin" | "register" }) {
+  const { register, signIn, google } = useEmailSignIn();
 
-  const [step, setStep] = useState<"email" | "code" | "done">("email");
+  const [authMode, setAuthMode] = useState<"signin" | "register">(mode);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [code, setCode] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [registered, setRegistered] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
 
-  const isUpgrade = mode === "upgrade";
-  const sendCode = isUpgrade ? upgrade.sendCode : signIn.sendCode;
-  const verify = isUpgrade ? upgrade.confirm : signIn.verify;
-  const pending = sendCode.isPending || verify.isPending;
+  const isRegister = authMode === "register";
+  const pending = register.isPending || signIn.isPending || google.isPending;
 
-  function handleSendCode(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setValidationError(null);
-    if (isUpgrade) {
-      const parsed = upgradeGuestRequestSchema.safeParse({
+    if (isRegister) {
+      const parsed = registerRequestSchema.safeParse({
         email,
+        password,
         display_name: displayName,
       });
       if (!parsed.success) {
-        setValidationError("Enter a valid email and your name.");
+        setValidationError(
+          "Enter a valid email, a password of at least 8 characters, and your name.",
+        );
         return;
       }
-      upgrade.sendCode.mutate(parsed.data, {
-        onSuccess: () => setStep("code"),
+      register.mutate(parsed.data, {
+        onSuccess: () => setRegistered(true),
       });
     } else {
-      const parsed = signInWithEmailRequestSchema.safeParse({ email });
+      const parsed = signInRequestSchema.safeParse({ email, password });
       if (!parsed.success) {
-        setValidationError("Enter a valid email.");
+        setValidationError("Enter a valid email and password.");
         return;
       }
-      signIn.sendCode.mutate(parsed.data, { onSuccess: () => setStep("code") });
+      signIn.mutate(parsed.data, { onSuccess: () => setSignedIn(true) });
     }
   }
 
-  function handleVerify(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function handleGoogle() {
     setValidationError(null);
-    if (isUpgrade) {
-      const parsed = confirmGuestUpgradeRequestSchema.safeParse({
-        email,
-        token: code.trim(),
-        display_name: displayName,
-      });
-      if (!parsed.success) {
-        setValidationError("Enter the 6-digit code.");
-        return;
-      }
-      upgrade.confirm.mutate(parsed.data, { onSuccess: () => setStep("done") });
-    } else {
-      const parsed = verifyEmailOtpRequestSchema.safeParse({
-        email,
-        token: code.trim(),
-      });
-      if (!parsed.success) {
-        setValidationError("Enter the 6-digit code.");
-        return;
-      }
-      signIn.verify.mutate(parsed.data, { onSuccess: () => setStep("done") });
-    }
+    // supabase-js performs the redirect; the session is established on /auth/callback.
+    google.mutate(`${window.location.origin}/auth/callback`);
   }
 
-  if (step === "done") {
-    return (
-      <p>
-        {isUpgrade
-          ? "Your matches will be saved to this account."
-          : "You're signed in."}
-      </p>
-    );
+  function switchMode(next: "signin" | "register") {
+    setAuthMode(next);
+    setValidationError(null);
   }
 
-  const mutationError = sendCode.isError
-    ? sendCode.error.message
-    : verify.isError
-      ? verify.error.message
-      : null;
+  if (signedIn) {
+    return <p>You&apos;re signed in.</p>;
+  }
+  if (registered) {
+    return <p>Check your email to confirm your account, then sign in.</p>;
+  }
+
+  const mutationError = register.isError
+    ? register.error.message
+    : signIn.isError
+      ? signIn.error.message
+      : google.isError
+        ? google.error.message
+        : null;
   const errorMessage = validationError ?? mutationError;
 
   return (
     <section>
-      <h2>{isUpgrade ? "Save my matches" : "Sign in"}</h2>
-      {step === "email" ? (
-        <form onSubmit={handleSendCode}>
+      <h2>{isRegister ? "Create an account" : "Sign in"}</h2>
+      <form onSubmit={handleSubmit}>
+        <label>
+          Email
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
+          />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete={isRegister ? "new-password" : "current-password"}
+          />
+        </label>
+        {isRegister ? (
           <label>
-            Email
+            Your name
             <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              maxLength={50}
             />
           </label>
-          {isUpgrade ? (
-            <label>
-              Your name
-              <input
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
-                maxLength={50}
-              />
-            </label>
-          ) : null}
-          {errorMessage ? <p role="alert">{errorMessage}</p> : null}
-          <button type="submit" disabled={pending}>
-            {pending ? "Sending…" : "Send code"}
+        ) : null}
+        {errorMessage ? <p role="alert">{errorMessage}</p> : null}
+        <button type="submit" disabled={pending}>
+          {isRegister
+            ? register.isPending
+              ? "Creating…"
+              : "Create account"
+            : signIn.isPending
+              ? "Signing in…"
+              : "Sign in"}
+        </button>
+      </form>
+
+      <button type="button" onClick={handleGoogle} disabled={pending}>
+        {google.isPending ? "Redirecting…" : "Continue with Google"}
+      </button>
+
+      {isRegister ? (
+        <p>
+          Already have an account?{" "}
+          <button type="button" onClick={() => switchMode("signin")}>
+            Sign in
           </button>
-        </form>
+        </p>
       ) : (
-        <form onSubmit={handleVerify}>
-          <p>We emailed a 6-digit code to {email}.</p>
-          <label>
-            Code
-            <input
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
-              inputMode="numeric"
-              maxLength={6}
-              placeholder="123456"
-            />
-          </label>
-          {errorMessage ? <p role="alert">{errorMessage}</p> : null}
-          <button type="submit" disabled={pending}>
-            {pending ? "Verifying…" : "Verify"}
-          </button>
-        </form>
+        <>
+          <p>
+            Need an account?{" "}
+            <button type="button" onClick={() => switchMode("register")}>
+              Create one
+            </button>
+          </p>
+          <Link href="/auth/reset">Forgot password?</Link>
+        </>
       )}
     </section>
   );

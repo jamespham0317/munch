@@ -5,8 +5,8 @@ import { getSupabaseClient } from "@/lib/supabase";
 /**
  * The caller's auth identity, read locally from the persisted session (no network round-trip).
  * `isAnonymous` distinguishes a guest (no `profiles` row — CLAUDE.md §3) from a signed-in user;
- * it drives both the lobby "save my matches" upgrade affordance and the history screen's
- * "sign in to save" gate. Shared across screens via a single query key so the read dedupes.
+ * it drives the history screen's "sign in to save" gate. Shared across screens via a single
+ * query key so the read dedupes. (There is no mid-room sign-in: a guest in a room stays a guest.)
  */
 
 export interface CurrentUser {

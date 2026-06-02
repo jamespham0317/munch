@@ -18,7 +18,8 @@ export default function HomePage() {
         <Link href="/history">Your matches</Link>
       </nav>
       {/* Guest is the default path above; an account is optional and unlocks saved
-          matches (docs/01 §10). Signing in here creates a fresh account. */}
+          matches (docs/01 §10). Auth lives only here (outside a room) — sign in or register
+          an email+password account, or continue with Google. */}
       <AuthPanel mode="signin" />
     </main>
   );

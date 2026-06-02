@@ -104,6 +104,5 @@ export function useRoomLobby(roomId: string) {
     sessionQuery,
     activeSession: sessionQuery.data ?? null,
     currentUserId: userQuery.data?.id ?? null,
-    isGuest: userQuery.data?.isAnonymous ?? false,
   };
 }
