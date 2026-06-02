@@ -3,6 +3,7 @@
 import "react-native-url-polyfill/auto";
 
 import { createSupabaseClient } from "@munch/api-client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
@@ -15,11 +16,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * service-role key and any provider key are server-only and must never reach the
  * app bundle.
  *
- * Session storage: no AsyncStorage yet — the in-memory anonymous session lives for
- * the app launch, which is all the Phase 1 guest flows need (create → lobby and
- * join → lobby happen within one launch, keeping a stable auth.uid()). Persisting a
- * guest's identity across launches is a deliberate follow-up: it belongs in the
- * shared api-client factory (a storage adapter), not in a second client here.
+ * Session storage (Phase 4.5): an AsyncStorage adapter + the PKCE flow are threaded
+ * into the shared api-client factory (its `storage`/`flowType` options — never a
+ * second client). Two reasons: a real account should survive an app relaunch, and
+ * Google OAuth's PKCE verifier must persist across the browser round-trip. The
+ * platform storage lives here, not in the factory, so the factory stays
+ * platform-agnostic (CLAUDE.md §4). Guests remain ephemeral by nature — an anonymous
+ * session never writes a `profiles` row, so persisting it changes nothing about the
+ * guest/account boundary (CLAUDE.md §3).
  */
 let client: SupabaseClient | undefined;
 
@@ -36,6 +40,9 @@ export function getSupabaseClient(): SupabaseClient {
         "apps/mobile/.env.example to apps/mobile/.env and fill in your local Supabase values.",
     );
   }
-  client = createSupabaseClient({ url, anonKey });
+  client = createSupabaseClient(
+    { url, anonKey },
+    { storage: AsyncStorage, flowType: "pkce" },
+  );
   return client;
 }

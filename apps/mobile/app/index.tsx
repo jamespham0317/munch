@@ -33,7 +33,8 @@ export default function HomeScreen() {
       <Link href="/history" style={[styles.button, styles.buttonSecondary]}>
         Your matches
       </Link>
-      {/* Signing in here creates a fresh account; guests upgrade in the lobby instead. */}
+      {/* Sign in or register a real account here, OUTSIDE any room (CLAUDE.md §3): there is no
+          mid-room sign-in and no guest upgrade — a guest who joins a room stays a guest. */}
       <AuthPanel mode="signin" />
     </ScrollView>
   );

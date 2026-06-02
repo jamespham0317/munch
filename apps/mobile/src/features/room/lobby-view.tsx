@@ -5,7 +5,6 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { InvitePanel } from "../../components/invite-panel";
 import { MemberList } from "../../components/member-list";
 import { colors, spacing } from "../../theme";
-import { AuthPanel } from "../auth/auth-panel";
 import { useStartSession } from "../session/use-start-session";
 import { LobbyFiltersPanel } from "./lobby-filters-panel";
 import { useRoomLobby } from "./use-room-lobby";
@@ -19,7 +18,7 @@ import { useRoomLobby } from "./use-room-lobby";
  */
 export function LobbyView({ roomId }: { roomId: string }) {
   const router = useRouter();
-  const { roomQuery, membersQuery, activeSession, currentUserId, isGuest } =
+  const { roomQuery, membersQuery, activeSession, currentUserId } =
     useRoomLobby(roomId);
   const startSession = useStartSession(roomId);
 
@@ -119,9 +118,8 @@ export function LobbyView({ roomId }: { roomId: string }) {
           Waiting for the host to start the session…
         </Text>
       )}
-      {/* Optional upgrade for guests — keeps their room membership (same user_id) and
-          unlocks saved matches (CLAUDE.md §3). Never blocks the guest flow. */}
-      {isGuest ? <AuthPanel mode="upgrade" /> : null}
+      {/* No auth surface in a room (CLAUDE.md §3, Phase 4.5): a guest who joined a room stays a
+          guest for that room. Sign-in/registration lives only on home and /history. */}
     </View>
   );
 }

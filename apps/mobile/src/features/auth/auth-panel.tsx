@@ -1,184 +1,176 @@
-import {
-  confirmGuestUpgradeRequestSchema,
-  signInWithEmailRequestSchema,
-  upgradeGuestRequestSchema,
-  verifyEmailOtpRequestSchema,
-} from "@munch/core";
+import { registerRequestSchema, signInRequestSchema } from "@munch/core";
+import { Link } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Field } from "../../components/field";
 import { colors, spacing } from "../../theme";
 import { useEmailSignIn } from "./use-email-sign-in";
-import { useUpgradeGuest } from "./use-upgrade-guest";
 
 /**
- * Optional-account panel (RN parity with apps/web's AuthPanel): a lean two-step email →
- * 6-digit-code flow shared by the home "sign in" entry (mode="signin", a fresh account) and
- * the lobby "save my matches" entry (mode="upgrade", links an email to the current guest).
- * Intentionally minimal — full account UX and the history screen are Phase 4 (docs/07). Guest
- * stays the default and is never blocked. Explicit handlers only (docs/06 §6); all data access
- * is in @munch/api-client (CLAUDE.md §4), and inputs are validated against the @munch/core
- * schemas (docs/06 §3) with the server re-validating.
+ * Account panel for the home/landing surface and /history (RN parity with apps/web's AuthPanel;
+ * docs/01 §10) — both OUTSIDE a room. Toggles between signing in and registering an email+password
+ * account, with a "Continue with Google" button and a "Forgot password?" link. There is NO
+ * mid-room sign-in and no guest upgrade: signing in here is always a fresh/existing real account
+ * (CLAUDE.md §3); guest stays the default elsewhere and is never blocked. Explicit handlers only
+ * (docs/06 §6); all data access is in @munch/api-client (CLAUDE.md §4), and inputs are validated
+ * against the @munch/core schemas (docs/06 §3) with the server re-validating.
  */
-export function AuthPanel({ mode }: { mode: "signin" | "upgrade" }) {
-  const signIn = useEmailSignIn();
-  const upgrade = useUpgradeGuest();
+export function AuthPanel({ mode }: { mode: "signin" | "register" }) {
+  const { register, signIn, google } = useEmailSignIn();
 
-  const [step, setStep] = useState<"email" | "code" | "done">("email");
+  const [authMode, setAuthMode] = useState<"signin" | "register">(mode);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [code, setCode] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [registered, setRegistered] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
 
-  const isUpgrade = mode === "upgrade";
-  const sendCode = isUpgrade ? upgrade.sendCode : signIn.sendCode;
-  const verify = isUpgrade ? upgrade.confirm : signIn.verify;
-  const pending = sendCode.isPending || verify.isPending;
+  const isRegister = authMode === "register";
+  const pending = register.isPending || signIn.isPending || google.isPending;
 
-  function handleSendCode() {
+  function handleSubmit() {
     setValidationError(null);
-    if (isUpgrade) {
-      const parsed = upgradeGuestRequestSchema.safeParse({
+    if (isRegister) {
+      const parsed = registerRequestSchema.safeParse({
         email,
+        password,
         display_name: displayName,
       });
       if (!parsed.success) {
-        setValidationError("Enter a valid email and your name.");
+        setValidationError(
+          "Enter a valid email, a password of at least 8 characters, and your name.",
+        );
         return;
       }
-      upgrade.sendCode.mutate(parsed.data, {
-        onSuccess: () => setStep("code"),
-      });
+      register.mutate(parsed.data, { onSuccess: () => setRegistered(true) });
     } else {
-      const parsed = signInWithEmailRequestSchema.safeParse({ email });
+      const parsed = signInRequestSchema.safeParse({ email, password });
       if (!parsed.success) {
-        setValidationError("Enter a valid email.");
+        setValidationError("Enter a valid email and password.");
         return;
       }
-      signIn.sendCode.mutate(parsed.data, { onSuccess: () => setStep("code") });
+      signIn.mutate(parsed.data, { onSuccess: () => setSignedIn(true) });
     }
   }
 
-  function handleVerify() {
+  function handleGoogle() {
     setValidationError(null);
-    if (isUpgrade) {
-      const parsed = confirmGuestUpgradeRequestSchema.safeParse({
-        email,
-        token: code.trim(),
-        display_name: displayName,
-      });
-      if (!parsed.success) {
-        setValidationError("Enter the 6-digit code.");
-        return;
-      }
-      upgrade.confirm.mutate(parsed.data, { onSuccess: () => setStep("done") });
-    } else {
-      const parsed = verifyEmailOtpRequestSchema.safeParse({
-        email,
-        token: code.trim(),
-      });
-      if (!parsed.success) {
-        setValidationError("Enter the 6-digit code.");
-        return;
-      }
-      signIn.verify.mutate(parsed.data, { onSuccess: () => setStep("done") });
-    }
+    google.mutate(undefined, { onSuccess: () => setSignedIn(true) });
   }
 
-  if (step === "done") {
+  function switchMode(next: "signin" | "register") {
+    setAuthMode(next);
+    setValidationError(null);
+  }
+
+  if (signedIn) {
+    return <Text style={styles.muted}>You&apos;re signed in.</Text>;
+  }
+  if (registered) {
     return (
       <Text style={styles.muted}>
-        {isUpgrade
-          ? "Your matches will be saved to this account."
-          : "You're signed in."}
+        Check your email to confirm your account, then sign in.
       </Text>
     );
   }
 
-  const mutationError = sendCode.isError
-    ? sendCode.error.message
-    : verify.isError
-      ? verify.error.message
-      : null;
+  const mutationError = register.isError
+    ? register.error.message
+    : signIn.isError
+      ? signIn.error.message
+      : google.isError
+        ? google.error.message
+        : null;
   const errorMessage = validationError ?? mutationError;
 
   return (
     <View style={styles.panel}>
       <Text style={styles.heading}>
-        {isUpgrade ? "Save my matches" : "Sign in"}
+        {isRegister ? "Create an account" : "Sign in"}
       </Text>
-      {step === "email" ? (
-        <View style={styles.form}>
-          <Field label="Email">
+      <View style={styles.form}>
+        <Field label="Email">
+          <TextInput
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            placeholder="you@example.com"
+            placeholderTextColor={colors.textMuted}
+          />
+        </Field>
+        <Field label="Password">
+          <TextInput
+            style={styles.input}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            autoComplete={isRegister ? "new-password" : "current-password"}
+            placeholder="At least 8 characters"
+            placeholderTextColor={colors.textMuted}
+          />
+        </Field>
+        {isRegister ? (
+          <Field label="Your name">
             <TextInput
               style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              placeholder="you@example.com"
+              value={displayName}
+              onChangeText={setDisplayName}
+              maxLength={50}
+              placeholder="Your name"
               placeholderTextColor={colors.textMuted}
             />
           </Field>
-          {isUpgrade ? (
-            <Field label="Your name">
-              <TextInput
-                style={styles.input}
-                value={displayName}
-                onChangeText={setDisplayName}
-                maxLength={50}
-                placeholder="Your name"
-                placeholderTextColor={colors.textMuted}
-              />
-            </Field>
-          ) : null}
-          {errorMessage ? (
-            <Text style={styles.error} accessibilityRole="alert">
-              {errorMessage}
-            </Text>
-          ) : null}
-          <Pressable
-            style={[styles.button, pending && styles.buttonDisabled]}
-            onPress={handleSendCode}
-            disabled={pending}
-          >
-            <Text style={styles.buttonText}>
-              {pending ? "Sending…" : "Send code"}
-            </Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.form}>
-          <Text style={styles.muted}>
-            We emailed a 6-digit code to {email}.
+        ) : null}
+        {errorMessage ? (
+          <Text style={styles.error} accessibilityRole="alert">
+            {errorMessage}
           </Text>
-          <Field label="Code">
-            <TextInput
-              style={styles.input}
-              value={code}
-              onChangeText={setCode}
-              keyboardType="number-pad"
-              maxLength={6}
-              placeholder="123456"
-              placeholderTextColor={colors.textMuted}
-            />
-          </Field>
-          {errorMessage ? (
-            <Text style={styles.error} accessibilityRole="alert">
-              {errorMessage}
-            </Text>
-          ) : null}
-          <Pressable
-            style={[styles.button, pending && styles.buttonDisabled]}
-            onPress={handleVerify}
-            disabled={pending}
-          >
-            <Text style={styles.buttonText}>
-              {pending ? "Verifying…" : "Verify"}
-            </Text>
+        ) : null}
+        <Pressable
+          style={[styles.button, pending && styles.buttonDisabled]}
+          onPress={handleSubmit}
+          disabled={pending}
+        >
+          <Text style={styles.buttonText}>
+            {isRegister
+              ? register.isPending
+                ? "Creating…"
+                : "Create account"
+              : signIn.isPending
+                ? "Signing in…"
+                : "Sign in"}
+          </Text>
+        </Pressable>
+      </View>
+
+      <Pressable
+        style={[styles.buttonSecondary, pending && styles.buttonDisabled]}
+        onPress={handleGoogle}
+        disabled={pending}
+      >
+        <Text style={styles.buttonSecondaryText}>
+          {google.isPending ? "Connecting…" : "Continue with Google"}
+        </Text>
+      </Pressable>
+
+      {isRegister ? (
+        <Pressable onPress={() => switchMode("signin")}>
+          <Text style={styles.link}>Already have an account? Sign in</Text>
+        </Pressable>
+      ) : (
+        <View style={styles.footerLinks}>
+          <Pressable onPress={() => switchMode("register")}>
+            <Text style={styles.link}>Need an account? Create one</Text>
           </Pressable>
+          <Link href="/auth/reset" style={styles.link}>
+            Forgot password?
+          </Link>
         </View>
       )}
     </View>
@@ -207,4 +199,13 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: colors.background, fontSize: 16, fontWeight: "600" },
+  buttonSecondary: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+  },
+  buttonSecondaryText: { color: colors.text, fontSize: 16, fontWeight: "600" },
+  footerLinks: { gap: spacing.sm },
+  link: { color: colors.accent, fontSize: 14, fontWeight: "600" },
 });
