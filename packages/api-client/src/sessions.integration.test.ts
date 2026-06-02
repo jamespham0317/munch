@@ -5,6 +5,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { signInAnonymously } from "./auth";
+import { getMatchHistory } from "./endpoints/history";
 import type { SessionEvent } from "./endpoints/realtime";
 import { subscribeSession } from "./endpoints/realtime";
 import { createRoom, joinRoom, leaveRoom } from "./endpoints/rooms";
@@ -1172,3 +1173,531 @@ describe.skipIf(!ENABLED)("Phase 3 host resolution (integration)", () => {
     expect(badState.error?.error.code).toBe("SESSION_INVALID_STATE");
   });
 });
+
+/**
+ * Phase 4 match_history write path (CLAUDE.md §2.3, §3; docs/01 §10, docs/03 §3.9). The
+ * retention hook is the highest-risk Phase-4 server logic — it must honor GUEST EPHEMERALITY
+ * (only a member with a `profiles` row gets a row; guests get none) and be idempotent. These
+ * run on the pure submit_swipe RPC path (no Edge Function), so they're gated on ENABLED alone.
+ *
+ * The "signed-in" test identity is an anonymous auth user that ALSO has a `profiles` row
+ * (admin-seeded — the service-role bypasses profiles_insert_own). That is exactly what
+ * record_match_history keys off (a profiles row, NOT a non-null user_id; guests have a user_id
+ * too), and it mirrors a guest→account upgrade without needing the email-OTP flow in a test.
+ */
+describe.skipIf(!ENABLED)("Phase 4 match_history write (integration)", () => {
+  const createdRoomIds: string[] = [];
+  const createdUserIds: string[] = [];
+
+  let admin: SupabaseClient;
+  let url: string;
+  let anonKey: string;
+
+  interface Member {
+    client: SupabaseClient;
+    memberId: string;
+    userId: string;
+  }
+
+  async function newClient(): Promise<{
+    client: SupabaseClient;
+    userId: string;
+  }> {
+    const client = makeClient(url, anonKey);
+    const session = unwrap(await signInAnonymously(client));
+    createdUserIds.push(session.user.id);
+    return { client, userId: session.user.id };
+  }
+
+  /** Give an anon user a profiles row → counts as "signed-in" for record_match_history. */
+  async function makeSignedIn(
+    userId: string,
+    displayName: string,
+  ): Promise<void> {
+    const { error } = await admin
+      .from("profiles")
+      .insert({ id: userId, display_name: displayName });
+    if (error) throw new Error(`makeSignedIn: ${error.message}`);
+  }
+
+  /** Create a room whose host is a signed-in user (host display_name === profile name). */
+  async function newRoomWithSignedInHost(
+    name: string,
+  ): Promise<{ roomId: string; host: Member }> {
+    const { client, userId } = await newClient();
+    const { room, member } = unwrap(
+      await createRoom(client, makeCreateReq(name)),
+    );
+    createdRoomIds.push(room.id);
+    await makeSignedIn(userId, name);
+    return { roomId: room.id, host: { client, memberId: member.id, userId } };
+  }
+
+  async function addMember(
+    code: string,
+    name: string,
+    signedIn: boolean,
+  ): Promise<Member> {
+    const { client, userId } = await newClient();
+    const { member } = unwrap(
+      await joinRoom(client, { code, display_name: name }),
+    );
+    if (signedIn) await makeSignedIn(userId, name);
+    return { client, memberId: member.id, userId };
+  }
+
+  async function roomCode(roomId: string): Promise<string> {
+    const { data, error } = await admin
+      .from("rooms")
+      .select("code")
+      .eq("id", roomId)
+      .single()
+      .returns<{ code: string }>();
+    if (error || !data) throw new Error(`roomCode failed: ${error?.message}`);
+    return data.code;
+  }
+
+  /** Seed an `active` session + cached deck via the service-role client (same as the Phase-2
+   *  block — bypasses the start_session Edge Function so these history tests need no served fn). */
+  async function seedActiveSession(
+    roomId: string,
+    deckSize: number,
+  ): Promise<{ sessionId: string; restaurantIds: string[] }> {
+    const expiresAt = new Date(Date.now() + 3_600_000).toISOString();
+    const restRows = Array.from({ length: deckSize }, (_, i) => ({
+      provider: SEED_PROVIDER,
+      provider_ref: `seed-${randomUUID()}`,
+      name: `Seed Restaurant ${i}`,
+      lat: 37.775 + i * 0.001,
+      lng: -122.419 - i * 0.001,
+      rating: 4.0,
+      price_level: "2",
+      cuisines: ["italian"],
+      photo_url: i === 0 ? "https://example.test/photo-0.jpg" : null,
+      is_open_now: true,
+      expires_at: expiresAt,
+    }));
+    const { data: rests, error: rErr } = await admin
+      .from("restaurants")
+      .insert(restRows)
+      .select("id")
+      .returns<{ id: string }[]>();
+    if (rErr || !rests) throw new Error(`seed restaurants: ${rErr?.message}`);
+    const restaurantIds = rests.map((r) => r.id);
+
+    const { data: sess, error: sErr } = await admin
+      .from("sessions")
+      .insert({
+        room_id: roomId,
+        status: "active",
+        radius_m: 3000,
+        filter_open_now: false,
+        filter_cuisines: [],
+        filter_price_levels: [],
+        started_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single()
+      .returns<{ id: string }>();
+    if (sErr || !sess) throw new Error(`seed session: ${sErr?.message}`);
+
+    const deckRows = restaurantIds.map((restaurant_id) => ({
+      session_id: sess.id,
+      restaurant_id,
+      added_round: 0,
+    }));
+    const { error: dErr } = await admin.from("cached_decks").insert(deckRows);
+    if (dErr) throw new Error(`seed cached_decks: ${dErr.message}`);
+
+    return { sessionId: sess.id, restaurantIds };
+  }
+
+  /** One history-row shape, read back via the service-role client for assertions. */
+  interface HistoryRow {
+    user_id: string;
+    match_id: string;
+    restaurant_name: string;
+    restaurant_photo_url: string | null;
+    participant_names: string[];
+  }
+
+  async function historyRowsFor(userId: string): Promise<HistoryRow[]> {
+    const { data, error } = await admin
+      .from("match_history")
+      .select(
+        "user_id, match_id, restaurant_name, restaurant_photo_url, participant_names",
+      )
+      .eq("user_id", userId)
+      .returns<HistoryRow[]>();
+    if (error) throw new Error(`historyRowsFor: ${error.message}`);
+    return data ?? [];
+  }
+
+  /** Total history rows for a session's match — to assert idempotency across the whole match. */
+  async function historyCountForSession(sessionId: string): Promise<number> {
+    const { data: m, error: mErr } = await admin
+      .from("matches")
+      .select("id")
+      .eq("session_id", sessionId)
+      .single()
+      .returns<{ id: string }>();
+    if (mErr || !m) throw new Error(`match lookup: ${mErr?.message}`);
+    const { count, error } = await admin
+      .from("match_history")
+      .select("user_id", { count: "exact", head: true })
+      .eq("match_id", m.id);
+    if (error) throw new Error(`historyCountForSession: ${error.message}`);
+    return count ?? 0;
+  }
+
+  const like = (session_id: string, restaurant_id: string) => ({
+    session_id,
+    restaurant_id,
+    decision: "like" as const,
+  });
+
+  beforeAll(() => {
+    url = required("SUPABASE_TEST_URL", TEST_URL);
+    anonKey = required("SUPABASE_TEST_ANON_KEY", ANON_KEY);
+    const serviceKey = required("SUPABASE_TEST_SERVICE_ROLE_KEY", SERVICE_KEY);
+    admin = makeClient(url, serviceKey);
+  });
+
+  afterAll(async () => {
+    if (createdRoomIds.length > 0) {
+      await admin.from("rooms").delete().in("id", createdRoomIds);
+    }
+    await admin.from("restaurants").delete().eq("provider", SEED_PROVIDER);
+    // Deleting the auth user cascades its profiles row AND its match_history rows
+    // (both FK auth.users on delete cascade, 0002), so no extra cleanup is needed.
+    for (const uid of createdUserIds) {
+      await admin.auth.admin.deleteUser(uid);
+    }
+  });
+
+  it("writes one history row per signed-in present member on a unanimous match", async () => {
+    const { roomId, host } = await newRoomWithSignedInHost("Alice");
+    const code = await roomCode(roomId);
+    const guest = await addMember(code, "Bob", true);
+    const { sessionId, restaurantIds } = await seedActiveSession(roomId, 3);
+    const card = at(restaurantIds, 0);
+
+    // Both present members are signed-in and both like card 0 → unanimous match.
+    unwrap(await submitSwipe(host.client, like(sessionId, card)));
+    const declaring = unwrap(
+      await submitSwipe(guest.client, like(sessionId, card)),
+    );
+    expect(declaring.match?.resolution).toBe("unanimous");
+
+    const hostRows = await historyRowsFor(host.userId);
+    const guestRows = await historyRowsFor(guest.userId);
+    expect(hostRows).toHaveLength(1);
+    expect(guestRows).toHaveLength(1);
+
+    // The snapshot is the matched restaurant + the present cohort's names (ordered by joined_at:
+    // host joined first). card 0 carries a photo_url, which the snapshot preserves.
+    const row = at(hostRows, 0);
+    expect(row.restaurant_name).toBe("Seed Restaurant 0");
+    expect(row.restaurant_photo_url).toBe("https://example.test/photo-0.jpg");
+    expect(row.participant_names).toEqual(["Alice", "Bob"]);
+    // Both rows reference the same match.
+    expect(at(guestRows, 0).match_id).toBe(row.match_id);
+    expect(await historyCountForSession(sessionId)).toBe(2);
+  });
+
+  it("excludes guests — only signed-in members get a history row (ephemerality)", async () => {
+    const { roomId, host } = await newRoomWithSignedInHost("Carol");
+    const code = await roomCode(roomId);
+    const guest = await addMember(code, "Dave", false); // no profile → a guest
+    const { sessionId, restaurantIds } = await seedActiveSession(roomId, 3);
+    const card = at(restaurantIds, 0);
+
+    unwrap(await submitSwipe(host.client, like(sessionId, card)));
+    unwrap(await submitSwipe(guest.client, like(sessionId, card)));
+
+    // The signed-in host gets a row; the guest (no profiles row) gets none.
+    expect(await historyRowsFor(host.userId)).toHaveLength(1);
+    expect(await historyRowsFor(guest.userId)).toHaveLength(0);
+    // The guest still appears in the snapshot (they were present), but persists no row of their own.
+    const row = at(await historyRowsFor(host.userId), 0);
+    expect(row.participant_names).toEqual(["Carol", "Dave"]);
+    expect(await historyCountForSession(sessionId)).toBe(1);
+  });
+
+  it("is idempotent — re-firing record_match_history writes no extra rows", async () => {
+    const { roomId, host } = await newRoomWithSignedInHost("Erin");
+    const code = await roomCode(roomId);
+    const guest = await addMember(code, "Frank", true);
+    const { sessionId, restaurantIds } = await seedActiveSession(roomId, 3);
+    const card = at(restaurantIds, 0);
+
+    unwrap(await submitSwipe(host.client, like(sessionId, card)));
+    unwrap(await submitSwipe(guest.client, like(sessionId, card)));
+    expect(await historyCountForSession(sessionId)).toBe(2);
+
+    // A double-fire (e.g. resolve-session retrying via the service-role rpc) is a no-op — the
+    // function is idempotent on the unique (user_id, match_id) with `on conflict do nothing`.
+    const { error } = await admin.rpc("record_match_history", {
+      p_session_id: sessionId,
+    });
+    expect(error).toBeNull();
+    expect(await historyCountForSession(sessionId)).toBe(2);
+  });
+
+  it("a guest's getMatchHistory returns [] while a signed-in member sees their row", async () => {
+    const { roomId, host } = await newRoomWithSignedInHost("Grace");
+    const code = await roomCode(roomId);
+    const guest = await addMember(code, "Heidi", false); // a guest
+    const { sessionId, restaurantIds } = await seedActiveSession(roomId, 3);
+    const card = at(restaurantIds, 0);
+
+    unwrap(await submitSwipe(host.client, like(sessionId, card)));
+    unwrap(await submitSwipe(guest.client, like(sessionId, card)));
+
+    // Round-trip through the real api-client read: RLS scopes each caller to their OWN rows.
+    const hostHistory = unwrap(await getMatchHistory(host.client));
+    expect(hostHistory).toHaveLength(1);
+    expect(at(hostHistory, 0).restaurantName).toBe("Seed Restaurant 0");
+
+    const guestHistory = unwrap(await getMatchHistory(guest.client));
+    expect(guestHistory).toEqual([]);
+  });
+});
+
+/**
+ * Phase 4 filters + empty-deck edge + accept_top history, through the served Edge Functions
+ * (CLAUDE.md §2.1, §2.2, §3; docs/04 §3.5, §3.9). These prove that:
+ *   * a host cuisine filter visibly SHAPES the cached deck (smaller, and every cached row
+ *     satisfies it) — the FakeProvider now honors filters at the single provider call;
+ *   * an initial pool that matches NOTHING routes the session to awaiting_host_resolution
+ *     (host can widen) rather than stranding it `active` with no cards;
+ *   * the host accept_top path writes match_history for signed-in present members with ZERO
+ *     provider calls, idempotently.
+ * Gated on EDGE_ENABLED (start-session + resolve-session served with PROVIDER=fake).
+ */
+describe.skipIf(!EDGE_ENABLED)(
+  "Phase 4 filters + empty deck + accept_top history (integration)",
+  () => {
+    const createdRoomIds: string[] = [];
+    const createdUserIds: string[] = [];
+
+    let admin: SupabaseClient;
+    let url: string;
+    let anonKey: string;
+
+    async function newClient(): Promise<{
+      client: SupabaseClient;
+      userId: string;
+    }> {
+      const client = makeClient(url, anonKey);
+      const session = unwrap(await signInAnonymously(client));
+      createdUserIds.push(session.user.id);
+      return { client, userId: session.user.id };
+    }
+
+    async function makeSignedIn(
+      userId: string,
+      displayName: string,
+    ): Promise<void> {
+      const { error } = await admin
+        .from("profiles")
+        .insert({ id: userId, display_name: displayName });
+      if (error) throw new Error(`makeSignedIn: ${error.message}`);
+    }
+
+    /** Create a room with the given host filters; the FakeProvider applies them at start. */
+    async function newHostClient(
+      name: string,
+      filters: CreateRoomRequest["filters"],
+    ): Promise<{ client: SupabaseClient; roomId: string; userId: string }> {
+      const { client, userId } = await newClient();
+      const { room } = unwrap(
+        await createRoom(client, { ...makeCreateReq(name), filters }),
+      );
+      createdRoomIds.push(room.id);
+      return { client, roomId: room.id, userId };
+    }
+
+    async function roomCode(roomId: string): Promise<string> {
+      const { data, error } = await admin
+        .from("rooms")
+        .select("code")
+        .eq("id", roomId)
+        .single()
+        .returns<{ code: string }>();
+      if (error || !data) throw new Error(`roomCode failed: ${error?.message}`);
+      return data.code;
+    }
+
+    async function latestSessionId(roomId: string): Promise<string> {
+      const { data, error } = await admin
+        .from("sessions")
+        .select("id")
+        .eq("room_id", roomId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .returns<{ id: string }[]>();
+      const id = data?.[0]?.id;
+      if (error || !id) throw new Error(`latestSessionId: ${error?.message}`);
+      return id;
+    }
+
+    /** The cached deck's restaurants (cuisines + price_level) — to assert filters are honored. */
+    async function cachedRestaurantsFor(
+      roomId: string,
+    ): Promise<{ id: string; name: string; cuisines: string[] }[]> {
+      const sessionId = await latestSessionId(roomId);
+      const { data, error } = await admin
+        .from("cached_decks")
+        .select("restaurants!inner(id, name, cuisines)")
+        .eq("session_id", sessionId)
+        .returns<
+          { restaurants: { id: string; name: string; cuisines: string[] } }[]
+        >();
+      if (error || !data)
+        throw new Error(`cachedRestaurantsFor: ${error?.message}`);
+      return data.map((r) => r.restaurants);
+    }
+
+    async function setAwaiting(sessionId: string): Promise<void> {
+      const { error } = await admin
+        .from("sessions")
+        .update({ status: "awaiting_host_resolution" })
+        .eq("id", sessionId);
+      if (error) throw new Error(`setAwaiting: ${error.message}`);
+    }
+
+    async function historyCountFor(userId: string): Promise<number> {
+      const { count, error } = await admin
+        .from("match_history")
+        .select("user_id", { count: "exact", head: true })
+        .eq("user_id", userId);
+      if (error) throw new Error(`historyCountFor: ${error.message}`);
+      return count ?? 0;
+    }
+
+    beforeAll(() => {
+      url = required("SUPABASE_TEST_URL", TEST_URL);
+      anonKey = required("SUPABASE_TEST_ANON_KEY", ANON_KEY);
+      const serviceKey = required(
+        "SUPABASE_TEST_SERVICE_ROLE_KEY",
+        SERVICE_KEY,
+      );
+      admin = makeClient(url, serviceKey);
+    });
+
+    afterAll(async () => {
+      if (createdRoomIds.length > 0) {
+        await admin.from("rooms").delete().in("id", createdRoomIds);
+      }
+      await admin.from("restaurants").delete().eq("provider", "fake");
+      for (const uid of createdUserIds) {
+        await admin.auth.admin.deleteUser(uid);
+      }
+    });
+
+    it("a cuisine filter shapes the deck — a smaller, satisfying subset of the unfiltered pool", async () => {
+      // Unfiltered baseline: the whole fixture.
+      const plain = await newHostClient("Filter Baseline", {
+        open_now: false,
+        cuisines: [],
+        price_levels: [],
+      });
+      const baseline = unwrap(
+        await startSession(plain.client, { radius_m: 3000 }),
+      );
+      expect(baseline.deck_size).toBe(FAKE_DECK_SIZE);
+
+      // Filtered: only japanese. The fixture has exactly two japanese rows (fake-002, fake-005).
+      const filtered = await newHostClient("Filter Japanese", {
+        open_now: false,
+        cuisines: ["japanese"],
+        price_levels: [],
+      });
+      const result = unwrap(
+        await startSession(filtered.client, { radius_m: 3000 }),
+      );
+
+      // Strictly smaller than the unfiltered start — proves it's the filter, not chance.
+      expect(result.deck_size).toBeLessThan(baseline.deck_size);
+      expect(result.deck_size).toBeGreaterThan(0);
+
+      // And every cached restaurant actually satisfies the filter.
+      const cached = await cachedRestaurantsFor(filtered.roomId);
+      expect(cached).toHaveLength(result.deck_size);
+      for (const r of cached) {
+        expect(r.cuisines).toContain("japanese");
+      }
+    });
+
+    it("an initial deck that matches nothing leaves the session awaiting_host_resolution", async () => {
+      // No fixture row is thai → the provider returns zero rows for this filter.
+      const { client, roomId } = await newHostClient("Empty Deck", {
+        open_now: false,
+        cuisines: ["thai"],
+        price_levels: [],
+      });
+      const result = unwrap(await startSession(client, { radius_m: 3000 }));
+
+      expect(result.deck_size).toBe(0);
+      expect(result.session.status).toBe("awaiting_host_resolution");
+      expect(await cachedRestaurantsFor(roomId)).toHaveLength(0);
+
+      // The single provider fetch already happened; the session is non-terminal
+      // (awaiting_host_resolution), so a second start is refused — proving NO second fetch.
+      const second = await startSession(client, { radius_m: 3000 });
+      expect(second.error?.error.code).toBe("SESSION_INVALID_STATE");
+    });
+
+    it("accept_top writes the signed-in host's history row, zero provider calls, idempotent", async () => {
+      const { client, roomId, userId } = await newHostClient("Accept Host", {
+        open_now: false,
+        cuisines: [],
+        price_levels: [],
+      });
+      await makeSignedIn(userId, "Accept Host");
+      const code = await roomCode(roomId);
+      // A guest (no profile) joins so we also confirm they get NO row on the accept path.
+      const guestClient = makeClient(url, anonKey);
+      const guestSession = unwrap(await signInAnonymously(guestClient));
+      createdUserIds.push(guestSession.user.id);
+      unwrap(
+        await joinRoom(guestClient, { code, display_name: "Accept Guest" }),
+      );
+
+      unwrap(await startSession(client, { radius_m: 3000 }));
+      const sessionId = await latestSessionId(roomId);
+      // Drive to the resolution surface directly (the exhaustion path has its own tests), then
+      // accept the first cached card as the host's pick.
+      await setAwaiting(sessionId);
+      const cached = await cachedRestaurantsFor(roomId);
+      const top = at(cached, 0);
+      const deckBefore = cached.length;
+
+      const accept = unwrap(
+        await resolveSession(client, {
+          session_id: sessionId,
+          action: "accept_top",
+          restaurant_id: top.id,
+        }),
+      );
+      expect(accept.session.status).toBe("resolved");
+
+      // The signed-in host gets a history row snapshotting the accepted restaurant; the guest none.
+      expect(await historyCountFor(userId)).toBe(1);
+      expect(await historyCountFor(guestSession.user.id)).toBe(0);
+      const hostHistory = unwrap(await getMatchHistory(client));
+      expect(at(hostHistory, 0).restaurantName).toBe(top.name);
+
+      // ZERO provider calls on accept (CLAUDE.md §2.1) — observable proxy: the deck is unchanged.
+      expect(await cachedRestaurantsFor(roomId)).toHaveLength(deckBefore);
+
+      // Idempotent: a re-fired record_match_history (resolve-session's service-role rpc) adds nothing.
+      const { error } = await admin.rpc("record_match_history", {
+        p_session_id: sessionId,
+      });
+      expect(error).toBeNull();
+      expect(await historyCountFor(userId)).toBe(1);
+    });
+  },
+);

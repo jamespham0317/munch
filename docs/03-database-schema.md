@@ -294,7 +294,16 @@ create index on match_history (user_id);
 
 - Stores the app's own outcome (name snapshot, who participated, when) — **not** a durable
   copy of provider content. Guests get no history row.
-- **RLS:** a user may select only their own history rows.
+- **Writes:** the table has **no insert RLS policy** by design. Rows are written exclusively by
+  `record_match_history(p_session_id)` — a `security definer` function (migration 0016) called
+  from **both** `submit_swipe` (on a unanimous match) and the `resolve-session` Edge Function
+  (on `host_accepted_top`). It snapshots `restaurant_name` + `restaurant_photo_url` from the
+  matched `restaurants` row, `participant_names` from the currently-present members, and
+  `decided_at` from `matches`, inserting **one row per present member that has a `profiles` row**
+  (the signed-in test — guests have a `user_id` but no profile and are excluded; CLAUDE.md §3).
+  Idempotent on `unique (user_id, match_id)` (`on conflict do nothing`), so a re-fire writes
+  nothing extra.
+- **RLS:** a user may select only their own history rows (`match_history_select_own`).
 
 ---
 

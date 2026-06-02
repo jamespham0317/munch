@@ -140,6 +140,7 @@ packages/api-client/
 │   │   ├── rooms.ts            # create_room, join_room, update_room_filters
 │   │   ├── sessions.ts         # start_session, get_deck, resolve_session
 │   │   ├── swipes.ts           # submit_swipe
+│   │   ├── history.ts          # get_match_history (RLS-scoped read)
 │   │   └── realtime.ts         # channel subscription helpers
 │   └── index.ts
 ├── package.json

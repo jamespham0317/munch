@@ -163,7 +163,12 @@ Transitions room to `active`, fetches the deck once via the provider, caches it.
 - **Behavior:** snapshots current room filters into the session; calls the provider
   abstraction **once**; normalizes and writes `restaurants` + `cached_decks`
   (`added_round = 0`). The deck itself is read via subscription/table read, not returned
-  inline beyond its size.
+  inline beyond its size. **Empty initial pool:** if the (filtered) provider call returns
+  zero restaurants, the session starts in **`awaiting_host_resolution`** rather than `active`
+  — the response carries `deck_size: 0` and that status, routing the host straight to the
+  widen control via the existing resolution path instead of stranding the room on a swipe
+  screen with no cards (a Phase-4 decision; no new empty-state mechanic). The single provider
+  call still happens (`provider_calls` is `1`).
 - **Implementation:** an **Edge Function** (`supabase/functions/start-session/`), not an RPC,
   because the provider key is server-only (CLAUDE.md §2.1, §3) and must never reach a client
   bundle — only an Edge Function can hold it. It is the **only** Phase-2 endpoint that touches
@@ -228,17 +233,19 @@ Records a like/pass and runs the authoritative match check. This is the hot path
   ```
 - **Behavior:** upserts the swipe (idempotent on `(session, member, restaurant)`); on a
   `like`, transactionally checks whether the restaurant now has likes from all present
-  members. If so, writes `matches`, sets session `matched`, and emits a realtime event.
-  When the swipe produces **no** match, a lightweight exhaustion check runs: if every
-  currently present member has now swiped every card in the session's `cached_decks`, the
-  session moves `active → awaiting_host_resolution` (non-terminal — no `ended_at`). The match
-  check runs **first**, so a swipe that is simultaneously the last card and the last unanimous
-  like ends `matched`, never `awaiting_host_resolution`. The client learns of the transition
-  via the realtime status event, not this response (whose shape is unchanged).
+  members. If so, writes `matches`, sets session `matched`, emits a realtime event, and
+  records `match_history` for every signed-in present member (see §3.9). When the swipe
+  produces **no** match, a lightweight exhaustion check runs: if every currently present
+  member has now swiped every card in the session's `cached_decks`, the session moves
+  `active → awaiting_host_resolution` (non-terminal — no `ended_at`). The match check runs
+  **first**, so a swipe that is simultaneously the last card and the last unanimous like ends
+  `matched`, never `awaiting_host_resolution`. The client learns of the transition via the
+  realtime status event, not this response (whose shape is unchanged).
 - **Implementation:** a **security-definer RPC** (`submit_swipe`, migration 0010, replaced via
-  `create or replace` in migration 0014 to add the exhaustion tail). It is security definer
-  because the authoritative match check must read **all** members' swipes in one transaction,
-  which the per-member `swipes_select_own` RLS policy would otherwise block (CLAUDE.md §2.3).
+  `create or replace` in migration 0014 to add the exhaustion tail, and again in 0016 to call
+  `record_match_history` on a unanimous match). It is security definer because the
+  authoritative match check must read **all** members' swipes in one transaction, which the
+  per-member `swipes_select_own` RLS policy would otherwise block (CLAUDE.md §2.3).
   The exhaustion check is the `is_deck_exhausted(session)` helper (0014), present-member-scoped
   like the match check. Failures are raised as the bare error code in the exception message
   (`UNAUTHENTICATED` / `FORBIDDEN` / `SESSION_INVALID_STATE` / `VALIDATION_ERROR`); the
@@ -313,9 +320,11 @@ Host accepts the top pick or widens criteria.
   { "session": { "status": "active" }, "new_restaurants": 17 }
   ```
 - **Behavior (accept):** writes `matches` (`resolution = 'host_accepted_top'`, idempotent on
-  `session_id`), sets the session `resolved` with `matched_restaurant_id` + `ended_at`, and
-  announces it to all members via the realtime status/match events. **Zero** provider calls.
-  The `restaurant_id` must be a card already in the session's deck (`VALIDATION_ERROR` else).
+  `session_id`), sets the session `resolved` with `matched_restaurant_id` + `ended_at`, records
+  `match_history` for every signed-in present member (via the service-role `record_match_history`
+  rpc — the same writer `submit_swipe` uses, see §3.9 of the schema), and announces it to all
+  members via the realtime status/match events. **Zero** provider calls. The `restaurant_id`
+  must be a card already in the session's deck (`VALIDATION_ERROR` else).
 - **Behavior (widen):** **exactly one** additional provider fetch for restaurants **not already
   in the deck** (`excludeProviderRefs` = every deck `provider_ref`); appends them to
   `cached_decks` with `added_round = n+1`; persists the widened `radius_m`/`filters` onto the
@@ -355,6 +364,34 @@ Host accepts the top pick or widens criteria.
   update RLS policy by design. It raises `NOT_HOST` for a non-host caller and is a no-op (no
   raise) when the room has no non-terminal session — so a host leaving from the lobby still
   succeeds.
+
+---
+
+### 3.11 `get_match_history` (signed-in users)
+
+Returns the caller's own saved match outcomes for the history screen.
+
+- **Auth:** any authenticated caller. A **guest** (anonymous, no `profiles` row) simply has no
+  rows and gets `[]` — the history screen keys the "sign in to save your matches" state off the
+  auth/profile state, not off an error from this read.
+- **Request:** none (scoped to the caller).
+- **Response:**
+  ```json
+  {
+    "history": [
+      { "id": "uuid", "match_id": "uuid", "restaurant_name": "Pizzeria Libretto",
+        "restaurant_photo_url": "https://...", "participant_names": ["Ada", "Grace"],
+        "decided_at": "2026-06-01T12:00:00Z", "created_at": "2026-06-01T12:00:01Z" }
+    ]
+  }
+  ```
+- **Implementation:** a **direct RLS-scoped table read** in the api-client (`getMatchHistory`),
+  not an RPC — the `match_history_select_own` policy (migration 0003) scopes it to
+  `user_id = auth.uid()` rows, ordered `decided_at desc`. Rows are mapped snake→camel at the
+  api-client boundary (docs/06 §5). Rows are written only by `record_match_history` (schema §3.9),
+  never by the client.
+- **Errors:** mapped via the standard shape; an RLS denial surfaces as `FORBIDDEN`, never raw DB
+  text.
 
 ---
 

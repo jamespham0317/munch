@@ -156,8 +156,13 @@ stuck host-less, consistent with §13's "never an ambiguous or stuck state."
 ## 8. Filters and preferences
 
 - **Controlled by the host** for the whole room. This keeps the shared deck identical for
-  all members, which the matching mechanic requires.
+  all members, which the matching mechanic requires. The host sets filters when creating the
+  room and may edit them **in the lobby** (before the session starts); once a session is
+  active, filters are fixed for that session and only the **widen** control loosens them.
 - **v1 filters:** open-now, cuisine type, price range ($–$$$$).
+- **Cuisine is a closed taxonomy** (`CUISINES` in `@munch/core`) — the picker offers a fixed
+  v1 list, not free-text entry, so the ids stay stable map keys shared by the client picker and
+  the server's cuisine→provider-type mapping.
 - **Radius:** a user-adjustable slider, operating within the host's chosen anchor.
 - **Future (post-v1):** a "hybrid" mode where individual members may *narrow within* the
   host's set but never *expand beyond* it — preserving deck overlap. Dietary filters
