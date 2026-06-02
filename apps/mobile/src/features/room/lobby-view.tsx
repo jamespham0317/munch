@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -7,6 +7,7 @@ import { MemberList } from "../../components/member-list";
 import { colors, spacing } from "../../theme";
 import { AuthPanel } from "../auth/auth-panel";
 import { useStartSession } from "../session/use-start-session";
+import { LobbyFiltersPanel } from "./lobby-filters-panel";
 import { useRoomLobby } from "./use-room-lobby";
 
 /**
@@ -22,12 +23,19 @@ export function LobbyView({ roomId }: { roomId: string }) {
     useRoomLobby(roomId);
   const startSession = useStartSession(roomId);
 
-  // Any member: route to the swipe screen the moment an active session exists. The
-  // host also navigates via the start-session mutation's onSuccess, so this effect is
-  // a no-op for them in the common path (router.replace is idempotent on the same URL)
-  // and the safety net for non-host members.
+  // Any member: route to the session screen the moment a non-terminal session exists. We
+  // route on BOTH `active` (the normal start) and `awaiting_host_resolution` — the latter is
+  // the empty-initial-deck edge (start_session found zero spots and sent the host straight to
+  // the widen control, Phase 4 decision); without it non-hosts would stay stuck in the lobby.
+  // The host also navigates via the start-session mutation's onSuccess, so this effect is a
+  // no-op for them in the common path (router.replace is idempotent) and the safety net for
+  // non-host members.
   useEffect(() => {
-    if (activeSession && activeSession.status === "active") {
+    if (
+      activeSession &&
+      (activeSession.status === "active" ||
+        activeSession.status === "awaiting_host_resolution")
+    ) {
       router.replace({
         pathname: "/room/[roomId]/session",
         params: { roomId, sessionId: activeSession.id },
@@ -60,6 +68,22 @@ export function LobbyView({ roomId }: { roomId: string }) {
     : undefined;
   const isHost = me?.role === "host";
 
+  // Host-left ended state (CLAUDE.md §2.3 exception): when the host leaves mid-session the
+  // session is cancelled AND the room is soft-closed (isActive=false). Members are routed here
+  // from the swipe screen; show a defined ended screen with a way home rather than the normal
+  // "waiting for the host" lobby, which would never resolve. The backend is unchanged.
+  if (!room.isActive) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.heading}>The host ended the session</Text>
+        <Text style={styles.muted}>This room is closed.</Text>
+        <Link href="/" style={styles.link}>
+          Back home
+        </Link>
+      </View>
+    );
+  }
+
   function handleStart() {
     startSession.mutate({ radius_m: room.defaultRadiusM });
   }
@@ -72,6 +96,7 @@ export function LobbyView({ roomId }: { roomId: string }) {
       <InvitePanel code={room.code} />
       <Text style={styles.heading}>Members</Text>
       <MemberList members={members} />
+      <LobbyFiltersPanel room={room} isHost={isHost} />
       {isHost ? (
         <>
           <Pressable
@@ -114,4 +139,10 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.5 },
   buttonText: { color: colors.background, fontSize: 16, fontWeight: "600" },
+  link: {
+    color: colors.accent,
+    fontSize: 16,
+    fontWeight: "600",
+    paddingTop: spacing.sm,
+  },
 });

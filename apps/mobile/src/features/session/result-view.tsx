@@ -27,10 +27,11 @@ export function ResultView({ sessionId }: { sessionId: string }) {
   }
 
   const { match, restaurant } = matchQuery.data;
-  const headline =
-    match.resolution === "host_accepted_top"
-      ? "The host picked"
-      : "It’s a match!";
+  const isHostPick = match.resolution === "host_accepted_top";
+  const headline = isHostPick ? "🍽️ The host picked" : "🎉 It’s a match!";
+  const subcopy = isHostPick
+    ? "No unanimous match, so the host chose the closest pick. Enjoy!"
+    : "Everyone liked the same spot. Go enjoy it together!";
 
   return (
     <View style={styles.container}>
@@ -46,7 +47,7 @@ export function ResultView({ sessionId }: { sessionId: string }) {
       {restaurant.rating !== null ? (
         <Text style={styles.meta}>⭐ {restaurant.rating.toFixed(1)}</Text>
       ) : null}
-      <Text style={styles.muted}>Session ended.</Text>
+      <Text style={styles.muted}>{subcopy}</Text>
       <Link href="/" style={styles.link}>
         Back home
       </Link>

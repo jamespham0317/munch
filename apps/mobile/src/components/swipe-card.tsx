@@ -1,5 +1,19 @@
 import type { DeckRestaurant } from "@munch/core";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Dimensions,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
 import { colors, spacing } from "../theme";
 
@@ -8,9 +22,20 @@ import { colors, spacing } from "../theme";
  * DeckRestaurant + two button handlers; holds no business logic and reads no data
  * (CLAUDE.md §4). The matching/shuffle/distance rules all live upstream.
  *
+ * A pan/throw gesture is layered on for feel (react-native-gesture-handler + reanimated):
+ * dragging the card past a horizontal threshold and releasing throws it off-screen and
+ * triggers the same onLike/onPass handlers as the buttons (right = like, left = pass); a
+ * short drag springs back. The buttons remain the accessible fallback. The gesture is pure
+ * UI — it only calls the existing handlers and NEVER touches the provider (CLAUDE.md §2.1).
+ *
  * `distance_m` is the server-computed value from the haversine helper in 0009; we
  * format it but never recompute it.
  */
+
+/** Horizontal drag distance (px) past which a release commits the swipe. */
+const SWIPE_THRESHOLD_PX = 120;
+const SCREEN_WIDTH = Dimensions.get("window").width;
+
 export function SwipeCard({
   restaurant,
   onLike,
@@ -22,33 +47,81 @@ export function SwipeCard({
   onPass: () => void;
   disabled: boolean;
 }) {
+  const translateX = useSharedValue(0);
+
+  // Runs on the JS thread (via runOnJS). Reset the card to centre before advancing so the
+  // next card renders in place, then fire the existing handler — never a provider call.
+  function commit(direction: "like" | "pass") {
+    translateX.value = 0;
+    if (direction === "like") {
+      onLike();
+    } else {
+      onPass();
+    }
+  }
+
+  const pan = Gesture.Pan()
+    .enabled(!disabled)
+    .onUpdate((event) => {
+      translateX.value = event.translationX;
+    })
+    .onEnd((event) => {
+      if (event.translationX >= SWIPE_THRESHOLD_PX) {
+        translateX.value = withTiming(SCREEN_WIDTH, { duration: 180 }, () => {
+          runOnJS(commit)("like");
+        });
+      } else if (event.translationX <= -SWIPE_THRESHOLD_PX) {
+        translateX.value = withTiming(-SCREEN_WIDTH, { duration: 180 }, () => {
+          runOnJS(commit)("pass");
+        });
+      } else {
+        translateX.value = withTiming(0, { duration: 150 });
+      }
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { rotate: `${translateX.value / 20}deg` },
+    ],
+  }));
+
   return (
     <View style={styles.card} accessibilityLabel={restaurant.name}>
-      {restaurant.photo_url ? (
-        <Image
-          source={{ uri: restaurant.photo_url }}
-          style={styles.photo}
-          accessibilityIgnoresInvertColors
-        />
-      ) : (
-        <View style={[styles.photo, styles.photoFallback]} accessible={false}>
-          <Text style={styles.photoFallbackText}>No photo</Text>
-        </View>
-      )}
-      <Text style={styles.name}>{restaurant.name}</Text>
-      <Text style={styles.meta}>
-        {restaurant.rating !== null
-          ? `⭐ ${restaurant.rating.toFixed(1)} `
-          : ""}
-        {restaurant.price_level
-          ? `${"$".repeat(Number(restaurant.price_level))} · `
-          : ""}
-        {formatDistance(restaurant.distance_m)}
-        {restaurant.is_open_now === false ? " · closed" : ""}
-      </Text>
-      {restaurant.cuisines.length > 0 ? (
-        <Text style={styles.cuisines}>{restaurant.cuisines.join(" · ")}</Text>
-      ) : null}
+      <GestureDetector gesture={pan}>
+        <Animated.View style={[styles.swipeable, animatedStyle]}>
+          {restaurant.photo_url ? (
+            <Image
+              source={{ uri: restaurant.photo_url }}
+              style={styles.photo}
+              accessibilityIgnoresInvertColors
+            />
+          ) : (
+            <View
+              style={[styles.photo, styles.photoFallback]}
+              accessible={false}
+            >
+              <Text style={styles.photoFallbackText}>No photo</Text>
+            </View>
+          )}
+          <Text style={styles.name}>{restaurant.name}</Text>
+          <Text style={styles.meta}>
+            {restaurant.rating !== null
+              ? `⭐ ${restaurant.rating.toFixed(1)} `
+              : ""}
+            {restaurant.price_level
+              ? `${"$".repeat(Number(restaurant.price_level))} · `
+              : ""}
+            {formatDistance(restaurant.distance_m)}
+            {restaurant.is_open_now === false ? " · closed" : ""}
+          </Text>
+          {restaurant.cuisines.length > 0 ? (
+            <Text style={styles.cuisines}>
+              {restaurant.cuisines.join(" · ")}
+            </Text>
+          ) : null}
+        </Animated.View>
+      </GestureDetector>
       <View style={styles.actions}>
         <Pressable
           style={[
@@ -89,6 +162,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.sm,
   },
+  swipeable: { gap: spacing.sm },
   photo: {
     width: "100%",
     aspectRatio: 16 / 10,

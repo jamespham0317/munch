@@ -1,23 +1,16 @@
 import {
   createRoomRequestSchema,
+  type CuisineId,
   DEFAULT_RADIUS_M,
   type PriceLevel,
 } from "@munch/core";
 import { useState } from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Field } from "../../components/field";
+import { FiltersFieldset } from "../../components/filters-fieldset";
 import { colors, spacing } from "../../theme";
 import { useCreateRoom } from "./use-create-room";
-
-const PRICE_LEVELS: readonly PriceLevel[] = ["1", "2", "3", "4"];
 
 /** Empty string → NaN so the Zod number schemas reject a blank coordinate/radius. */
 function toNumber(value: string): number {
@@ -27,10 +20,12 @@ function toNumber(value: string): number {
 /**
  * Host create-room form (RN parity with apps/web's CreateRoomForm). Sets the host's
  * name, the search anchor, the room-wide filters (host-controlled per CLAUDE.md §2),
- * and the default radius, then calls the create flow. Input is validated client-side
- * against the @munch/core schema (docs/06 §3, validate on both ends); the server
- * re-validates authoritatively. Explicit handlers only — no form semantics that
- * conflict with RN (docs/06 §6).
+ * and the default radius, then calls the create flow. Cuisines come from the closed
+ * @munch/core CUISINES taxonomy via FiltersFieldset (no free text) — the submitted
+ * filters carry only taxonomy ids. Input is validated client-side against the
+ * @munch/core schema (docs/06 §3, validate on both ends); the server re-validates
+ * authoritatively. Explicit handlers only — no form semantics that conflict with RN
+ * (docs/06 §6).
  */
 export function CreateRoomForm() {
   const createRoom = useCreateRoom();
@@ -40,18 +35,10 @@ export function CreateRoomForm() {
   const [anchorLat, setAnchorLat] = useState("");
   const [anchorLng, setAnchorLng] = useState("");
   const [openNow, setOpenNow] = useState(false);
-  const [cuisines, setCuisines] = useState("");
+  const [cuisines, setCuisines] = useState<CuisineId[]>([]);
   const [priceLevels, setPriceLevels] = useState<PriceLevel[]>([]);
   const [radius, setRadius] = useState(String(DEFAULT_RADIUS_M));
   const [validationError, setValidationError] = useState<string | null>(null);
-
-  function togglePriceLevel(level: PriceLevel) {
-    setPriceLevels((current) =>
-      current.includes(level)
-        ? current.filter((value) => value !== level)
-        : [...current, level],
-    );
-  }
 
   function handleSubmit() {
     const parsed = createRoomRequestSchema.safeParse({
@@ -61,10 +48,7 @@ export function CreateRoomForm() {
       anchor_lng: toNumber(anchorLng),
       filters: {
         open_now: openNow,
-        cuisines: cuisines
-          .split(",")
-          .map((cuisine) => cuisine.trim())
-          .filter((cuisine) => cuisine.length > 0),
+        cuisines,
         price_levels: priceLevels,
       },
       default_radius_m: toNumber(radius),
@@ -123,43 +107,14 @@ export function CreateRoomForm() {
           placeholderTextColor={colors.textMuted}
         />
       </Field>
-      <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>Open now</Text>
-        <Switch value={openNow} onValueChange={setOpenNow} />
-      </View>
-      <Field label="Cuisines (comma-separated)">
-        <TextInput
-          style={styles.input}
-          value={cuisines}
-          onChangeText={setCuisines}
-          placeholder="italian, thai"
-          placeholderTextColor={colors.textMuted}
-          autoCapitalize="none"
-        />
-      </Field>
-      <Field label="Price range">
-        <View style={styles.priceRow}>
-          {PRICE_LEVELS.map((level) => {
-            const selected = priceLevels.includes(level);
-            return (
-              <Pressable
-                key={level}
-                onPress={() => togglePriceLevel(level)}
-                style={[styles.priceChip, selected && styles.priceChipSelected]}
-              >
-                <Text
-                  style={[
-                    styles.priceChipText,
-                    selected && styles.priceChipTextSelected,
-                  ]}
-                >
-                  {"$".repeat(Number(level))}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </Field>
+      <FiltersFieldset
+        openNow={openNow}
+        onOpenNowChange={setOpenNow}
+        cuisines={cuisines}
+        onCuisinesChange={setCuisines}
+        priceLevels={priceLevels}
+        onPriceLevelsChange={setPriceLevels}
+      />
       <Field label="Search radius (m)">
         <TextInput
           style={styles.input}
@@ -196,22 +151,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
   },
-  switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  switchLabel: { color: colors.text, fontSize: 16 },
-  priceRow: { flexDirection: "row", gap: spacing.sm },
-  priceChip: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  priceChipSelected: { backgroundColor: colors.accent },
-  priceChipText: { color: colors.textMuted, fontSize: 16 },
-  priceChipTextSelected: { color: colors.background, fontWeight: "600" },
   error: { color: colors.danger },
   button: {
     backgroundColor: colors.accent,

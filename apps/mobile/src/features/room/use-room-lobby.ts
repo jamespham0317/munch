@@ -11,6 +11,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect } from "react";
 
 import { getSupabaseClient } from "../../lib/supabase";
+import { useCurrentUser } from "../auth/use-current-user";
 import {
   activeSessionKey,
   useActiveSession,
@@ -26,7 +27,6 @@ import {
 
 const roomKey = (roomId: string) => ["room", roomId] as const;
 const membersKey = (roomId: string) => ["room-members", roomId] as const;
-const sessionUserKey = ["session-user"] as const;
 
 async function fetchRoom(roomId: string): Promise<Room> {
   const result = await getRoom(getSupabaseClient(), roomId);
@@ -44,20 +44,6 @@ async function fetchMembers(roomId: string): Promise<RoomMember[]> {
   return result.data;
 }
 
-interface SessionUser {
-  id: string;
-  /** Anonymous guests have no profile (CLAUDE.md §3); drives the lobby upgrade affordance. */
-  isAnonymous: boolean;
-}
-
-async function fetchSessionUser(): Promise<SessionUser | null> {
-  // Local read of the persisted session (no network round-trip) — tells which member row is
-  // the caller's (so the host sees the host-only control) and whether they are a guest.
-  const { data } = await getSupabaseClient().auth.getSession();
-  const user = data.session?.user;
-  return user ? { id: user.id, isAnonymous: user.is_anonymous ?? false } : null;
-}
-
 export function useRoomLobby(roomId: string) {
   const queryClient = useQueryClient();
 
@@ -73,11 +59,7 @@ export function useRoomLobby(roomId: string) {
     retry: false,
   });
 
-  const userQuery = useQuery<SessionUser | null, Error>({
-    queryKey: sessionUserKey,
-    queryFn: fetchSessionUser,
-    retry: false,
-  });
+  const userQuery = useCurrentUser();
 
   const sessionQuery = useActiveSession(roomId);
 

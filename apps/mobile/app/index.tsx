@@ -28,6 +28,11 @@ export default function HomeScreen() {
       <Link href="/room/join" style={[styles.button, styles.buttonSecondary]}>
         Join a room
       </Link>
+      {/* History gates on sign-in itself (guests see "sign in to save"), so the link is
+          always shown rather than splitting the home screen into a client auth check. */}
+      <Link href="/history" style={[styles.button, styles.buttonSecondary]}>
+        Your matches
+      </Link>
       {/* Signing in here creates a fresh account; guests upgrade in the lobby instead. */}
       <AuthPanel mode="signin" />
     </ScrollView>
