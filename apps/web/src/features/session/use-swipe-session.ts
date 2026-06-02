@@ -16,6 +16,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { useCurrentUser } from "@/features/auth/use-current-user";
 import { getSupabaseClient } from "@/lib/supabase";
 
 import { deckKey } from "./use-deck";
@@ -43,7 +44,6 @@ import { matchKey } from "./use-match";
  */
 
 const membersKey = (roomId: string) => ["room-members", roomId] as const;
-const sessionUserKey = ["session-user"] as const;
 
 async function fetchMembers(roomId: string): Promise<RoomMember[]> {
   const result = await getRoomMembers(getSupabaseClient(), roomId);
@@ -51,16 +51,6 @@ async function fetchMembers(roomId: string): Promise<RoomMember[]> {
     throw new Error(result.error.error.message);
   }
   return result.data;
-}
-
-interface SessionUser {
-  id: string;
-}
-
-async function fetchSessionUser(): Promise<SessionUser | null> {
-  const { data } = await getSupabaseClient().auth.getSession();
-  const user = data.session?.user;
-  return user ? { id: user.id } : null;
 }
 
 export interface SwipeSession {
@@ -100,11 +90,7 @@ export function useSwipeSession(
     queryFn: () => fetchMembers(roomId),
     retry: false,
   });
-  const userQuery = useQuery<SessionUser | null, Error>({
-    queryKey: sessionUserKey,
-    queryFn: fetchSessionUser,
-    retry: false,
-  });
+  const userQuery = useCurrentUser();
 
   const me = useMemo(() => {
     const userId = userQuery.data?.id;

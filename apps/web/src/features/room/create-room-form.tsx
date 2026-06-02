@@ -2,14 +2,15 @@
 
 import {
   createRoomRequestSchema,
+  type CuisineId,
   DEFAULT_RADIUS_M,
   type PriceLevel,
 } from "@munch/core";
 import { type FormEvent, useState } from "react";
 
-import { useCreateRoom } from "./use-create-room";
+import { FiltersFieldset } from "@/components/filters-fieldset";
 
-const PRICE_LEVELS: readonly PriceLevel[] = ["1", "2", "3", "4"];
+import { useCreateRoom } from "./use-create-room";
 
 /** Empty string → NaN so the Zod number schemas reject a blank coordinate/radius. */
 function toNumber(value: string): number {
@@ -30,18 +31,10 @@ export function CreateRoomForm() {
   const [anchorLat, setAnchorLat] = useState("");
   const [anchorLng, setAnchorLng] = useState("");
   const [openNow, setOpenNow] = useState(false);
-  const [cuisines, setCuisines] = useState("");
+  const [cuisines, setCuisines] = useState<CuisineId[]>([]);
   const [priceLevels, setPriceLevels] = useState<PriceLevel[]>([]);
   const [radius, setRadius] = useState(String(DEFAULT_RADIUS_M));
   const [validationError, setValidationError] = useState<string | null>(null);
-
-  function togglePriceLevel(level: PriceLevel) {
-    setPriceLevels((current) =>
-      current.includes(level)
-        ? current.filter((value) => value !== level)
-        : [...current, level],
-    );
-  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -52,10 +45,7 @@ export function CreateRoomForm() {
       anchor_lng: toNumber(anchorLng),
       filters: {
         open_now: openNow,
-        cuisines: cuisines
-          .split(",")
-          .map((cuisine) => cuisine.trim())
-          .filter((cuisine) => cuisine.length > 0),
+        cuisines,
         price_levels: priceLevels,
       },
       default_radius_m: toNumber(radius),
@@ -109,35 +99,14 @@ export function CreateRoomForm() {
           placeholder="-122.4194"
         />
       </label>
-      <label>
-        <input
-          type="checkbox"
-          checked={openNow}
-          onChange={(event) => setOpenNow(event.target.checked)}
-        />
-        Open now
-      </label>
-      <label>
-        Cuisines (comma-separated)
-        <input
-          value={cuisines}
-          onChange={(event) => setCuisines(event.target.value)}
-          placeholder="italian, thai"
-        />
-      </label>
-      <fieldset>
-        <legend>Price range</legend>
-        {PRICE_LEVELS.map((level) => (
-          <label key={level}>
-            <input
-              type="checkbox"
-              checked={priceLevels.includes(level)}
-              onChange={() => togglePriceLevel(level)}
-            />
-            {"$".repeat(Number(level))}
-          </label>
-        ))}
-      </fieldset>
+      <FiltersFieldset
+        openNow={openNow}
+        onOpenNowChange={setOpenNow}
+        cuisines={cuisines}
+        onCuisinesChange={setCuisines}
+        priceLevels={priceLevels}
+        onPriceLevelsChange={setPriceLevels}
+      />
       <label>
         Search radius (m)
         <input

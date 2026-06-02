@@ -76,6 +76,25 @@ function HostResolution({
   const topPick = ranking[0] ?? null;
   const busy = resolve.isPending;
 
+  // Three honest framings of the resolution state (Phase 4 edge cases):
+  //   * empty deck — start_session/widen found zero spots: offer widen, nothing to accept;
+  //   * everyone-passed — every card was passed by everyone (top pick's pass_count equals the
+  //     member_count): present it as the host's best-available pick, NOT a near-match;
+  //   * otherwise — the normal closest-to-unanimous ranking (fewest passes first).
+  const isEmpty = topPick === null;
+  const everyonePassed =
+    topPick !== null && topPick.pass_count === topPick.member_count;
+  const heading = isEmpty
+    ? "No spots found"
+    : everyonePassed
+      ? "Nobody’s first choice"
+      : "No unanimous match";
+  const subcopy = isEmpty
+    ? "Widen your search to pull in more places."
+    : everyonePassed
+      ? "Everyone passed on these — here’s the best available pick. Accept it or widen the search."
+      : "Closest to unanimous — fewest passes first.";
+
   function handleAccept() {
     if (!topPick || busy) return;
     resolve.mutate({
@@ -96,11 +115,9 @@ function HostResolution({
 
   return (
     <section>
-      <h2>No unanimous match</h2>
-      <p>Closest to unanimous — fewest passes first.</p>
-      {topPick === null ? (
-        <p>No restaurants to rank.</p>
-      ) : (
+      <h2>{heading}</h2>
+      <p>{subcopy}</p>
+      {isEmpty ? null : (
         <ol>
           {ranking.map((entry, index) => (
             <RankingRow

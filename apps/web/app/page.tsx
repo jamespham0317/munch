@@ -13,6 +13,9 @@ export default function HomePage() {
       <nav>
         <Link href="/room/create">Create a room</Link>
         <Link href="/room/join">Join a room</Link>
+        {/* History gates on sign-in itself (guests see "sign in to save"), so the link is
+            always shown rather than splitting the home page into a client auth check. */}
+        <Link href="/history">Your matches</Link>
       </nav>
       {/* Guest is the default path above; an account is optional and unlocks saved
           matches (docs/01 §10). Signing in here creates a fresh account. */}
