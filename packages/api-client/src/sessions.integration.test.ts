@@ -106,7 +106,10 @@ function makeCreateReq(name: string): CreateRoomRequest {
     anchor_label: "Test Anchor",
     anchor_lat: 37.7749,
     anchor_lng: -122.4194,
-    filters: { open_now: true, cuisines: [], price_levels: [] },
+    // Unfiltered baseline: the edge FakeProvider now HONORS filters (Phase 4), so an
+    // open_now/cuisine/price filter would shrink the returned fixture. These tests assert
+    // on the FULL fixture (deck-fetch-once, widen-unseen), so the baseline carries no filter.
+    filters: { open_now: false, cuisines: [], price_levels: [] },
     default_radius_m: 3000,
   };
 }
@@ -695,7 +698,9 @@ describe.skipIf(!ENABLED)("Phase 3 host resolution (integration)", () => {
         room_id: roomId,
         status: "active",
         radius_m: 3000,
-        filter_open_now: true,
+        // Unfiltered baseline (see makeCreateReq): widen goes through the now-filter-aware
+        // FakeProvider, so no filter here keeps the unseen-card complement at full size.
+        filter_open_now: false,
         filter_cuisines: [],
         filter_price_levels: [],
         started_at: new Date().toISOString(),

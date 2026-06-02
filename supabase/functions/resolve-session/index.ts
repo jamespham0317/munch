@@ -166,6 +166,18 @@ async function handleAcceptTop(
   );
   if (matchErr) throw new EdgeError("VALIDATION_ERROR", matchErr);
 
+  // Retention hook: snapshot a match_history row for each signed-in present member
+  // (guests get none — CLAUDE.md §3). The signed-in-only + snapshot logic lives in ONE
+  // place (record_match_history, migration 0016), shared with submit_swipe's unanimous
+  // path — call it via the service-role client rather than re-implementing it. Called
+  // AFTER the matches row exists (the function reads matches) but BEFORE the session flip,
+  // so a failure leaves the session in awaiting_host_resolution and the host can simply
+  // retry accept (both the match upsert and this insert are idempotent). ZERO provider calls.
+  const { error: histErr } = await admin.rpc("record_match_history", {
+    p_session_id: session.id,
+  });
+  if (histErr) throw new EdgeError("VALIDATION_ERROR", histErr);
+
   // Guard on awaiting_host_resolution so we never resolve a session twice or race a widen.
   const { error: sessErr } = await admin
     .from("sessions")

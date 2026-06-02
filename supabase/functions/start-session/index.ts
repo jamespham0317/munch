@@ -115,7 +115,14 @@ Deno.serve(async (req) => {
       // Initial deck is round 0; widen rounds (resolve-session) append n+1.
       await insertCachedDeck(admin, sessionId, restaurantIds, 0);
     }
-    await activateSession(admin, sessionId);
+    // An EMPTY initial pool (filters matched nothing in this area) routes the host
+    // straight to the existing resolution path's widen control instead of a swipe
+    // screen with no cards (pinned Phase 4 decision; no new empty-state mechanic).
+    // A non-empty deck activates as normal. The single-provider-call invariant is
+    // unaffected — the fetch above already happened exactly once either way.
+    const status =
+      restaurantIds.length > 0 ? "active" : "awaiting_host_resolution";
+    await finalizeSession(admin, sessionId, status);
 
     // ----- 7. Success log + response --------------------------------------
     // Structured one-line log — the §2.1 invariant verifier. Prompt 7's
@@ -132,7 +139,7 @@ Deno.serve(async (req) => {
     );
 
     return jsonResponse(200, {
-      session: { id: sessionId, status: "active", radius_m: radiusM },
+      session: { id: sessionId, status, radius_m: radiusM },
       deck_size: restaurantIds.length,
     });
   } catch (err) {
@@ -288,13 +295,20 @@ async function insertLobbySession(
   return data.id as string;
 }
 
-async function activateSession(
+/**
+ * Flip the freshly-inserted `lobby` session to its starting status: `active` for a
+ * non-empty deck, or `awaiting_host_resolution` when the initial pool came back empty
+ * (the host gets the widen control via the existing resolution path). `started_at` is
+ * stamped in both cases — the host did start the session; the provider fetch happened.
+ */
+async function finalizeSession(
   admin: SupabaseClient,
   sessionId: string,
+  status: "active" | "awaiting_host_resolution",
 ): Promise<void> {
   const { error } = await admin
     .from("sessions")
-    .update({ status: "active", started_at: new Date().toISOString() })
+    .update({ status, started_at: new Date().toISOString() })
     .eq("id", sessionId);
   if (error) throw new EdgeError("VALIDATION_ERROR", error);
 }

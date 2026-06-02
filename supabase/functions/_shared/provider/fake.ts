@@ -27,10 +27,19 @@ const FAKE_DECK: readonly NormalizedRestaurant[] = Object.freeze(
 );
 
 /**
- * Deterministic test provider. Returns the JSON fixture verbatim (after honoring
- * `excludeProviderRefs`, so a future widen-round test sees the same skip behavior as
- * the real provider). Set PROVIDER_FAKE_THROW=1 in the served env to exercise the
- * Edge Function's PROVIDER_ERROR path.
+ * Deterministic test provider. Returns the JSON fixture after applying the SAME
+ * filters the real GooglePlacesProvider would (cuisines, price levels, openNow) plus
+ * the `excludeProviderRefs` skip — so an integration test can prove filters shape the
+ * deck (CLAUDE.md §2.1/§2.2: filters change the cached pool only at the provider call).
+ * The semantics mirror google-places.ts exactly:
+ *   - cuisines: empty = no filter; otherwise keep rows whose `cuisines` intersect the
+ *     requested set (Google sends these as `includedTypes`).
+ *   - priceLevels: empty = no filter; otherwise keep rows with a known price_level in
+ *     the set (Google applies this server-side; unpriced rows are excluded under a filter).
+ *   - openNow: drop only definitely-closed rows (`is_open_now === false`); unknown
+ *     (null) passes through, matching google-places.ts's post-fetch openNow handling.
+ * Stays deterministic and offline. Set PROVIDER_FAKE_THROW=1 in the served env to
+ * exercise the Edge Function's PROVIDER_ERROR path.
  */
 export class FakeProvider implements RestaurantProvider {
   fetchRestaurants(
@@ -42,9 +51,22 @@ export class FakeProvider implements RestaurantProvider {
       throw new ProviderError("fake provider configured to throw");
     }
     const exclude = new Set(params.excludeProviderRefs ?? []);
-    const out = FAKE_DECK.filter((r) => !exclude.has(r.provider_ref)).map(
-      (r) => ({ ...r }),
-    );
+    const cuisines = new Set(params.cuisines);
+    const priceLevels = new Set(params.priceLevels);
+    const out = FAKE_DECK.filter((r) => {
+      if (exclude.has(r.provider_ref)) return false;
+      if (cuisines.size > 0 && !r.cuisines.some((c) => cuisines.has(c))) {
+        return false;
+      }
+      if (
+        priceLevels.size > 0 &&
+        !(r.price_level !== null && priceLevels.has(r.price_level))
+      ) {
+        return false;
+      }
+      if (params.openNow && r.is_open_now === false) return false;
+      return true;
+    }).map((r) => ({ ...r }));
     return Promise.resolve(out);
   }
 }

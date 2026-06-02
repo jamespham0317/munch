@@ -56,12 +56,16 @@ export function toGooglePriceLevels(
 }
 
 /**
- * Map the app's free-form cuisine identifiers to Google v1 `includedTypes`. The
- * known set covers the common cases; unknown values are dropped (an unknown cuisine
- * with no Google type is a noop filter, NOT a fallback to all restaurants — the
- * caller still passes `restaurant` as a safety net). Keep small and deterministic;
- * a proper taxonomy is post-v1 (the per-member "narrow" filters are deferred too —
- * CLAUDE.md §8 deferred list).
+ * Map the app's cuisine identifiers to Google v1 `includedTypes`. The keys are
+ * EXACTLY the closed v1 taxonomy from @munch/core `CUISINES` (packages/core/src/
+ * constants.ts) — kept in lockstep here because Edge Functions are Deno and can't
+ * import the workspace package (same duplicate-with-a-pointer convention as
+ * `NormalizedRestaurant`). The list is CLOSED: the picker UI and this map both key
+ * off the same ids, so every taxonomy id maps to at least one Google place type.
+ * Dietary filters (veg/vegan/halal/gluten-free) and per-member "narrow" filters are
+ * deferred (CLAUDE.md §8 deferred list); do not add them here. Any value not in this
+ * map is dropped (a noop filter, NOT a fallback to all restaurants — the caller still
+ * passes `restaurant` as a safety net).
  */
 const CUISINE_TO_GOOGLE_TYPE: Readonly<Record<string, string>> = {
   italian: "italian_restaurant",
@@ -70,24 +74,14 @@ const CUISINE_TO_GOOGLE_TYPE: Readonly<Record<string, string>> = {
   mexican: "mexican_restaurant",
   thai: "thai_restaurant",
   indian: "indian_restaurant",
-  french: "french_restaurant",
+  american: "american_restaurant",
+  mediterranean: "mediterranean_restaurant",
   korean: "korean_restaurant",
   vietnamese: "vietnamese_restaurant",
-  greek: "greek_restaurant",
-  mediterranean: "mediterranean_restaurant",
-  american: "american_restaurant",
   pizza: "pizza_restaurant",
   sushi: "sushi_restaurant",
-  steak: "steak_house",
-  seafood: "seafood_restaurant",
-  vegetarian: "vegetarian_restaurant",
-  vegan: "vegan_restaurant",
-  ramen: "ramen_restaurant",
-  brunch: "brunch_restaurant",
-  bbq: "barbecue_restaurant",
-  burger: "hamburger_restaurant",
   cafe: "cafe",
-  bakery: "bakery",
+  dessert: "dessert_shop",
 };
 
 export function cuisinesToGoogleIncludedTypes(cuisines: string[]): string[] {
