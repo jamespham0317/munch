@@ -7,9 +7,10 @@ export default async function LobbyPage({
 }) {
   const { roomId } = await params;
   return (
-    <main>
-      <h1>Room lobby</h1>
-      <LobbyView roomId={roomId} />
+    <main className="min-h-screen">
+      <div className="mx-auto w-full max-w-xl px-5 py-md md:py-lg">
+        <LobbyView roomId={roomId} />
+      </div>
     </main>
   );
 }

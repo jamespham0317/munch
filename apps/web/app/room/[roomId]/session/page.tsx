@@ -20,9 +20,10 @@ export default async function SessionPage({
     redirect(`/room/${roomId}/lobby`);
   }
   return (
-    <main>
-      <h1>Swipe</h1>
-      <SessionView roomId={roomId} sessionId={sessionId} />
+    <main className="min-h-screen">
+      <div className="mx-auto w-full max-w-xl px-5 py-md md:py-lg">
+        <SessionView roomId={roomId} sessionId={sessionId} />
+      </div>
     </main>
   );
 }

@@ -27,8 +27,8 @@ export function Card({
   padding?: "md" | "decision" | "none";
   /** `default` = white surface; `brand` = amber fill with charcoal text. */
   surface?: "default" | "brand";
-  /** A missing src renders the card without a photo header. */
-  image?: string;
+  /** A missing/undefined src renders the card without a photo header. */
+  image?: string | undefined;
   imageAlt?: string;
   imageHeight?: number;
   imageOverlay?: ReactNode;

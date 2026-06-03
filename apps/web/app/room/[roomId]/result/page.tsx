@@ -19,9 +19,10 @@ export default async function ResultPage({
     redirect(`/room/${roomId}/lobby`);
   }
   return (
-    <main>
-      <h1>Match</h1>
-      <ResultView sessionId={sessionId} />
+    <main className="min-h-screen">
+      <div className="mx-auto w-full max-w-xl px-5 py-md md:py-lg">
+        <ResultView sessionId={sessionId} />
+      </div>
     </main>
   );
 }

@@ -24,9 +24,12 @@ export function FiltersSummary({
   }
 
   return (
-    <p>
-      Filters:{" "}
-      {parts.length > 0 ? parts.join(" · ") : <em>none (any restaurant)</em>}
+    <p className="text-body-md text-text-muted">
+      {parts.length > 0 ? (
+        parts.join(" · ")
+      ) : (
+        <em>No filters — any restaurant</em>
+      )}
     </p>
   );
 }

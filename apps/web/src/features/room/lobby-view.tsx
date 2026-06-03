@@ -1,22 +1,24 @@
 "use client";
 
-import Link from "next/link";
+import { Clock, UtensilsCrossed } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { Button, ProgressPill } from "@/components/ui";
 import { useStartSession } from "@/features/session/use-start-session";
 
-import { InvitePanel } from "./invite-panel";
+import { buildJoinUrl, InvitePanel } from "./invite-panel";
 import { LobbyFiltersPanel } from "./lobby-filters-panel";
 import { MemberList } from "./member-list";
 import { useRoomLobby } from "./use-room-lobby";
 
 /**
- * Room lobby: an initial getRoom + getRoomMembers read kept live by subscribeRoom,
- * an invite affordance, and the host-only "Start session" control. Once any member
- * sees an active session for the room (via the lobby's session subscription), they
- * auto-route to the swipe screen. Screens stay thin — all data access is in
- * @munch/api-client (CLAUDE.md §4).
+ * Room lobby (pages.md §3.5, "Lobby with QR Code"): an initial getRoom + getRoomMembers read
+ * kept live by subscribeRoom, the amber invite card + the "Squad" grid, and the host-only
+ * "Start Session" control. Once any member sees an active session for the room (via the
+ * lobby's session subscription), they auto-route to the swipe screen. Screens stay thin — all
+ * data access is in @munch/api-client (CLAUDE.md §4); only aggregate presence is shown, never
+ * per-member swipes (CLAUDE.md §3). Web twin of the Phase B mobile LobbyView.
  */
 export function LobbyView({ roomId }: { roomId: string }) {
   const router = useRouter();
@@ -42,13 +44,21 @@ export function LobbyView({ roomId }: { roomId: string }) {
   }, [activeSession, roomId, router]);
 
   if (roomQuery.isPending || membersQuery.isPending) {
-    return <p>Loading lobby…</p>;
+    return <p className="text-body-md text-text-muted">Loading lobby…</p>;
   }
   if (roomQuery.isError) {
-    return <p role="alert">{roomQuery.error.message}</p>;
+    return (
+      <p role="alert" className="text-body-md text-error">
+        {roomQuery.error.message}
+      </p>
+    );
   }
   if (membersQuery.isError) {
-    return <p role="alert">{membersQuery.error.message}</p>;
+    return (
+      <p role="alert" className="text-body-md text-error">
+        {membersQuery.error.message}
+      </p>
+    );
   }
 
   const room = roomQuery.data;
@@ -64,10 +74,17 @@ export function LobbyView({ roomId }: { roomId: string }) {
   // "waiting for the host" lobby, which would never resolve. The backend is unchanged.
   if (!room.isActive) {
     return (
-      <section>
-        <h2>The host ended the session</h2>
-        <p>This room is closed.</p>
-        <Link href="/">Back home</Link>
+      <section className="flex flex-col items-center gap-gutter py-xl text-center">
+        <UtensilsCrossed size={48} className="text-text-faint" aria-hidden />
+        <h2 className="text-headline-md text-text">
+          The host ended the session
+        </h2>
+        <p className="text-body-md text-text-muted">This room is closed.</p>
+        <Button
+          label="Back home"
+          variant="ghost"
+          onClick={() => router.replace("/")}
+        />
       </section>
     );
   }
@@ -76,30 +93,76 @@ export function LobbyView({ roomId }: { roomId: string }) {
     startSession.mutate({ radius_m: room.defaultRadiusM });
   }
 
+  async function handleInvite() {
+    const url = buildJoinUrl(room.code);
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ url });
+      } else {
+        await navigator.clipboard.writeText(url);
+      }
+    } catch {
+      // Sharing is best-effort; a dismissed or failed share/copy is not surfaced.
+    }
+  }
+
   const startError = startSession.isError ? startSession.error.message : null;
+  const startDisabled = startSession.isPending || activeSession !== null;
 
   return (
-    <section>
+    <section className="flex flex-col gap-md">
+      <div className="flex items-center gap-base">
+        <UtensilsCrossed size={24} className="text-heat" aria-hidden />
+        <span className="text-title-lg text-text">Munch</span>
+      </div>
+
+      <header className="flex flex-col gap-base">
+        <h1 className="text-display-lg-mobile text-text md:text-display-lg">
+          Waiting for the crew…
+        </h1>
+        <p className="text-body-md text-text-muted">
+          Share this code or tap to copy the link.
+        </p>
+      </header>
+
       <InvitePanel code={room.code} />
-      <h2>Members</h2>
-      <MemberList members={members} />
+
+      <div className="flex items-center justify-between">
+        <h2 className="text-headline-md text-text">
+          The Squad ({members.length})
+        </h2>
+        <ProgressPill
+          label="Waiting…"
+          leadingIcon={
+            <Clock size={12} className="text-text-muted" aria-hidden />
+          }
+        />
+      </div>
+      <MemberList members={members} onInvite={() => void handleInvite()} />
+
       <LobbyFiltersPanel room={room} isHost={isHost} />
+
       {isHost ? (
         <>
-          <button
-            type="button"
+          <Button
+            label={startSession.isPending ? "Starting…" : "Start Session"}
             onClick={handleStart}
-            disabled={startSession.isPending || activeSession !== null}
-          >
-            {startSession.isPending ? "Starting…" : "Start session"}
-          </button>
-          {startError ? <p role="alert">{startError}</p> : null}
+            disabled={startDisabled}
+            loading={startSession.isPending}
+          />
+          {startError ? (
+            <p role="alert" className="text-body-md text-error">
+              {startError}
+            </p>
+          ) : null}
         </>
       ) : (
-        <p>Waiting for the host to start the session…</p>
+        <p className="text-body-md text-text-muted">
+          Waiting for the host to start the session…
+        </p>
       )}
       {/* No mid-room sign-in (CLAUDE.md §3): a guest who joined this room stays a guest for it.
-          Auth lives only outside a room (home + /history) — no auth control belongs here. */}
+          Auth lives only outside a room (Profile tab + /history) — no auth control belongs here. */}
     </section>
   );
 }

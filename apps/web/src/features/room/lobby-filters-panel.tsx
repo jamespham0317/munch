@@ -4,12 +4,15 @@ import {
   type CuisineId,
   DEFAULT_RADIUS_M,
   type PriceLevel,
+  RADIUS_MAX_M,
   type Room,
 } from "@munch/core";
 import { useState } from "react";
 
 import { FiltersFieldset } from "@/components/filters-fieldset";
 import { FiltersSummary } from "@/components/filters-summary";
+import { RadiusSlider } from "@/components/radius-slider";
+import { Button, Card, Field } from "@/components/ui";
 
 import { useUpdateRoomFilters } from "./use-update-room-filters";
 
@@ -31,14 +34,16 @@ export function LobbyFiltersPanel({
 }) {
   if (!isHost) {
     return (
-      <section>
-        <h2>Filters</h2>
-        <FiltersSummary
-          openNow={room.filterOpenNow}
-          cuisines={room.filterCuisines}
-          priceLevels={room.filterPriceLevels}
-        />
-      </section>
+      <Card>
+        <h2 className="text-title-lg text-text">Filters</h2>
+        <div className="mt-base">
+          <FiltersSummary
+            openNow={room.filterOpenNow}
+            cuisines={room.filterCuisines}
+            priceLevels={room.filterPriceLevels}
+          />
+        </div>
+      </Card>
     );
   }
   return <HostFilters room={room} />;
@@ -56,43 +61,52 @@ function HostFilters({ room }: { room: Room }) {
   const [priceLevels, setPriceLevels] = useState<PriceLevel[]>(
     room.filterPriceLevels,
   );
-  const [radius, setRadius] = useState(String(room.defaultRadiusM));
+  const [radius, setRadius] = useState(room.defaultRadiusM);
 
   function handleSave() {
     if (update.isPending) return;
-    const radiusM = Number(radius);
     update.mutate({
       filters: { open_now: openNow, cuisines, price_levels: priceLevels },
-      default_radius_m: Number.isFinite(radiusM) ? radiusM : DEFAULT_RADIUS_M,
+      default_radius_m: Number.isFinite(radius) ? radius : DEFAULT_RADIUS_M,
     });
   }
 
   return (
-    <section>
-      <h2>Filters</h2>
-      <FiltersFieldset
-        openNow={openNow}
-        onOpenNowChange={setOpenNow}
-        cuisines={cuisines}
-        onCuisinesChange={setCuisines}
-        priceLevels={priceLevels}
-        onPriceLevelsChange={setPriceLevels}
-        disabled={update.isPending}
-      />
-      <label>
-        Search radius (m)
-        <input
-          value={radius}
-          onChange={(event) => setRadius(event.target.value)}
-          inputMode="numeric"
+    <Card>
+      <h2 className="text-title-lg text-text">Filters</h2>
+      <div className="mt-md flex flex-col gap-md">
+        <FiltersFieldset
+          openNow={openNow}
+          onOpenNowChange={setOpenNow}
+          cuisines={cuisines}
+          onCuisinesChange={setCuisines}
+          priceLevels={priceLevels}
+          onPriceLevelsChange={setPriceLevels}
           disabled={update.isPending}
         />
-      </label>
-      {update.isError ? <p role="alert">{update.error.message}</p> : null}
-      {update.isSuccess ? <p>Filters saved.</p> : null}
-      <button type="button" onClick={handleSave} disabled={update.isPending}>
-        {update.isPending ? "Saving…" : "Save filters"}
-      </button>
-    </section>
+        <Field label="Search radius">
+          <RadiusSlider
+            valueM={radius}
+            maxM={RADIUS_MAX_M}
+            onChange={setRadius}
+          />
+        </Field>
+        {update.isError ? (
+          <p role="alert" className="text-body-md text-error">
+            {update.error.message}
+          </p>
+        ) : null}
+        {update.isSuccess ? (
+          <p className="text-body-md text-text-muted">Filters saved.</p>
+        ) : null}
+        <Button
+          label={update.isPending ? "Saving…" : "Save filters"}
+          variant="ghost"
+          onClick={handleSave}
+          disabled={update.isPending}
+          loading={update.isPending}
+        />
+      </div>
+    </Card>
   );
 }
