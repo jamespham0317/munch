@@ -25,7 +25,7 @@ export default function DiscoverPage() {
       </div>
 
       <h1 className="text-headline-md text-text">Under Construction</h1>
-      <p className="mt-sm max-w-sm text-body-md text-text-muted">
+      <p className="mt-sm max-w-80 text-body-md text-text-muted">
         We&apos;re cooking up something special. Check back soon for more ways
         to find great food!
       </p>

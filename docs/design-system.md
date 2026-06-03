@@ -122,7 +122,10 @@ tracking. Load via `expo-font` + `@expo-google-fonts/quicksand` (mobile) and
 
 `xs 4 · sm 12 · base 8 · gutter 16 · md 24 · lg 48 · xl 64`. Card interiors use `md` (24px);
 the "Decision" card uses 32px. Mobile screen margin 20px; desktop content is centered in a
-**1200px max-width** container with 48px margins.
+**1200px max-width** container with 48px margins. On web these are the `.munch-container`
+(1200px tab-shell width) and `.munch-column` (36rem reading column for the full-screen
+room/auth routes) utilities in `globals.css` — var-backed, not Tailwind's `max-w-*` t-shirt
+scale, which the seeded named `--spacing-*` tokens shadow.
 
 **Radii** — sharp corners are avoided entirely.
 

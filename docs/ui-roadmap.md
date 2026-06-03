@@ -73,19 +73,45 @@ US-imperial launch is decided (open, see CLAUDE.md §9).
 
 ---
 
-## 4. Phase C — Web (Next.js)
+## 4. Phase C — Web (Next.js) — ✅ Delivered
 
 **Goal:** the same language on the browser, responsive to desktop.
 
-- Add **Tailwind v4** to `apps/web`; seed its theme from `@munch/ui` tokens (CSS custom
-  properties / `@theme`). Load **Quicksand** via `next/font/google`. Set the cream `body`
-  background and the centered **1200px** desktop container (`design-system.md` §6).
-- Mirror the mobile primitives as web components.
-- Replace the remaining inline `style={}` usages; reskin every route in `pages.md`.
-- Responsive nav: bottom TabBar at mobile widths → top/side nav at desktop.
+- Added **Tailwind v4** to `apps/web` (`tailwindcss` + `@tailwindcss/postcss`); its theme is
+  **seeded from `@munch/ui`** by `apps/web/scripts/generate-theme.ts`, which emits
+  `app/theme.generated.css` (a `@theme` block of `--color-*`/`--text-*`/`--radius-*`/
+  `--spacing-*`/`--shadow-*` plus a `:root` of layout constants) and runs before `dev`/`build`;
+  `pnpm generate-theme:check` is the web `test` gate, so a hand-edited palette fails CI (no
+  values duplicated in the app, `design-system.md` §3). **Quicksand** loads via
+  `next/font/google` in `app/layout.tsx`, mapped to `--font-sans`; the `body` is cream/charcoal.
+- Built the web primitives in `apps/web/src/components/ui/` (Button, Chip/FoodChip, Card,
+  PriceTile, Field, Input, Avatar, ProgressPill/Badge, Toggle, TabBar) from the theme; the
+  restyled RadiusSlider stays at `src/components/radius-slider.tsx` and the Decision card at
+  `src/components/swipe-card.tsx`.
+- Added the three-destination nav as a Next App Router **`app/(tabs)/` route group** with a
+  `tabs-nav.tsx`: a **bottom bar at mobile widths → left side-nav at desktop** inside the
+  centered **1200px** `.munch-container`. Welcome → Match root, Discover → "Under Construction"
+  placeholder, Profile → auth/history. The room/join/create and `auth/*` routes stay **outside**
+  `(tabs)` and present full-screen via `FullScreenView`; the join deep link (`room/join/[code]`)
+  still resolves.
+- Reskinned every route in `pages.md` §3 and replaced the inline `style={}` usages; the only
+  remaining inline style is the per-frame swipe drag transform (`swipe-card.tsx`) plus a couple
+  of prop-computed dynamic sizes (Card image height, Avatar dimension). Full-screen routes use a
+  narrower centered **reading column** (`.munch-column`, 36rem) since a 1200px-wide form/card
+  reads poorly; the cream/charcoal palette, Quicksand, and the like/pass-only swipe (no bookmark)
+  match the mobile result. Distance is shown in **km** (≥1 km) / **m** (<1 km), as on mobile.
 
-**Exit criteria:** all web routes match the mockups and reflow cleanly mobile↔desktop;
-no inline `style={}` left for layout; the join-via-link and session flows work in-browser.
+**Exit criteria — met:** `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build` are green
+tree-wide; every web route in `pages.md` §3 matches its Stitch mockup at both a mobile and a
+desktop width and reflows cleanly (bottom bar ↔ side nav, centered container, no overflow); the
+join-via-link and the swipe→match / swipe→resolution flows complete in-browser with **one
+provider call per session** (the single `start-session` Edge Function; no fetch per swipe) and
+the card never declares a match; auth lives on Profile, not Welcome; cuisines come from the
+`@munch/core` `CUISINES` taxonomy; no hardcoded palette or `react-native-web` import remains.
+Verification (Phase D, web) caught and fixed a Tailwind v4 theming bug — the seeded named
+`--spacing-{sm,md,lg,xl}` tokens shadow the `max-w-{sm,md,lg,xl}` t-shirt scale, collapsing
+`max-w-xl` to 64px; the page containers now use the var-backed `.munch-container`/`.munch-column`
+utilities instead.
 
 ---
 

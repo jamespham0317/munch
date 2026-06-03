@@ -22,7 +22,7 @@ export function FullScreenView({
 }) {
   return (
     <main className="min-h-screen">
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-md px-5 py-md md:py-lg">
+      <div className="munch-column flex flex-col gap-md py-md md:py-lg">
         <Link
           href="/"
           aria-label="Munch home"

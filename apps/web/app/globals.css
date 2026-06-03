@@ -37,4 +37,17 @@
       padding-inline: var(--munch-desktop-margin);
     }
   }
+
+  /* Narrower centered reading column for the full-screen (non-tab) routes —
+     create/join/auth forms, the lobby, the swipe deck and the match/result.
+     This is the width Tailwind's `max-w-xl` (36rem) was meant to give; we set
+     it explicitly because the seeded `--spacing-xl` token (design-system.md §6)
+     shadows the `xl` key in Tailwind v4's `max-w-*` t-shirt scale, collapsing
+     `max-w-xl` to 64px. The cream margins match the mobile screen margin. */
+  .munch-column {
+    width: 100%;
+    max-width: 36rem;
+    margin-inline: auto;
+    padding-inline: var(--munch-screen-margin-mobile);
+  }
 }

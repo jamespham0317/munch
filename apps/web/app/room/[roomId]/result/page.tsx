@@ -20,7 +20,7 @@ export default async function ResultPage({
   }
   return (
     <main className="min-h-screen">
-      <div className="mx-auto w-full max-w-xl px-5 py-md md:py-lg">
+      <div className="munch-column py-md md:py-lg">
         <ResultView sessionId={sessionId} />
       </div>
     </main>

@@ -53,14 +53,16 @@ export default function HomePage() {
         href="/room/create"
         className="block rounded-xl transition-transform active:translate-y-[var(--munch-press-translate-y)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/40 motion-reduce:transition-none"
       >
-        <Card surface="brand" className="flex flex-col gap-base">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-on-brand">
-            <Plus size={22} className="text-brand" aria-hidden />
-          </span>
-          <span className="text-headline-md">Create a Room</span>
-          <span className="text-body-md text-text-muted">
-            Host a session and invite your crew.
-          </span>
+        <Card surface="brand">
+          <div className="flex flex-col gap-base">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-on-brand">
+              <Plus size={22} className="text-brand" aria-hidden />
+            </span>
+            <span className="text-headline-md">Create a Room</span>
+            <span className="text-body-md text-text-muted">
+              Host a session and invite your crew.
+            </span>
+          </div>
         </Card>
       </Link>
 
