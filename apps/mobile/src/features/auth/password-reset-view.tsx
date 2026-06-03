@@ -7,11 +7,11 @@ import { useMutation } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
 import { Link, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
-import { Field } from "../../components/ui/field";
+import { Button, Field, Input } from "../../components/ui";
 import { getSupabaseClient } from "../../lib/supabase";
-import { colors, spacing } from "../../theme";
+import { colors, spacing, typography } from "../../theme";
 import { useEmailSignIn } from "./use-email-sign-in";
 
 /**
@@ -101,15 +101,13 @@ export function PasswordResetView({ code }: { code?: string | undefined }) {
       <View style={styles.container}>
         <Text style={styles.heading}>Set a new password</Text>
         <Field label="New password">
-          <TextInput
-            style={styles.input}
+          <Input
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
             autoComplete="new-password"
             placeholder="At least 8 characters"
-            placeholderTextColor={colors.textMuted}
           />
         </Field>
         {errorMessage ? (
@@ -117,15 +115,11 @@ export function PasswordResetView({ code }: { code?: string | undefined }) {
             {errorMessage}
           </Text>
         ) : null}
-        <Pressable
-          style={[styles.button, update.isPending && styles.buttonDisabled]}
+        <Button
+          label={update.isPending ? "Saving…" : "Save password"}
           onPress={handleUpdate}
-          disabled={update.isPending}
-        >
-          <Text style={styles.buttonText}>
-            {update.isPending ? "Saving…" : "Save password"}
-          </Text>
-        </Pressable>
+          loading={update.isPending}
+        />
       </View>
     );
   }
@@ -168,15 +162,13 @@ export function PasswordResetView({ code }: { code?: string | undefined }) {
     <View style={styles.container}>
       <Text style={styles.heading}>Reset your password</Text>
       <Field label="Email">
-        <TextInput
-          style={styles.input}
+        <Input
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="email"
           placeholder="you@example.com"
-          placeholderTextColor={colors.textMuted}
         />
       </Field>
       {errorMessage ? (
@@ -184,15 +176,11 @@ export function PasswordResetView({ code }: { code?: string | undefined }) {
           {errorMessage}
         </Text>
       ) : null}
-      <Pressable
-        style={[styles.button, requestReset.isPending && styles.buttonDisabled]}
+      <Button
+        label={requestReset.isPending ? "Sending…" : "Send reset link"}
         onPress={handleRequest}
-        disabled={requestReset.isPending}
-      >
-        <Text style={styles.buttonText}>
-          {requestReset.isPending ? "Sending…" : "Send reset link"}
-        </Text>
-      </Pressable>
+        loading={requestReset.isPending}
+      />
       <Link href="/" style={styles.link}>
         Back home
       </Link>
@@ -202,29 +190,12 @@ export function PasswordResetView({ code }: { code?: string | undefined }) {
 
 const styles = StyleSheet.create({
   container: { gap: spacing.gutter },
-  heading: { color: colors.text, fontSize: 18, fontWeight: "600" },
-  input: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.base,
-    color: colors.text,
-    fontSize: 16,
-  },
-  muted: { color: colors.textMuted },
-  error: { color: colors.error },
-  button: {
-    backgroundColor: colors.brand,
-    borderRadius: 12,
-    paddingVertical: spacing.gutter,
-    alignItems: "center",
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.onBrand, fontSize: 16, fontWeight: "600" },
+  heading: { ...typography.headlineMd, color: colors.text },
+  muted: { ...typography.bodyMd, color: colors.textMuted },
+  error: { ...typography.bodyMd, color: colors.error },
   link: {
-    color: colors.brand,
-    fontSize: 16,
-    fontWeight: "600",
+    ...typography.bodyMd,
+    color: colors.heatStrong,
     paddingTop: spacing.base,
   },
 });

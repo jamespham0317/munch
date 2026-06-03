@@ -1,11 +1,11 @@
-import { ScrollView, StyleSheet, Text } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 
 import { HistoryView } from "../../src/features/history/history-view";
 import { colors, spacing } from "../../src/theme";
 
 /**
- * Saved-matches screen (docs/05 §3). Thin wrapper around the HistoryView feature, which gates
- * on the signed-in vs. guest state (CLAUDE.md §3, §4).
+ * Profile tab root (pages.md §2/§3.2). Thin wrapper around HistoryView, which gates on the
+ * signed-in vs. guest state and owns its per-state header (CLAUDE.md §3, §4).
  */
 export default function HistoryScreen() {
   return (
@@ -14,7 +14,6 @@ export default function HistoryScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.title}>Your matches</Text>
       <HistoryView />
     </ScrollView>
   );
@@ -22,6 +21,5 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.background },
-  content: { padding: spacing.md, gap: spacing.md },
-  title: { color: colors.text, fontSize: 28, fontWeight: "700" },
+  content: { padding: spacing.screenMarginMobile, gap: spacing.md },
 });

@@ -1,9 +1,9 @@
 import { joinRoomRequestSchema } from "@munch/core";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
-import { Field } from "../../components/ui/field";
-import { colors, spacing } from "../../theme";
+import { Button, Field, Input } from "../../components/ui";
+import { colors, spacing, typography } from "../../theme";
 import { useJoinRoom } from "./use-join-room";
 
 /**
@@ -11,7 +11,9 @@ import { useJoinRoom } from "./use-join-room";
  * field from the /room/join/{code} deep link; a bare /room/join renders the same form
  * blank for manual entry. Input is validated client-side against the @munch/core
  * schema (docs/06 §3); the server re-validates authoritatively. Explicit handlers only
- * (docs/06 §6).
+ * (docs/06 §6). join_room failures surface the api-client's friendly, code-mapped
+ * message (errors.ts: ROOM_NOT_FOUND/ROOM_CLOSED/ALREADY_JOINED/RATE_LIMITED — docs/04
+ * §3.2), never raw provider/DB text.
  */
 export function JoinRoomForm({ initialCode = "" }: { initialCode?: string }) {
   const joinRoom = useJoinRoom();
@@ -47,25 +49,21 @@ export function JoinRoomForm({ initialCode = "" }: { initialCode?: string }) {
 
   return (
     <View style={styles.form}>
+      <Field label="Your name">
+        <Input
+          value={displayName}
+          onChangeText={setDisplayName}
+          maxLength={50}
+          placeholder="e.g. Alex"
+        />
+      </Field>
       <Field label="Room code">
-        <TextInput
-          style={styles.input}
+        <Input
           value={code}
           onChangeText={setCode}
           keyboardType="number-pad"
           maxLength={6}
-          placeholder="123456"
-          placeholderTextColor={colors.textMuted}
-        />
-      </Field>
-      <Field label="Your name">
-        <TextInput
-          style={styles.input}
-          value={displayName}
-          onChangeText={setDisplayName}
-          maxLength={50}
-          placeholder="Your name"
-          placeholderTextColor={colors.textMuted}
+          placeholder="e.g. 582901"
         />
       </Field>
       {errorMessage ? (
@@ -73,36 +71,16 @@ export function JoinRoomForm({ initialCode = "" }: { initialCode?: string }) {
           {errorMessage}
         </Text>
       ) : null}
-      <Pressable
-        style={[styles.button, joinRoom.isPending && styles.buttonDisabled]}
+      <Button
+        label={joinRoom.isPending ? "Joining…" : "Join room"}
         onPress={handleSubmit}
-        disabled={joinRoom.isPending}
-      >
-        <Text style={styles.buttonText}>
-          {joinRoom.isPending ? "Joining…" : "Join room"}
-        </Text>
-      </Pressable>
+        loading={joinRoom.isPending}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   form: { gap: spacing.gutter },
-  input: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.base,
-    color: colors.text,
-    fontSize: 16,
-  },
-  error: { color: colors.error },
-  button: {
-    backgroundColor: colors.brand,
-    borderRadius: 12,
-    paddingVertical: spacing.gutter,
-    alignItems: "center",
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.onBrand, fontSize: 16, fontWeight: "600" },
+  error: { ...typography.bodyMd, color: colors.error },
 });

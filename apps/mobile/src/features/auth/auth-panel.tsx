@@ -1,17 +1,18 @@
+import { AntDesign } from "@expo/vector-icons";
 import { registerRequestSchema, signInRequestSchema } from "@munch/core";
 import { Link } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
-import { Field } from "../../components/ui/field";
-import { colors, spacing } from "../../theme";
+import { Button, Card, Field, Input, Toggle } from "../../components/ui";
+import { colors, spacing, typography } from "../../theme";
 import { useEmailSignIn } from "./use-email-sign-in";
 
 /**
- * Account panel for the home/landing surface and /history (RN parity with apps/web's AuthPanel;
- * docs/01 §10) — both OUTSIDE a room. Toggles between signing in and registering an email+password
- * account, with a "Continue with Google" button and a "Forgot password?" link. There is NO
- * mid-room sign-in and no guest upgrade: signing in here is always a fresh/existing real account
+ * Account panel for the Profile tab (RN parity with apps/web's AuthPanel; docs/01 §10) —
+ * always OUTSIDE a room. Toggles between signing in and registering an email+password account,
+ * with a "Continue with Google" button and a "Forgot password?" link. There is NO mid-room
+ * sign-in and no guest upgrade: signing in here is always a fresh/existing real account
  * (CLAUDE.md §3); guest stays the default elsewhere and is never blocked. Explicit handlers only
  * (docs/06 §6); all data access is in @munch/api-client (CLAUDE.md §4), and inputs are validated
  * against the @munch/core schemas (docs/06 §3) with the server re-validating.
@@ -23,6 +24,10 @@ export function AuthPanel({ mode }: { mode: "signin" | "register" }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  // Presentational only: the mockup shows "Remember me", but session persistence is not yet
+  // wired (supabase-js persists the session regardless today). Kept as local state so the
+  // control matches the design without changing auth behavior.
+  const [rememberMe, setRememberMe] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [registered, setRegistered] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
@@ -86,126 +91,124 @@ export function AuthPanel({ mode }: { mode: "signin" | "register" }) {
   const errorMessage = validationError ?? mutationError;
 
   return (
-    <View style={styles.panel}>
-      <Text style={styles.heading}>
-        {isRegister ? "Create an account" : "Sign in"}
-      </Text>
-      <View style={styles.form}>
-        <Field label="Email">
-          <TextInput
-            style={styles.input}
+    <Card>
+      <View style={styles.inner}>
+        <Button
+          label={google.isPending ? "Connecting…" : "Continue with Google"}
+          variant="social"
+          onPress={handleGoogle}
+          disabled={pending}
+          loading={google.isPending}
+          leadingIcon={
+            <AntDesign name="google" size={18} color={colors.heatStrong} />
+          }
+        />
+
+        <View style={styles.divider}>
+          <View style={styles.rule} />
+          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.rule} />
+        </View>
+
+        <Field label="Email address">
+          <Input
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="email"
             placeholder="you@example.com"
-            placeholderTextColor={colors.textMuted}
           />
         </Field>
         <Field label="Password">
-          <TextInput
-            style={styles.input}
+          <Input
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
             autoComplete={isRegister ? "new-password" : "current-password"}
             placeholder="At least 8 characters"
-            placeholderTextColor={colors.textMuted}
           />
         </Field>
         {isRegister ? (
           <Field label="Your name">
-            <TextInput
-              style={styles.input}
+            <Input
               value={displayName}
               onChangeText={setDisplayName}
               maxLength={50}
               placeholder="Your name"
-              placeholderTextColor={colors.textMuted}
             />
           </Field>
-        ) : null}
+        ) : (
+          <View style={styles.rememberRow}>
+            <Toggle
+              value={rememberMe}
+              onValueChange={setRememberMe}
+              label="Remember me"
+            />
+            <Link href="/auth/reset" style={styles.link}>
+              Forgot?
+            </Link>
+          </View>
+        )}
+
         {errorMessage ? (
           <Text style={styles.error} accessibilityRole="alert">
             {errorMessage}
           </Text>
         ) : null}
-        <Pressable
-          style={[styles.button, pending && styles.buttonDisabled]}
-          onPress={handleSubmit}
-          disabled={pending}
-        >
-          <Text style={styles.buttonText}>
-            {isRegister
+
+        <Button
+          label={
+            isRegister
               ? register.isPending
                 ? "Creating…"
                 : "Create account"
               : signIn.isPending
                 ? "Signing in…"
-                : "Sign in"}
+                : "Sign In"
+          }
+          onPress={handleSubmit}
+          disabled={pending}
+          loading={isRegister ? register.isPending : signIn.isPending}
+        />
+
+        {isRegister ? (
+          <Text style={styles.footer}>
+            Already have an account?{" "}
+            <Text style={styles.link} onPress={() => switchMode("signin")}>
+              Sign in
+            </Text>
           </Text>
-        </Pressable>
+        ) : (
+          <Text style={styles.footer}>
+            New here?{" "}
+            <Text style={styles.link} onPress={() => switchMode("register")}>
+              Create an account
+            </Text>
+          </Text>
+        )}
       </View>
-
-      <Pressable
-        style={[styles.buttonSecondary, pending && styles.buttonDisabled]}
-        onPress={handleGoogle}
-        disabled={pending}
-      >
-        <Text style={styles.buttonSecondaryText}>
-          {google.isPending ? "Connecting…" : "Continue with Google"}
-        </Text>
-      </Pressable>
-
-      {isRegister ? (
-        <Pressable onPress={() => switchMode("signin")}>
-          <Text style={styles.link}>Already have an account? Sign in</Text>
-        </Pressable>
-      ) : (
-        <View style={styles.footerLinks}>
-          <Pressable onPress={() => switchMode("register")}>
-            <Text style={styles.link}>Need an account? Create one</Text>
-          </Pressable>
-          <Link href="/auth/reset" style={styles.link}>
-            Forgot password?
-          </Link>
-        </View>
-      )}
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  panel: { gap: spacing.gutter },
-  heading: { color: colors.text, fontSize: 18, fontWeight: "600" },
-  form: { gap: spacing.gutter },
-  input: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.base,
-    color: colors.text,
-    fontSize: 16,
-  },
-  muted: { color: colors.textMuted },
-  error: { color: colors.error },
-  button: {
-    backgroundColor: colors.brand,
-    borderRadius: 12,
-    paddingVertical: spacing.gutter,
+  inner: { gap: spacing.gutter },
+  divider: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  rule: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { ...typography.labelMd, color: colors.textFaint },
+  rememberRow: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.onBrand, fontSize: 16, fontWeight: "600" },
-  buttonSecondary: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingVertical: spacing.gutter,
-    alignItems: "center",
+  muted: { ...typography.bodyMd, color: colors.textMuted },
+  error: { ...typography.bodyMd, color: colors.error },
+  footer: {
+    ...typography.bodyMd,
+    color: colors.textMuted,
+    textAlign: "center",
   },
-  buttonSecondaryText: { color: colors.text, fontSize: 16, fontWeight: "600" },
-  footerLinks: { gap: spacing.base },
-  link: { color: colors.brand, fontSize: 14, fontWeight: "600" },
+  link: { ...typography.bodyMd, color: colors.heatStrong },
 });

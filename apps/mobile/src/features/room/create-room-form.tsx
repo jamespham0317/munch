@@ -1,18 +1,20 @@
+import { Feather } from "@expo/vector-icons";
 import {
   createRoomRequestSchema,
   type CuisineId,
   DEFAULT_RADIUS_M,
   type PriceLevel,
+  RADIUS_MAX_M,
 } from "@munch/core";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { FiltersFieldset } from "../../components/filters-fieldset";
-import { Field } from "../../components/ui/field";
-import { colors, spacing } from "../../theme";
+import { Button, Field, Input, RadiusSlider } from "../../components/ui";
+import { colors, spacing, typography } from "../../theme";
 import { useCreateRoom } from "./use-create-room";
 
-/** Empty string → NaN so the Zod number schemas reject a blank coordinate/radius. */
+/** Empty string → NaN so the Zod number schemas reject a blank coordinate. */
 function toNumber(value: string): number {
   return value.trim() === "" ? Number.NaN : Number(value);
 }
@@ -25,7 +27,8 @@ function toNumber(value: string): number {
  * filters carry only taxonomy ids. Input is validated client-side against the
  * @munch/core schema (docs/06 §3, validate on both ends); the server re-validates
  * authoritatively. Explicit handlers only — no form semantics that conflict with RN
- * (docs/06 §6).
+ * (docs/06 §6). The "Where are we eating?" field's pin is a decorative affordance:
+ * geocoding/map is deferred (presentation-only reskin), so the host enters lat/lng.
  */
 export function CreateRoomForm() {
   const createRoom = useCreateRoom();
@@ -37,7 +40,7 @@ export function CreateRoomForm() {
   const [openNow, setOpenNow] = useState(false);
   const [cuisines, setCuisines] = useState<CuisineId[]>([]);
   const [priceLevels, setPriceLevels] = useState<PriceLevel[]>([]);
-  const [radius, setRadius] = useState(String(DEFAULT_RADIUS_M));
+  const [radius, setRadius] = useState(DEFAULT_RADIUS_M);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   function handleSubmit() {
@@ -51,7 +54,7 @@ export function CreateRoomForm() {
         cuisines,
         price_levels: priceLevels,
       },
-      default_radius_m: toNumber(radius),
+      default_radius_m: radius,
     });
     if (!parsed.success) {
       setValidationError(
@@ -69,44 +72,48 @@ export function CreateRoomForm() {
   return (
     <View style={styles.form}>
       <Field label="Your name">
-        <TextInput
-          style={styles.input}
+        <Input
           value={hostDisplayName}
           onChangeText={setHostDisplayName}
           maxLength={50}
           placeholder="Your name"
-          placeholderTextColor={colors.textMuted}
         />
       </Field>
-      <Field label="Area label">
-        <TextInput
-          style={styles.input}
-          value={anchorLabel}
-          onChangeText={setAnchorLabel}
-          placeholder="e.g. Downtown"
-          placeholderTextColor={colors.textMuted}
-        />
+      <Field label="Where are we eating?">
+        <View>
+          <Input
+            style={styles.anchorInput}
+            value={anchorLabel}
+            onChangeText={setAnchorLabel}
+            placeholder="Search neighborhood or city…"
+          />
+          <View style={styles.anchorIcon} pointerEvents="none">
+            <Feather name="map-pin" size={18} color={colors.textFaint} />
+          </View>
+        </View>
       </Field>
-      <Field label="Latitude">
-        <TextInput
-          style={styles.input}
-          value={anchorLat}
-          onChangeText={setAnchorLat}
-          keyboardType="numbers-and-punctuation"
-          placeholder="37.7749"
-          placeholderTextColor={colors.textMuted}
-        />
-      </Field>
-      <Field label="Longitude">
-        <TextInput
-          style={styles.input}
-          value={anchorLng}
-          onChangeText={setAnchorLng}
-          keyboardType="numbers-and-punctuation"
-          placeholder="-122.4194"
-          placeholderTextColor={colors.textMuted}
-        />
-      </Field>
+      <View style={styles.coordRow}>
+        <View style={styles.coordCol}>
+          <Field label="Latitude">
+            <Input
+              value={anchorLat}
+              onChangeText={setAnchorLat}
+              keyboardType="numbers-and-punctuation"
+              placeholder="37.7749"
+            />
+          </Field>
+        </View>
+        <View style={styles.coordCol}>
+          <Field label="Longitude">
+            <Input
+              value={anchorLng}
+              onChangeText={setAnchorLng}
+              keyboardType="numbers-and-punctuation"
+              placeholder="-122.4194"
+            />
+          </Field>
+        </View>
+      </View>
       <FiltersFieldset
         openNow={openNow}
         onOpenNowChange={setOpenNow}
@@ -115,12 +122,11 @@ export function CreateRoomForm() {
         priceLevels={priceLevels}
         onPriceLevelsChange={setPriceLevels}
       />
-      <Field label="Search radius (m)">
-        <TextInput
-          style={styles.input}
-          value={radius}
-          onChangeText={setRadius}
-          keyboardType="number-pad"
+      <Field label="Search radius">
+        <RadiusSlider
+          valueM={radius}
+          maxM={RADIUS_MAX_M}
+          onChange={setRadius}
         />
       </Field>
       {errorMessage ? (
@@ -128,36 +134,26 @@ export function CreateRoomForm() {
           {errorMessage}
         </Text>
       ) : null}
-      <Pressable
-        style={[styles.button, createRoom.isPending && styles.buttonDisabled]}
+      <Button
+        label={createRoom.isPending ? "Creating…" : "Start Room"}
         onPress={handleSubmit}
-        disabled={createRoom.isPending}
-      >
-        <Text style={styles.buttonText}>
-          {createRoom.isPending ? "Creating…" : "Create room"}
-        </Text>
-      </Pressable>
+        loading={createRoom.isPending}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  form: { gap: spacing.gutter },
-  input: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.base,
-    color: colors.text,
-    fontSize: 16,
+  form: { gap: spacing.md },
+  anchorInput: { paddingRight: 44 },
+  anchorIcon: {
+    position: "absolute",
+    right: spacing.gutter,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
   },
-  error: { color: colors.error },
-  button: {
-    backgroundColor: colors.brand,
-    borderRadius: 12,
-    paddingVertical: spacing.gutter,
-    alignItems: "center",
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.onBrand, fontSize: 16, fontWeight: "600" },
+  coordRow: { flexDirection: "row", gap: spacing.gutter },
+  coordCol: { flex: 1 },
+  error: { ...typography.bodyMd, color: colors.error },
 });

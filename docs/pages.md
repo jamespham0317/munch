@@ -47,8 +47,9 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 - **Purpose:** entry. "Ready to eat?" → **Create a Room** (large amber card) or **Join with
   Code** (code field + Join). "How Munch Works" 3-step explainer.
 - **Primitives:** Card, Button (primary/secondary), Field, list rows with colored icons.
-- **Wiring:** Create → create-room flow; Join → `join_room` (via code). No auth required
-  (guests welcome).
+- **Wiring:** Create → create-room flow; Join → hands the typed code to the join flow
+  (`room/join/{code}`), which owns the `join_room` call + name field. No auth required
+  (guests welcome); the sign-in surface lives on the Profile tab (§2/§3.2), not here.
 
 ### 3.2 Auth / Profile  ("Profile & Sign In Updated")
 - **Routes:** mobile `app/auth/*` + `app/history.tsx` (Profile tab) · web `app/auth/*` +
