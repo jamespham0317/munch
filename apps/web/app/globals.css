@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+/* Theme tokens seeded from @munch/ui (design-system.md §3) — do not hand-edit;
+   see app/theme.generated.css and scripts/generate-theme.ts. */
+@import "./theme.generated.css";
+
+/* Quicksand is loaded by next/font in app/layout.tsx and exposed as
+   --font-quicksand on <html>. Map it to the default sans family so every utility
+   and the body inherit the brand face (design-system.md §5). */
+@theme {
+  --font-sans:
+    var(--font-quicksand), "Quicksand", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  /* Centered desktop content well: full-width with mobile margins, capped at the
+     1200px container with 48px margins at desktop (design-system.md §6). Reusable
+     by later prompts' page layouts. */
+  .munch-container {
+    width: 100%;
+    max-width: var(--munch-content-max-width);
+    margin-inline: auto;
+    padding-inline: var(--munch-screen-margin-mobile);
+  }
+
+  @media (min-width: 1024px) {
+    .munch-container {
+      padding-inline: var(--munch-desktop-margin);
+    }
+  }
+}

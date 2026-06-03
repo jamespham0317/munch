@@ -1,0 +1,77 @@
+/*
+ * AUTO-GENERATED from @munch/ui by apps/web/scripts/generate-theme.ts.
+ * Do NOT edit by hand — run `pnpm generate-theme`. Tokens live once in
+ * @munch/ui (design-system.md §3); this file re-hyphenates them into the
+ * Tailwind v4 theme so the web palette is never duplicated in the app.
+ */
+
+@theme {
+  --color-brand: #ffbf00;
+  --color-brand-pressed: #fbbc00;
+  --color-on-brand: #1c1b1b;
+  --color-heat: #fc7c31;
+  --color-heat-strong: #9f4200;
+  --color-on-heat: #ffffff;
+  --color-background: #fcf9f8;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f6f3f2;
+  --color-surface-sunken: #f0eded;
+  --color-surface-highest: #e5e2e1;
+  --color-text: #1c1b1b;
+  --color-text-muted: #504532;
+  --color-text-faint: #827660;
+  --color-border: #d4c5ab;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-online: #2fbf71;
+  --text-display-lg: 40px;
+  --text-display-lg--line-height: 1.1;
+  --text-display-lg--font-weight: 700;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-display-lg-mobile: 32px;
+  --text-display-lg-mobile--line-height: 1.2;
+  --text-display-lg-mobile--font-weight: 700;
+  --text-display-lg-mobile--letter-spacing: -0.01em;
+  --text-headline-md: 24px;
+  --text-headline-md--line-height: 1.3;
+  --text-headline-md--font-weight: 700;
+  --text-title-lg: 20px;
+  --text-title-lg--line-height: 1.4;
+  --text-title-lg--font-weight: 600;
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 1.6;
+  --text-body-lg--font-weight: 500;
+  --text-body-md: 16px;
+  --text-body-md--line-height: 1.6;
+  --text-body-md--font-weight: 500;
+  --text-label-md: 14px;
+  --text-label-md--line-height: 1.2;
+  --text-label-md--font-weight: 700;
+  --text-label-md--letter-spacing: 0.05em;
+  --text-caption: 12px;
+  --text-caption--line-height: 1.4;
+  --text-caption--font-weight: 500;
+  --radius-sm: 8px;
+  --radius-DEFAULT: 16px;
+  --radius-md: 24px;
+  --radius-lg: 32px;
+  --radius-xl: 48px;
+  --radius-full: 9999px;
+  --spacing-xs: 4px;
+  --spacing-sm: 12px;
+  --spacing-base: 8px;
+  --spacing-gutter: 16px;
+  --spacing-md: 24px;
+  --spacing-lg: 48px;
+  --spacing-xl: 64px;
+  --shadow-low: 0 2px 4px rgb(28 27 27 / 0.1);
+  --shadow-active: 0 6px 12px rgb(28 27 27 / 0.15);
+}
+
+:root {
+  --munch-content-max-width: 1200px;
+  --munch-desktop-margin: 48px;
+  --munch-screen-margin-mobile: 20px;
+  --munch-press-translate-y: 2px;
+}

@@ -4,11 +4,14 @@
   "private": true,
   "description": "Munch web app (Next.js App Router). Consumes @munch/core + @munch/api-client; Phase 1 guest create/join + live-presence room lobby.",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "generate-theme": "tsx scripts/generate-theme.ts",
+    "generate-theme:check": "tsx scripts/generate-theme.ts --check",
+    "dev": "pnpm generate-theme && next dev",
+    "build": "pnpm generate-theme && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --max-warnings 0"
+    "lint": "eslint . --max-warnings 0",
+    "test": "pnpm generate-theme:check"
   },
   "dependencies": {
     "@munch/api-client": "workspace:*",
@@ -22,9 +25,12 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^22.10.5",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
+    "tailwindcss": "^4.1.0",
+    "tsx": "^4.19.0",
     "typescript": "^5.7.2"
   }
 }

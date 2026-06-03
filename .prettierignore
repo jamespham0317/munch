@@ -11,3 +11,6 @@ coverage
 # Hand-authored reference docs — not Prettier-owned
 docs
 CLAUDE.md
+
+# Generated from @munch/ui by apps/web/scripts/generate-theme.ts
+apps/web/app/theme.generated.css
