@@ -2,7 +2,7 @@ import { type CuisineId, CUISINES, type PriceLevel } from "@munch/core";
 import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
 
 import { colors, spacing } from "../theme";
-import { Field } from "./field";
+import { Field } from "./ui/field";
 
 /**
  * Shared host-filter controls (open-now + the closed cuisine taxonomy + price levels),

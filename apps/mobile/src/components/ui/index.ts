@@ -1,0 +1,16 @@
+/**
+ * Barrel for the mobile UI primitive library (design-system.md §7). Every primitive
+ * is presentational only and built from the @munch/ui theme adapter — no business
+ * logic, no hooks, no @munch/core domain rules (CLAUDE.md §4).
+ */
+export { Avatar } from "./avatar";
+export { Button } from "./button";
+export { Card } from "./card";
+export { Chip, FoodChip } from "./chip";
+export { Field } from "./field";
+export { Input } from "./input";
+export { PriceTile, SegmentedTile } from "./price-tile";
+export { Badge, ProgressPill } from "./progress-pill";
+export { RadiusSlider } from "./radius-slider";
+export { TabBar, type TabBarItem } from "./tab-bar";
+export { Toggle } from "./toggle";

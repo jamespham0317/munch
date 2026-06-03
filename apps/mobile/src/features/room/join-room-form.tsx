@@ -2,7 +2,7 @@ import { joinRoomRequestSchema } from "@munch/core";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { Field } from "../../components/field";
+import { Field } from "../../components/ui/field";
 import { colors, spacing } from "../../theme";
 import { useJoinRoom } from "./use-join-room";
 

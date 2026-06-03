@@ -3,8 +3,8 @@ import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { RadiusSlider } from "../../components/radius-slider";
 import { SwipeCard } from "../../components/swipe-card";
+import { RadiusSlider } from "../../components/ui/radius-slider";
 import { colors, spacing } from "../../theme";
 import { ResolutionView } from "./resolution-view";
 import { useActiveSession } from "./use-active-session";

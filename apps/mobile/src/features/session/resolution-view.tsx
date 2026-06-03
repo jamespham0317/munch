@@ -2,7 +2,7 @@ import { RADIUS_MAX_M, type RankingEntry } from "@munch/core";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { RadiusSlider } from "../../components/radius-slider";
+import { RadiusSlider } from "../../components/ui/radius-slider";
 import { colors, spacing } from "../../theme";
 import { useResolutionRanking } from "./use-resolution-ranking";
 import { useResolveSession } from "./use-resolve-session";

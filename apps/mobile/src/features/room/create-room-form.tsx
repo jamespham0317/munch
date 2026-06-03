@@ -7,8 +7,8 @@ import {
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { Field } from "../../components/field";
 import { FiltersFieldset } from "../../components/filters-fieldset";
+import { Field } from "../../components/ui/field";
 import { colors, spacing } from "../../theme";
 import { useCreateRoom } from "./use-create-room";
 
