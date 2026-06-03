@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { ScrollView, StyleSheet, Text } from "react-native";
 
 import { ResultView } from "../../../src/features/session/result-view";
-import { colors, spacing } from "../../../src/theme";
+import { colors, spacing, typography } from "../../../src/theme";
 
 /**
  * Match announcement route. `sessionId` arrives as a search param from the swipe
@@ -24,7 +24,6 @@ export default function ResultScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Match</Text>
       {sessionId ? (
         <ResultView sessionId={sessionId} />
       ) : (
@@ -36,7 +35,6 @@ export default function ResultScreen() {
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.background },
-  content: { padding: spacing.md, gap: spacing.md },
-  title: { color: colors.text, fontSize: 28, fontWeight: "700" },
-  muted: { color: colors.textMuted },
+  content: { padding: spacing.screenMarginMobile, gap: spacing.md },
+  muted: { ...typography.bodyMd, color: colors.textMuted },
 });

@@ -5,12 +5,14 @@ import {
   type Room,
 } from "@munch/core";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { FiltersFieldset } from "../../components/filters-fieldset";
 import { FiltersSummary } from "../../components/filters-summary";
+import { Button } from "../../components/ui/button";
 import { Field } from "../../components/ui/field";
-import { colors, spacing } from "../../theme";
+import { Input } from "../../components/ui/input";
+import { colors, spacing, typography } from "../../theme";
 import { useUpdateRoomFilters } from "./use-update-room-filters";
 
 /**
@@ -80,8 +82,7 @@ function HostFilters({ room }: { room: Room }) {
         disabled={update.isPending}
       />
       <Field label="Search radius (m)">
-        <TextInput
-          style={styles.input}
+        <Input
           value={radius}
           onChangeText={setRadius}
           keyboardType="number-pad"
@@ -96,38 +97,18 @@ function HostFilters({ room }: { room: Room }) {
       {update.isSuccess ? (
         <Text style={styles.success}>Filters saved.</Text>
       ) : null}
-      <Pressable
-        style={[styles.button, update.isPending && styles.buttonDisabled]}
+      <Button
+        label={update.isPending ? "Saving…" : "Save filters"}
         onPress={handleSave}
-        disabled={update.isPending}
-      >
-        <Text style={styles.buttonText}>
-          {update.isPending ? "Saving…" : "Save filters"}
-        </Text>
-      </Pressable>
+        loading={update.isPending}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { gap: spacing.base },
-  heading: { color: colors.text, fontSize: 18, fontWeight: "600" },
-  input: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.base,
-    color: colors.text,
-    fontSize: 16,
-  },
-  error: { color: colors.error },
-  success: { color: colors.textMuted },
-  button: {
-    backgroundColor: colors.brand,
-    borderRadius: 12,
-    paddingVertical: spacing.gutter,
-    alignItems: "center",
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.onBrand, fontSize: 16, fontWeight: "600" },
+  section: { gap: spacing.sm },
+  heading: { ...typography.titleLg, color: colors.text },
+  error: { ...typography.bodyMd, color: colors.error },
+  success: { ...typography.bodyMd, color: colors.textMuted },
 });

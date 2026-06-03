@@ -81,8 +81,10 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 
 ### 3.5 Lobby  ("Lobby with QR Code")
 - **Routes:** mobile `app/room/[roomId]/lobby.tsx` · web `app/room/[roomId]/lobby/page.tsx`.
-- **Purpose:** "Waiting for the crew." Shareable code + QR + copy-link; **The Squad** member
-  list with presence dots and status snippets; "Invite more"; host sees **Start Session**.
+- **Purpose:** "Waiting for the crew." Shareable code + QR + tap-to-copy link; **The Squad**
+  member grid with presence dots and a presence label (Here/Away); "Invite more"; host sees
+  **Start Session**. The squad count is the number of members joined (no per-member status text
+  in v1).
 - **Primitives:** Card (amber code panel), QR, MemberList (Avatar + `online` dot),
   ProgressPill, Button.
 - **Wiring:** realtime `room:{room_id}` presence; host `start_session`; `set_presence`.

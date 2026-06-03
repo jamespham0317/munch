@@ -1,20 +1,24 @@
-import { Link, useRouter } from "expo-router";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useEffect } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Share, StyleSheet, Text, View } from "react-native";
 
-import { InvitePanel } from "../../components/invite-panel";
+import { buildJoinUrl, InvitePanel } from "../../components/invite-panel";
 import { MemberList } from "../../components/member-list";
-import { colors, spacing } from "../../theme";
+import { Button } from "../../components/ui/button";
+import { ProgressPill } from "../../components/ui/progress-pill";
+import { colors, spacing, typography } from "../../theme";
 import { useStartSession } from "../session/use-start-session";
 import { LobbyFiltersPanel } from "./lobby-filters-panel";
 import { useRoomLobby } from "./use-room-lobby";
 
 /**
- * Room lobby (RN parity with apps/web's LobbyView): an initial getRoom + getRoomMembers
- * read kept live by subscribeRoom, an invite affordance, and the host-only "Start
- * session" control. Once any member sees an active session for the room (via the
- * lobby's session subscription), they auto-route to the swipe screen. Screens stay
- * thin — all data access is in @munch/api-client (CLAUDE.md §4).
+ * Room lobby (RN parity with apps/web's LobbyView, pages.md §3.5): an initial getRoom +
+ * getRoomMembers read kept live by subscribeRoom, the amber invite card + the "Squad" grid,
+ * and the host-only "Start Session" control. Once any member sees an active session for the
+ * room (via the lobby's session subscription), they auto-route to the swipe screen. Screens
+ * stay thin — all data access is in @munch/api-client (CLAUDE.md §4); only aggregate presence
+ * is shown, never per-member swipes (CLAUDE.md §3).
  */
 export function LobbyView({ roomId }: { roomId: string }) {
   const router = useRouter();
@@ -73,12 +77,19 @@ export function LobbyView({ roomId }: { roomId: string }) {
   // "waiting for the host" lobby, which would never resolve. The backend is unchanged.
   if (!room.isActive) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.heading}>The host ended the session</Text>
+      <View style={styles.endedContainer}>
+        <MaterialCommunityIcons
+          name="silverware-clean"
+          size={48}
+          color={colors.textFaint}
+        />
+        <Text style={styles.title}>The host ended the session</Text>
         <Text style={styles.muted}>This room is closed.</Text>
-        <Link href="/" style={styles.link}>
-          Back home
-        </Link>
+        <Button
+          label="Back home"
+          variant="ghost"
+          onPress={() => router.replace("/")}
+        />
       </View>
     );
   }
@@ -87,26 +98,56 @@ export function LobbyView({ roomId }: { roomId: string }) {
     startSession.mutate({ radius_m: room.defaultRadiusM });
   }
 
+  async function handleInvite() {
+    try {
+      await Share.share({ message: buildJoinUrl(room.code) });
+    } catch {
+      // Sharing is best-effort; a dismissed or failed share is not surfaced.
+    }
+  }
+
   const startError = startSession.isError ? startSession.error.message : null;
   const startDisabled = startSession.isPending || activeSession !== null;
 
   return (
     <View style={styles.container}>
+      <View style={styles.brandRow}>
+        <MaterialCommunityIcons
+          name="silverware-fork-knife"
+          size={24}
+          color={colors.heat}
+        />
+        <Text style={styles.brand}>Munch</Text>
+      </View>
+
+      <Text style={styles.title} accessibilityRole="header">
+        Waiting for the crew…
+      </Text>
+      <Text style={styles.subtitle}>Share this code or tap to copy link.</Text>
+
       <InvitePanel code={room.code} />
-      <Text style={styles.heading}>Members</Text>
-      <MemberList members={members} />
+
+      <View style={styles.squadHeader}>
+        <Text style={styles.squadTitle}>The Squad ({members.length})</Text>
+        <ProgressPill
+          label="Waiting…"
+          leadingIcon={
+            <Feather name="clock" size={12} color={colors.textMuted} />
+          }
+        />
+      </View>
+      <MemberList members={members} onInvite={() => void handleInvite()} />
+
       <LobbyFiltersPanel room={room} isHost={isHost} />
+
       {isHost ? (
         <>
-          <Pressable
-            style={[styles.button, startDisabled && styles.buttonDisabled]}
+          <Button
+            label={startSession.isPending ? "Starting…" : "Start Session"}
             onPress={handleStart}
             disabled={startDisabled}
-          >
-            <Text style={styles.buttonText}>
-              {startSession.isPending ? "Starting…" : "Start session"}
-            </Text>
-          </Pressable>
+            loading={startSession.isPending}
+          />
           {startError ? (
             <Text style={styles.error} accessibilityRole="alert">
               {startError}
@@ -126,21 +167,21 @@ export function LobbyView({ roomId }: { roomId: string }) {
 
 const styles = StyleSheet.create({
   container: { gap: spacing.md },
-  heading: { color: colors.text, fontSize: 18, fontWeight: "600" },
-  muted: { color: colors.textMuted },
-  error: { color: colors.error },
-  button: {
-    backgroundColor: colors.brand,
-    borderRadius: 12,
-    paddingVertical: spacing.gutter,
+  brandRow: { flexDirection: "row", alignItems: "center", gap: spacing.base },
+  brand: { ...typography.titleLg, color: colors.text },
+  title: { ...typography.displayLgMobile, color: colors.text },
+  subtitle: { ...typography.bodyMd, color: colors.textMuted },
+  squadHeader: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
   },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: colors.onBrand, fontSize: 16, fontWeight: "600" },
-  link: {
-    color: colors.brand,
-    fontSize: 16,
-    fontWeight: "600",
-    paddingTop: spacing.base,
+  squadTitle: { ...typography.headlineMd, color: colors.text },
+  endedContainer: {
+    gap: spacing.gutter,
+    alignItems: "center",
+    paddingVertical: spacing.xl,
   },
+  muted: { ...typography.bodyMd, color: colors.textMuted },
+  error: { ...typography.bodyMd, color: colors.error },
 });

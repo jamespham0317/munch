@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { ScrollView, StyleSheet, Text } from "react-native";
 
 import { SessionView } from "../../../src/features/session/session-view";
-import { colors, spacing } from "../../../src/theme";
+import { colors, spacing, typography } from "../../../src/theme";
 
 /**
  * Swipe screen route. `sessionId` arrives as a search param from the lobby's
@@ -26,7 +26,6 @@ export default function SessionScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Swipe</Text>
       {roomId && sessionId ? (
         <SessionView roomId={roomId} sessionId={sessionId} />
       ) : (
@@ -38,7 +37,6 @@ export default function SessionScreen() {
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.background },
-  content: { padding: spacing.md, gap: spacing.md },
-  title: { color: colors.text, fontSize: 28, fontWeight: "700" },
-  muted: { color: colors.textMuted },
+  content: { padding: spacing.screenMarginMobile, gap: spacing.md },
+  muted: { ...typography.bodyMd, color: colors.textMuted },
 });

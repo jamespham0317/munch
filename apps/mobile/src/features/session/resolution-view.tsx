@@ -1,40 +1,56 @@
-import { RADIUS_MAX_M, type RankingEntry } from "@munch/core";
+import { Feather } from "@expo/vector-icons";
+import {
+  type CuisineId,
+  CUISINES,
+  type DeckRestaurant,
+  RADIUS_MAX_M,
+} from "@munch/core";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { Button } from "../../components/ui/button";
+import { Card } from "../../components/ui/card";
+import { FoodChip } from "../../components/ui/chip";
+import { ProgressPill } from "../../components/ui/progress-pill";
 import { RadiusSlider } from "../../components/ui/radius-slider";
-import { colors, spacing } from "../../theme";
+import { colors, spacing, typography } from "../../theme";
 import { useResolutionRanking } from "./use-resolution-ranking";
 import { useResolveSession } from "./use-resolve-session";
 
 /**
- * Host-resolution screen (RN parity with apps/web's ResolutionView), shown while the session
- * status is `awaiting_host_resolution` (deck exhausted with no unanimous match — CLAUDE.md
- * §2.3). Non-host members see a passive "waiting on host" state and are routed onward by the
- * next status event; the host sees the closest-to-unanimous ranking (CLAUDE.md §2.4) with two
- * controls:
- *   * Accept top pick → resolve_session accept_top → result screen (host_accepted_top);
+ * Host-resolution screen (RN parity with apps/web's ResolutionView; pages.md §3.8), shown
+ * while the session status is `awaiting_host_resolution` (deck exhausted with no unanimous
+ * match — CLAUDE.md §2.3). Non-host members see a passive "waiting on host" state and are
+ * routed onward by the next status event; the host sees the closest-to-unanimous ranking
+ * (CLAUDE.md §2.4 — displayed as-is, never re-sorted) with two controls:
+ *   * Settle for this → resolve_session accept_top → result screen (host_accepted_top);
  *   * Widen → resolve_session widen (the only extra provider call, server-side) → the session
  *     returns to `active` and useSwipeSession resumes swiping with the appended cards. We don't
  *     navigate on widen; the status channel drives the resume.
+ *
+ * The "N/M friends liked this" pill is an AGGREGATE count (like_count of member_count), never
+ * per-member identity (CLAUDE.md §3). The widen block's radius + cuisine criteria are
+ * HOST-CONTROLLED room filters (CLAUDE.md §2.2), not a per-member narrow.
  */
 export function ResolutionView({
   roomId,
   sessionId,
   isHost,
   sessionRadiusM,
+  deck,
 }: {
   roomId: string;
   sessionId: string;
   isHost: boolean;
   sessionRadiusM: number;
+  deck: DeckRestaurant[];
 }) {
   if (!isHost) {
     // Non-hosts never call get_resolution_ranking (it raises NOT_HOST); they wait here
     // until the host accepts (→ result via the match event) or widens (→ resume swiping).
     return (
       <View style={styles.container}>
-        <Text style={styles.headline}>Deck’s done!</Text>
+        <Text style={styles.headline}>Deck's done!</Text>
         <Text style={styles.muted}>Waiting on the host to decide…</Text>
       </View>
     );
@@ -44,6 +60,7 @@ export function ResolutionView({
       roomId={roomId}
       sessionId={sessionId}
       sessionRadiusM={sessionRadiusM}
+      deck={deck}
     />
   );
 }
@@ -52,18 +69,21 @@ function HostResolution({
   roomId,
   sessionId,
   sessionRadiusM,
+  deck,
 }: {
   roomId: string;
   sessionId: string;
   sessionRadiusM: number;
+  deck: DeckRestaurant[];
 }) {
   const rankingQuery = useResolutionRanking(sessionId, true);
   const resolve = useResolveSession(roomId, sessionId);
 
-  // Widen radius: start at the session's current radius and let the host raise it up to the
-  // global cap. Radius-only for v1 — per-member price/cuisine narrowing is deferred (preamble
-  // / CLAUDE.md §8); the widen request's `filters` field stays unset.
+  // Widen criteria: start at the session's current radius and let the host raise it up to the
+  // global cap, plus optional host-controlled cuisine narrowing for the next fetch (the widen
+  // request accepts a partial filters set — CLAUDE.md §2.2). Empty cuisines = radius-only.
   const [widenRadiusM, setWidenRadiusM] = useState<number>(sessionRadiusM);
+  const [widenCuisines, setWidenCuisines] = useState<CuisineId[]>([]);
 
   if (rankingQuery.isPending) {
     return <Text style={styles.muted}>Loading ranking…</Text>;
@@ -91,13 +111,28 @@ function HostResolution({
   const heading = isEmpty
     ? "No spots found"
     : everyonePassed
-      ? "Nobody’s first choice"
-      : "No unanimous match";
+      ? "Nobody's first choice"
+      : "No Unanimous Match Yet";
   const subcopy = isEmpty
-    ? "Widen your search to pull in more places."
+    ? "The deck is empty. Widen your search to pull in more places."
     : everyonePassed
-      ? "Everyone passed on these — here’s the best available pick. Accept it or widen the search."
-      : "Closest to unanimous — fewest passes first.";
+      ? "Everyone passed on these — here's the best available pick. Settle for it or widen the search."
+      : "You can settle for the group's favorite or widen your search.";
+
+  // The ranking payload carries no photo; pull it from the already-cached deck by id (no
+  // provider call — the deck is the session's one-time fetch, CLAUDE.md §2.1).
+  const topPhotoUrl = topPick
+    ? (deck.find((card) => card.id === topPick.restaurant_id)?.photo_url ??
+      null)
+    : null;
+
+  function toggleCuisine(id: CuisineId) {
+    setWidenCuisines((current) =>
+      current.includes(id)
+        ? current.filter((value) => value !== id)
+        : [...current, id],
+    );
+  }
 
   function handleAccept() {
     if (!topPick || busy) return;
@@ -114,24 +149,54 @@ function HostResolution({
       action: "widen",
       session_id: sessionId,
       radius_m: widenRadiusM,
+      // Only send filters when the host narrows by cuisine; otherwise widen stays radius-only.
+      ...(widenCuisines.length > 0
+        ? { filters: { cuisines: widenCuisines } }
+        : {}),
     });
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.headline}>{heading}</Text>
+      <Text style={styles.headline} accessibilityRole="header">
+        {heading}
+      </Text>
       <Text style={styles.muted}>{subcopy}</Text>
-      {isEmpty ? null : (
-        <View style={styles.list}>
-          {ranking.map((entry, index) => (
-            <RankingRow
-              key={entry.restaurant_id}
-              entry={entry}
-              isTopPick={index === 0}
-            />
-          ))}
+
+      {topPick ? (
+        <View style={styles.section}>
+          <View style={styles.labelRow}>
+            <Feather name="star" size={14} color={colors.brand} />
+            <Text style={styles.label}>Group's Top Pick</Text>
+          </View>
+          <Card
+            padding="decision"
+            image={topPhotoUrl ? { uri: topPhotoUrl } : undefined}
+            imageHeight={180}
+          >
+            <Text style={styles.pickName}>{topPick.name}</Text>
+            <View style={styles.metaRow}>
+              {topPick.rating !== null ? (
+                <ProgressPill
+                  label={topPick.rating.toFixed(1)}
+                  leadingIcon={
+                    <Feather name="star" size={12} color={colors.brand} />
+                  }
+                />
+              ) : null}
+              <ProgressPill
+                label={formatDistance(topPick.distance_m)}
+                leadingIcon={
+                  <Feather name="map-pin" size={12} color={colors.heat} />
+                }
+              />
+            </View>
+            <Text style={styles.liked}>
+              {topPick.like_count}/{topPick.member_count} friends liked this
+            </Text>
+          </Card>
         </View>
-      )}
+      ) : null}
 
       {resolve.isError ? (
         <Text style={styles.error} accessibilityRole="alert">
@@ -139,62 +204,55 @@ function HostResolution({
         </Text>
       ) : null}
 
-      <Pressable
-        style={[
-          styles.button,
-          styles.accept,
-          (busy || topPick === null) && styles.buttonDisabled,
-        ]}
-        onPress={handleAccept}
-        disabled={busy || topPick === null}
-      >
-        <Text style={styles.buttonText}>
-          {busy ? "Working…" : "Accept top pick"}
-        </Text>
-      </Pressable>
+      {topPick ? (
+        <Button
+          label={busy ? "Working…" : "Settle for this"}
+          onPress={handleAccept}
+          disabled={busy}
+          loading={busy}
+          leadingIcon={
+            <Feather name="check" size={18} color={colors.onBrand} />
+          }
+        />
+      ) : null}
 
       <View style={styles.widen}>
+        <View style={styles.labelRow}>
+          <Feather name="plus-circle" size={16} color={colors.text} />
+          <Text style={styles.widenTitle}>Widen the Search</Text>
+        </View>
+        <Text style={styles.muted}>
+          Adjust your search to pull in more restaurants and keep the swiping
+          going.
+        </Text>
         <RadiusSlider
           valueM={widenRadiusM}
           maxM={RADIUS_MAX_M}
           onChange={setWidenRadiusM}
         />
-        <Pressable
-          style={[
-            styles.button,
-            styles.widenButton,
-            busy && styles.buttonDisabled,
-          ]}
+        <Text style={styles.label}>Cuisine</Text>
+        <View style={styles.chipWrap}>
+          {CUISINES.map(({ id, label }) => (
+            <FoodChip
+              key={id}
+              label={label}
+              selected={widenCuisines.includes(id)}
+              onPress={() => toggleCuisine(id)}
+              disabled={busy}
+            />
+          ))}
+        </View>
+        <Button
+          label={busy ? "Working…" : "Fetch New Deck"}
+          variant="secondary"
           onPress={handleWiden}
           disabled={busy}
-        >
-          <Text style={styles.buttonText}>
-            {busy ? "Working…" : "Widen the search"}
-          </Text>
-        </Pressable>
+          loading={busy}
+          leadingIcon={
+            <Feather name="refresh-cw" size={18} color={colors.onHeat} />
+          }
+        />
       </View>
-    </View>
-  );
-}
-
-function RankingRow({
-  entry,
-  isTopPick,
-}: {
-  entry: RankingEntry;
-  isTopPick: boolean;
-}) {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.rowName}>
-        {entry.name}
-        {isTopPick ? " — suggested pick" : ""}
-      </Text>
-      <Text style={styles.rowMeta}>
-        {entry.pass_count} of {entry.member_count} passed
-        {entry.rating !== null ? ` · ⭐ ${entry.rating.toFixed(1)}` : ""}
-        {` · ${formatDistance(entry.distance_m)}`}
-      </Text>
     </View>
   );
 }
@@ -205,31 +263,26 @@ function formatDistance(metres: number): string {
 }
 
 const styles = StyleSheet.create({
-  container: { gap: spacing.gutter },
-  headline: { color: colors.text, fontSize: 24, fontWeight: "700" },
-  muted: { color: colors.textMuted },
-  error: { color: colors.error },
-  list: { gap: spacing.base },
-  row: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.gutter,
-    gap: spacing.xs,
-  },
-  rowName: { color: colors.text, fontSize: 16, fontWeight: "600" },
-  rowMeta: { color: colors.textMuted, fontSize: 14 },
-  button: {
-    borderRadius: 12,
-    paddingVertical: spacing.gutter,
+  container: { gap: spacing.md },
+  section: { gap: spacing.sm },
+  headline: { ...typography.displayLgMobile, color: colors.text },
+  muted: { ...typography.bodyMd, color: colors.textMuted },
+  error: { ...typography.bodyMd, color: colors.error },
+  labelRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  label: { ...typography.labelMd, color: colors.textMuted },
+  pickName: { ...typography.headlineMd, color: colors.text },
+  metaRow: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: spacing.base,
+    marginTop: spacing.xs,
   },
-  accept: { backgroundColor: colors.brand },
-  widen: { gap: spacing.base },
-  widenButton: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.textMuted,
+  liked: {
+    ...typography.bodyMd,
+    color: colors.textMuted,
+    marginTop: spacing.sm,
   },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: colors.text, fontSize: 16, fontWeight: "600" },
+  widen: { gap: spacing.sm },
+  widenTitle: { ...typography.titleLg, color: colors.text },
+  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.base },
 });

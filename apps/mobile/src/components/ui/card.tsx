@@ -27,7 +27,8 @@ export function Card({
   children?: ReactNode;
   /** `md` = 24px interior; `decision` = 32px (the swipe card); `none` = no padding. */
   padding?: "md" | "decision" | "none";
-  image?: ImageSourcePropType;
+  /** A `null`/`undefined` source renders the card without a photo header. */
+  image?: ImageSourcePropType | undefined;
   imageHeight?: number;
   imageOverlay?: ReactNode;
   style?: ViewStyle;

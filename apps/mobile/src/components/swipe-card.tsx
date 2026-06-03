@@ -1,32 +1,36 @@
-import type { DeckRestaurant } from "@munch/core";
-import {
-  Dimensions,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { cuisineLabel, type DeckRestaurant } from "@munch/core";
+import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
 
-import { colors, spacing } from "../theme";
+import { colors, radii, shadow, spacing, typography } from "../theme";
+import { Card } from "./ui/card";
+import { FoodChip } from "./ui/chip";
+import { ProgressPill } from "./ui/progress-pill";
 
 /**
- * Presentational swipe card (RN parity with apps/web's SwipeCard). Takes a
- * DeckRestaurant + two button handlers; holds no business logic and reads no data
- * (CLAUDE.md §4). The matching/shuffle/distance rules all live upstream.
+ * The Decision Card (design-system.md §8): the swipe card. A photo header with a distance
+ * pill overlay, the restaurant name + rating chip, a `price • cuisine` line, and decorative
+ * cuisine chips, composed from the @munch/ui primitives. Takes a DeckRestaurant + two button
+ * handlers; holds no business logic and reads no data (CLAUDE.md §4). The matching/shuffle/
+ * distance rules all live upstream.
  *
  * A pan/throw gesture is layered on for feel (react-native-gesture-handler + reanimated):
  * dragging the card past a horizontal threshold and releasing throws it off-screen and
  * triggers the same onLike/onPass handlers as the buttons (right = like, left = pass); a
- * short drag springs back. The buttons remain the accessible fallback. The gesture is pure
- * UI — it only calls the existing handlers and NEVER touches the provider (CLAUDE.md §2.1).
+ * short drag springs back. The pass/like buttons remain the accessible fallback (§10). The
+ * gesture is pure UI — it only calls the existing handlers and NEVER touches the provider
+ * (CLAUDE.md §2.1). The throw animation is skipped under reduce-motion (§10).
+ *
+ * The middle "save/super-like" bookmark of the mockup is intentionally NOT built — v1 is
+ * like/pass only (design-system.md §8, ui-roadmap.md §7).
  *
  * `distance_m` is the server-computed value from the haversine helper in 0009; we
  * format it but never recompute it.
@@ -48,6 +52,7 @@ export function SwipeCard({
   disabled: boolean;
 }) {
   const translateX = useSharedValue(0);
+  const reduceMotion = useReducedMotion();
 
   // Runs on the JS thread (via runOnJS). Reset the card to centre before advancing so the
   // next card renders in place, then fire the existing handler — never a provider call.
@@ -67,15 +72,29 @@ export function SwipeCard({
     })
     .onEnd((event) => {
       if (event.translationX >= SWIPE_THRESHOLD_PX) {
-        translateX.value = withTiming(SCREEN_WIDTH, { duration: 180 }, () => {
+        if (reduceMotion) {
+          translateX.value = 0;
           runOnJS(commit)("like");
-        });
+        } else {
+          translateX.value = withTiming(SCREEN_WIDTH, { duration: 180 }, () => {
+            runOnJS(commit)("like");
+          });
+        }
       } else if (event.translationX <= -SWIPE_THRESHOLD_PX) {
-        translateX.value = withTiming(-SCREEN_WIDTH, { duration: 180 }, () => {
+        if (reduceMotion) {
+          translateX.value = 0;
           runOnJS(commit)("pass");
-        });
+        } else {
+          translateX.value = withTiming(
+            -SCREEN_WIDTH,
+            { duration: 180 },
+            () => {
+              runOnJS(commit)("pass");
+            },
+          );
+        }
       } else {
-        translateX.value = withTiming(0, { duration: 150 });
+        translateX.value = reduceMotion ? 0 : withTiming(0, { duration: 150 });
       }
     });
 
@@ -86,68 +105,99 @@ export function SwipeCard({
     ],
   }));
 
+  const priceCuisine = formatPriceCuisine(restaurant);
+
   return (
-    <View style={styles.card} accessibilityLabel={restaurant.name}>
+    <View accessibilityLabel={restaurant.name}>
       <GestureDetector gesture={pan}>
-        <Animated.View style={[styles.swipeable, animatedStyle]}>
-          {restaurant.photo_url ? (
-            <Image
-              source={{ uri: restaurant.photo_url }}
-              style={styles.photo}
-              accessibilityIgnoresInvertColors
-            />
-          ) : (
-            <View
-              style={[styles.photo, styles.photoFallback]}
-              accessible={false}
-            >
-              <Text style={styles.photoFallbackText}>No photo</Text>
+        <Animated.View style={animatedStyle}>
+          <Card
+            padding="decision"
+            image={
+              restaurant.photo_url ? { uri: restaurant.photo_url } : undefined
+            }
+            imageHeight={260}
+            imageOverlay={
+              <ProgressPill
+                tone="onImage"
+                label={formatDistance(restaurant.distance_m)}
+                leadingIcon={
+                  <Feather name="map-pin" size={12} color={colors.heat} />
+                }
+              />
+            }
+          >
+            <View style={styles.titleRow}>
+              <Text style={styles.name} numberOfLines={1}>
+                {restaurant.name}
+              </Text>
+              {restaurant.rating !== null ? (
+                <ProgressPill
+                  label={restaurant.rating.toFixed(1)}
+                  leadingIcon={
+                    <Feather name="star" size={12} color={colors.brand} />
+                  }
+                />
+              ) : null}
             </View>
-          )}
-          <Text style={styles.name}>{restaurant.name}</Text>
-          <Text style={styles.meta}>
-            {restaurant.rating !== null
-              ? `⭐ ${restaurant.rating.toFixed(1)} `
-              : ""}
-            {restaurant.price_level
-              ? `${"$".repeat(Number(restaurant.price_level))} · `
-              : ""}
-            {formatDistance(restaurant.distance_m)}
-            {restaurant.is_open_now === false ? " · closed" : ""}
-          </Text>
-          {restaurant.cuisines.length > 0 ? (
-            <Text style={styles.cuisines}>
-              {restaurant.cuisines.join(" · ")}
-            </Text>
-          ) : null}
+            {priceCuisine ? (
+              <Text style={styles.meta}>
+                {priceCuisine}
+                {restaurant.is_open_now === false ? " · closed" : ""}
+              </Text>
+            ) : null}
+            {restaurant.cuisines.length > 0 ? (
+              <View style={styles.chips}>
+                {restaurant.cuisines.map((id) => (
+                  <FoodChip key={id} label={cuisineLabel(id)} />
+                ))}
+              </View>
+            ) : null}
+          </Card>
         </Animated.View>
       </GestureDetector>
+
       <View style={styles.actions}>
         <Pressable
-          style={[
-            styles.button,
+          style={({ pressed }) => [
+            styles.circle,
             styles.pass,
-            disabled && styles.buttonDisabled,
+            pressed && !disabled && styles.pressed,
+            disabled && styles.disabled,
           ]}
           onPress={onPass}
           disabled={disabled}
+          accessibilityRole="button"
+          accessibilityLabel="Pass"
         >
-          <Text style={styles.buttonText}>Pass</Text>
+          <Feather name="x" size={28} color={colors.text} />
         </Pressable>
         <Pressable
-          style={[
-            styles.button,
+          style={({ pressed }) => [
+            styles.circle,
             styles.like,
-            disabled && styles.buttonDisabled,
+            pressed && !disabled && styles.pressed,
+            disabled && styles.disabled,
           ]}
           onPress={onLike}
           disabled={disabled}
+          accessibilityRole="button"
+          accessibilityLabel="Like"
         >
-          <Text style={styles.buttonText}>Like</Text>
+          <Feather name="heart" size={28} color={colors.onBrand} />
         </Pressable>
       </View>
     </View>
   );
+}
+
+/** `$$ • Japanese, Seafood` — the price/cuisine summary line; either part may be absent. */
+function formatPriceCuisine(restaurant: DeckRestaurant): string {
+  const price = restaurant.price_level
+    ? "$".repeat(Number(restaurant.price_level))
+    : "";
+  const cuisines = restaurant.cuisines.map(cuisineLabel).join(", ");
+  return [price, cuisines].filter(Boolean).join(" • ");
 }
 
 function formatDistance(metres: number): string {
@@ -155,42 +205,43 @@ function formatDistance(metres: number): string {
   return `${(metres / 1000).toFixed(1)} km`;
 }
 
+const CIRCLE = 64;
+
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: spacing.md,
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  name: { ...typography.titleLg, color: colors.text, flexShrink: 1 },
+  meta: {
+    ...typography.bodyMd,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  chips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.base,
+    marginTop: spacing.gutter,
   },
-  swipeable: { gap: spacing.base },
-  photo: {
-    width: "100%",
-    aspectRatio: 16 / 10,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceHighest,
-  },
-  photoFallback: { alignItems: "center", justifyContent: "center" },
-  photoFallbackText: { color: colors.textMuted },
-  name: { color: colors.text, fontSize: 22, fontWeight: "700" },
-  meta: { color: colors.textMuted, fontSize: 14 },
-  cuisines: { color: colors.textMuted, fontSize: 14 },
   actions: {
     flexDirection: "row",
-    gap: spacing.gutter,
-    marginTop: spacing.base,
+    justifyContent: "center",
+    gap: spacing.lg,
+    marginTop: spacing.md,
   },
-  button: {
-    flex: 1,
-    borderRadius: 12,
-    paddingVertical: spacing.gutter,
+  circle: {
+    width: CIRCLE,
+    height: CIRCLE,
+    borderRadius: radii.full,
     alignItems: "center",
+    justifyContent: "center",
+    ...shadow("shadowLow"),
   },
-  pass: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.textMuted,
-  },
+  pass: { backgroundColor: colors.surfaceHighest },
   like: { backgroundColor: colors.brand },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: colors.text, fontSize: 16, fontWeight: "600" },
+  pressed: { transform: [{ translateY: 2 }] },
+  disabled: { opacity: 0.5 },
 });

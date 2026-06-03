@@ -179,8 +179,10 @@ tokens. They hold **no business logic and read no data** (CLAUDE.md §4).
 - **Host resolution** — "Group's Top Pick" Decision Card with an aggregate "N/M friends liked
   this" pill, "Settle for this" (→ accept top), and a "Widen the Search" block (radius slider
   + cuisine chips + "Fetch New Deck" → widen).
-- **Squad list (lobby)** — avatars with presence dots, status snippets, "Invite more" tile,
-  shareable code + QR.
+- **Squad list (lobby)** — a 2-column grid of avatar tiles with presence dots and a presence
+  label (Here/Away), an "Invite more" tile, and the amber shareable-code + QR card (tap to copy
+  the join link). The squad count is the number of members joined. (v1 has no per-member status
+  text — the mockup's flavor snippets aren't backed by data.)
 
 ---
 

@@ -1,67 +1,90 @@
+import { Feather } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import * as Linking from "expo-linking";
-import { Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
-import { colors, spacing } from "../theme";
+import { colors, radii, shadow, spacing, typography } from "../theme";
 
 /**
- * Invite affordance: the 6-digit code, a Share of the join link, and a QR of that
- * link. The link is built with expo-linking's createURL so it is environment-aware —
- * the dev URL in Expo Go, the `munch://` scheme in a standalone build — and routes to
- * /room/join/{code} (parity with apps/web's path-based link). Presentational; the
- * code is passed in (CLAUDE.md §4).
+ * Invite affordance (pages.md §3.5, "Lobby with QR Code"): the amber code card with the
+ * 6-digit code, a scannable QR of the join link, and tap-to-copy. The link is built with
+ * expo-linking's createURL so it is environment-aware — the dev URL in Expo Go, the
+ * `munch://` scheme in a standalone build — and routes to /room/join/{code} (parity with
+ * apps/web's path-based link). Presentational; the code is passed in (CLAUDE.md §4).
  */
-export function InvitePanel({ code }: { code: string }) {
-  const joinUrl = Linking.createURL(`/room/join/${code}`);
 
-  async function handleShare() {
+/** Shared join-link builder so the lobby's "Invite more" share uses the same URL as the QR. */
+export function buildJoinUrl(code: string): string {
+  return Linking.createURL(`/room/join/${code}`);
+}
+
+/** Display the 6-digit code as `123-456` for readability; the stored value is unchanged. */
+function formatCode(code: string): string {
+  return code.length === 6 ? `${code.slice(0, 3)}-${code.slice(3)}` : code;
+}
+
+export function InvitePanel({ code }: { code: string }) {
+  const joinUrl = buildJoinUrl(code);
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
     try {
-      await Share.share({ message: joinUrl });
+      await Clipboard.setStringAsync(joinUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Sharing is best-effort; a dismissed or failed share is not surfaced.
+      // Copying is best-effort; a failed clipboard write is not surfaced.
     }
   }
 
   return (
-    <View style={styles.panel}>
-      <Text style={styles.heading}>Invite friends</Text>
-      <Text style={styles.code}>{code}</Text>
+    <Pressable
+      onPress={() => void handleCopy()}
+      accessibilityRole="button"
+      accessibilityLabel="Copy join link"
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+    >
+      <Text style={styles.code}>{formatCode(code)}</Text>
       <View style={styles.qr}>
-        <QRCode value={joinUrl} size={160} />
+        <QRCode value={joinUrl} size={140} />
       </View>
-      <Pressable style={styles.button} onPress={() => void handleShare()}>
-        <Text style={styles.buttonText}>Share join link</Text>
-      </Pressable>
-    </View>
+      <View style={styles.hintRow}>
+        <Feather
+          name={copied ? "check" : "copy"}
+          size={14}
+          color={colors.onBrand}
+        />
+        <Text style={styles.hint}>
+          {copied ? "Link copied!" : "Tap to copy link or scan QR"}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  panel: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
+  card: {
+    backgroundColor: colors.brand,
+    borderRadius: radii.xl,
     padding: spacing.md,
     alignItems: "center",
     gap: spacing.gutter,
+    ...shadow("shadowLow"),
   },
-  heading: { color: colors.text, fontSize: 18, fontWeight: "600" },
+  pressed: { transform: [{ translateY: 2 }] },
   code: {
-    color: colors.brand,
-    fontSize: 32,
-    fontWeight: "700",
+    ...typography.displayLgMobile,
+    color: colors.onBrand,
     letterSpacing: 4,
   },
-  // White backdrop keeps the dark-on-light QR scannable against the cream canvas.
+  // White backdrop keeps the dark-on-light QR scannable against the amber card.
   qr: {
     backgroundColor: colors.surface,
-    padding: spacing.base,
-    borderRadius: 8,
+    padding: spacing.sm,
+    borderRadius: radii.md,
   },
-  button: {
-    backgroundColor: colors.brand,
-    borderRadius: 12,
-    paddingVertical: spacing.base,
-    paddingHorizontal: spacing.md,
-  },
-  buttonText: { color: colors.onBrand, fontSize: 16, fontWeight: "600" },
+  hintRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  hint: { ...typography.caption, color: colors.onBrand },
 });

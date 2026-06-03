@@ -1,11 +1,12 @@
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import type { DeckRestaurant, SessionStatus } from "@munch/core";
 import { useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { SwipeCard } from "../../components/swipe-card";
 import { RadiusSlider } from "../../components/ui/radius-slider";
-import { colors, spacing } from "../../theme";
+import { colors, radii, shadow, spacing, typography } from "../../theme";
 import { ResolutionView } from "./resolution-view";
 import { useActiveSession } from "./use-active-session";
 import { useDeck } from "./use-deck";
@@ -108,6 +109,11 @@ function SwipeRunner({
     initialStatus,
   );
 
+  // The radius "narrow" control lives behind an "Adjust" affordance (pages.md §3.6) instead
+  // of being permanently open; toggling it only shows/hides the existing local slider — the
+  // setRadiusM wiring is unchanged and never refetches the provider (CLAUDE.md §2.1).
+  const [adjustOpen, setAdjustOpen] = useState(false);
+
   // Deck exhausted with no unanimous match → the server flipped the session to
   // awaiting_host_resolution; show the host the closest-to-unanimous ranking and everyone
   // else the passive "waiting on host" state (CLAUDE.md §2.3, §2.4).
@@ -118,6 +124,7 @@ function SwipeRunner({
         sessionId={sessionId}
         isHost={swipe.isHost}
         sessionRadiusM={sessionRadiusM}
+        deck={deck}
       />
     );
   }
@@ -129,11 +136,41 @@ function SwipeRunner({
 
   return (
     <View style={styles.container}>
-      <RadiusSlider
-        valueM={swipe.radiusM}
-        maxM={sessionRadiusM}
-        onChange={swipe.setRadiusM}
-      />
+      <View style={styles.header}>
+        <View style={styles.brandRow}>
+          <MaterialCommunityIcons
+            name="silverware-fork-knife"
+            size={24}
+            color={colors.heat}
+          />
+          <Text style={styles.brand}>Munch</Text>
+        </View>
+        <Pressable
+          onPress={() => setAdjustOpen((open) => !open)}
+          accessibilityRole="button"
+          accessibilityLabel="Adjust distance"
+          accessibilityState={{ expanded: adjustOpen }}
+          style={({ pressed }) => [
+            styles.adjustPill,
+            adjustOpen && styles.adjustPillActive,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Feather name="sliders" size={14} color={colors.text} />
+          <Text style={styles.adjustLabel}>Adjust</Text>
+        </Pressable>
+      </View>
+
+      {adjustOpen ? (
+        <View style={styles.adjustPanel}>
+          <RadiusSlider
+            valueM={swipe.radiusM}
+            maxM={sessionRadiusM}
+            onChange={swipe.setRadiusM}
+          />
+        </View>
+      ) : null}
+
       {swipe.error ? (
         <Text style={styles.error} accessibilityRole="alert">
           {swipe.error.message}
@@ -152,7 +189,7 @@ function SwipeRunner({
         </Text>
       ) : (
         <Text style={styles.muted}>
-          No restaurants in this radius. Widen the slider above.
+          No restaurants in this radius. Tap Adjust to widen the distance.
         </Text>
       )}
     </View>
@@ -161,6 +198,31 @@ function SwipeRunner({
 
 const styles = StyleSheet.create({
   container: { gap: spacing.md },
-  muted: { color: colors.textMuted },
-  error: { color: colors.error },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: spacing.base },
+  brand: { ...typography.titleLg, color: colors.text },
+  adjustPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    minHeight: 44,
+    paddingHorizontal: spacing.gutter,
+    borderRadius: radii.full,
+    backgroundColor: colors.surfaceRaised,
+  },
+  adjustPillActive: { backgroundColor: colors.surfaceHighest },
+  adjustLabel: { ...typography.labelMd, color: colors.text },
+  adjustPanel: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    padding: spacing.gutter,
+    ...shadow("shadowLow"),
+  },
+  pressed: { transform: [{ translateY: 2 }] },
+  muted: { ...typography.bodyMd, color: colors.textMuted },
+  error: { ...typography.bodyMd, color: colors.error },
 });
