@@ -25,17 +25,20 @@ duplicated per app.
 
 ---
 
-## 2. Phase A — Shared token foundation
+## 2. Phase A — Shared token foundation — ✅ Delivered
 
 **Goal:** one platform-agnostic source of truth for the visual language.
 
-- Create `packages/ui` with `tokens.ts` (colors, typography, spacing, radii, shadows from
-  `design-system.md` §4–§6). No React Native, no DOM imports. Mirror `@munch/core` packaging
-  (source export, no build step).
-- Wire it into the pnpm workspace + base tsconfig.
+- Created `packages/ui` with `tokens.ts` (colors, typography, spacing, radii, shadows from
+  `design-system.md` §4–§6). No React Native, no DOM imports, no runtime dependency. Mirrors
+  `@munch/core` packaging (source export, no build step).
+- Wired into the pnpm workspace via `"@munch/ui": "workspace:*"` in both apps (the `packages/*`
+  glob and symlink resolution; `tsconfig.base.json` needs no `paths` map).
 
-**Exit criteria:** both apps can import `@munch/ui` tokens and typecheck; values match
-`design-system.md` exactly.
+**Exit criteria — met:** both apps import `@munch/ui` tokens and typecheck (the import seams in
+`apps/mobile/src/theme/index.ts` and `apps/web/src/lib/tokens.ts`); token values match
+`design-system.md` §4–§6 exactly; `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build` are
+green tree-wide. The reskin of any screen is deferred to Phase B (mobile) / Phase C (web).
 
 ---
 
