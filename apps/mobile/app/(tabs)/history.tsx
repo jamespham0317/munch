@@ -1,7 +1,7 @@
 import { ScrollView, StyleSheet, Text } from "react-native";
 
-import { HistoryView } from "../src/features/history/history-view";
-import { colors, spacing } from "../src/theme";
+import { HistoryView } from "../../src/features/history/history-view";
+import { colors, spacing } from "../../src/theme";
 
 /**
  * Saved-matches screen (docs/05 §3). Thin wrapper around the HistoryView feature, which gates

@@ -1,8 +1,8 @@
 import { Link } from "expo-router";
 import { ScrollView, StyleSheet, Text } from "react-native";
 
-import { AuthPanel } from "../src/features/auth/auth-panel";
-import { colors, spacing } from "../src/theme";
+import { AuthPanel } from "../../src/features/auth/auth-panel";
+import { colors, spacing } from "../../src/theme";
 
 /**
  * Home screen. Thin by design (CLAUDE.md §4): it offers the two guest-by-default entry
