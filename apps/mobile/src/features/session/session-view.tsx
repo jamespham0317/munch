@@ -160,7 +160,7 @@ function SwipeRunner({
 }
 
 const styles = StyleSheet.create({
-  container: { gap: spacing.lg },
+  container: { gap: spacing.md },
   muted: { color: colors.textMuted },
-  error: { color: colors.danger },
+  error: { color: colors.error },
 });

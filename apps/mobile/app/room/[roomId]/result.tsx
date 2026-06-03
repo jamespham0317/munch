@@ -36,7 +36,7 @@ export default function ResultScreen() {
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.background },
-  content: { padding: spacing.lg, gap: spacing.lg },
+  content: { padding: spacing.md, gap: spacing.md },
   title: { color: colors.text, fontSize: 28, fontWeight: "700" },
   muted: { color: colors.textMuted },
 });

@@ -205,26 +205,26 @@ function formatDistance(metres: number): string {
 }
 
 const styles = StyleSheet.create({
-  container: { gap: spacing.md },
+  container: { gap: spacing.gutter },
   headline: { color: colors.text, fontSize: 24, fontWeight: "700" },
   muted: { color: colors.textMuted },
-  error: { color: colors.danger },
-  list: { gap: spacing.sm },
+  error: { color: colors.error },
+  list: { gap: spacing.base },
   row: {
     backgroundColor: colors.surface,
     borderRadius: 12,
-    padding: spacing.md,
-    gap: spacing.sm / 2,
+    padding: spacing.gutter,
+    gap: spacing.xs,
   },
   rowName: { color: colors.text, fontSize: 16, fontWeight: "600" },
   rowMeta: { color: colors.textMuted, fontSize: 14 },
   button: {
     borderRadius: 12,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.gutter,
     alignItems: "center",
   },
-  accept: { backgroundColor: colors.accent },
-  widen: { gap: spacing.sm },
+  accept: { backgroundColor: colors.brand },
+  widen: { gap: spacing.base },
   widenButton: {
     backgroundColor: colors.surface,
     borderWidth: 1,

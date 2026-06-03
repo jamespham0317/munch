@@ -117,22 +117,22 @@ export function FiltersFieldset({
 }
 
 const styles = StyleSheet.create({
-  group: { gap: spacing.md },
+  group: { gap: spacing.gutter },
   switchRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   switchLabel: { color: colors.text, fontSize: 16 },
-  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.base },
   chip: {
     backgroundColor: colors.surface,
     borderRadius: 12,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.base,
   },
-  chipSelected: { backgroundColor: colors.accent },
+  chipSelected: { backgroundColor: colors.brand },
   chipDisabled: { opacity: 0.5 },
   chipText: { color: colors.textMuted, fontSize: 16 },
-  chipTextSelected: { color: colors.background, fontWeight: "600" },
+  chipTextSelected: { color: colors.onBrand, fontWeight: "600" },
 });

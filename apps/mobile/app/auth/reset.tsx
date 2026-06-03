@@ -25,6 +25,6 @@ export default function ResetScreen() {
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.background },
-  content: { flexGrow: 1, padding: spacing.lg, gap: spacing.lg },
+  content: { flexGrow: 1, padding: spacing.md, gap: spacing.md },
   title: { color: colors.text, fontSize: 28, fontWeight: "700" },
 });

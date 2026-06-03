@@ -142,22 +142,22 @@ export function CreateRoomForm() {
 }
 
 const styles = StyleSheet.create({
-  form: { gap: spacing.md },
+  form: { gap: spacing.gutter },
   input: {
     backgroundColor: colors.surface,
     borderRadius: 12,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.base,
     color: colors.text,
     fontSize: 16,
   },
-  error: { color: colors.danger },
+  error: { color: colors.error },
   button: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.brand,
     borderRadius: 12,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.gutter,
     alignItems: "center",
   },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.background, fontSize: 16, fontWeight: "600" },
+  buttonText: { color: colors.onBrand, fontSize: 16, fontWeight: "600" },
 });

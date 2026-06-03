@@ -159,15 +159,15 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: 16,
-    padding: spacing.lg,
-    gap: spacing.sm,
+    padding: spacing.md,
+    gap: spacing.base,
   },
-  swipeable: { gap: spacing.sm },
+  swipeable: { gap: spacing.base },
   photo: {
     width: "100%",
     aspectRatio: 16 / 10,
     borderRadius: 12,
-    backgroundColor: "#1f2937",
+    backgroundColor: colors.surfaceHighest,
   },
   photoFallback: { alignItems: "center", justifyContent: "center" },
   photoFallbackText: { color: colors.textMuted },
@@ -176,13 +176,13 @@ const styles = StyleSheet.create({
   cuisines: { color: colors.textMuted, fontSize: 14 },
   actions: {
     flexDirection: "row",
-    gap: spacing.md,
-    marginTop: spacing.sm,
+    gap: spacing.gutter,
+    marginTop: spacing.base,
   },
   button: {
     flex: 1,
     borderRadius: 12,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.gutter,
     alignItems: "center",
   },
   pass: {
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.textMuted,
   },
-  like: { backgroundColor: colors.accent },
+  like: { backgroundColor: colors.brand },
   buttonDisabled: { opacity: 0.5 },
   buttonText: { color: colors.text, fontSize: 16, fontWeight: "600" },
 });

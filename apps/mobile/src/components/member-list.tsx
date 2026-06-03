@@ -32,8 +32,8 @@ export function MemberList({ members }: { members: RoomMember[] }) {
 }
 
 const styles = StyleSheet.create({
-  list: { gap: spacing.sm },
-  row: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  list: { gap: spacing.base },
+  row: { flexDirection: "row", alignItems: "center", gap: spacing.base },
   dot: { fontSize: 12 },
   name: { color: colors.text, fontSize: 16 },
   muted: { color: colors.textMuted },

@@ -40,24 +40,28 @@ const styles = StyleSheet.create({
   panel: {
     backgroundColor: colors.surface,
     borderRadius: 16,
-    padding: spacing.lg,
+    padding: spacing.md,
     alignItems: "center",
-    gap: spacing.md,
+    gap: spacing.gutter,
   },
   heading: { color: colors.text, fontSize: 18, fontWeight: "600" },
   code: {
-    color: colors.accent,
+    color: colors.brand,
     fontSize: 32,
     fontWeight: "700",
     letterSpacing: 4,
   },
-  // White backdrop so the dark-on-light QR stays scannable on the dark theme.
-  qr: { backgroundColor: "#ffffff", padding: spacing.sm, borderRadius: 8 },
-  button: {
-    backgroundColor: colors.accent,
-    borderRadius: 12,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
+  // White backdrop keeps the dark-on-light QR scannable against the cream canvas.
+  qr: {
+    backgroundColor: colors.surface,
+    padding: spacing.base,
+    borderRadius: 8,
   },
-  buttonText: { color: colors.background, fontSize: 16, fontWeight: "600" },
+  button: {
+    backgroundColor: colors.brand,
+    borderRadius: 12,
+    paddingVertical: spacing.base,
+    paddingHorizontal: spacing.md,
+  },
+  buttonText: { color: colors.onBrand, fontSize: 16, fontWeight: "600" },
 });

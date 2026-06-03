@@ -125,22 +125,22 @@ export function LobbyView({ roomId }: { roomId: string }) {
 }
 
 const styles = StyleSheet.create({
-  container: { gap: spacing.lg },
+  container: { gap: spacing.md },
   heading: { color: colors.text, fontSize: 18, fontWeight: "600" },
   muted: { color: colors.textMuted },
-  error: { color: colors.danger },
+  error: { color: colors.error },
   button: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.brand,
     borderRadius: 12,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.gutter,
     alignItems: "center",
   },
   buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: colors.background, fontSize: 16, fontWeight: "600" },
+  buttonText: { color: colors.onBrand, fontSize: 16, fontWeight: "600" },
   link: {
-    color: colors.accent,
+    color: colors.brand,
     fontSize: 16,
     fontWeight: "600",
-    paddingTop: spacing.sm,
+    paddingTop: spacing.base,
   },
 });

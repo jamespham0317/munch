@@ -56,22 +56,22 @@ export function ResultView({ sessionId }: { sessionId: string }) {
 }
 
 const styles = StyleSheet.create({
-  container: { gap: spacing.md, alignItems: "flex-start" },
+  container: { gap: spacing.gutter, alignItems: "flex-start" },
   headline: { color: colors.text, fontSize: 24, fontWeight: "700" },
   photo: {
     width: "100%",
     aspectRatio: 16 / 10,
     borderRadius: 12,
-    backgroundColor: "#1f2937",
+    backgroundColor: colors.surfaceHighest,
   },
   name: { color: colors.text, fontSize: 20, fontWeight: "600" },
   meta: { color: colors.textMuted, fontSize: 14 },
   muted: { color: colors.textMuted },
-  error: { color: colors.danger },
+  error: { color: colors.error },
   link: {
-    color: colors.accent,
+    color: colors.brand,
     fontSize: 16,
     fontWeight: "600",
-    paddingTop: spacing.sm,
+    paddingTop: spacing.base,
   },
 });

@@ -23,6 +23,6 @@ export function Field({
 }
 
 const styles = StyleSheet.create({
-  field: { gap: spacing.sm / 2 },
+  field: { gap: spacing.xs },
   label: { color: colors.textMuted, fontSize: 14 },
 });

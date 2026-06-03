@@ -29,9 +29,9 @@ export function RadiusSlider({
         step={100}
         value={valueM}
         onValueChange={onChange}
-        minimumTrackTintColor={colors.accent}
+        minimumTrackTintColor={colors.brand}
         maximumTrackTintColor={colors.textMuted}
-        thumbTintColor={colors.accent}
+        thumbTintColor={colors.brand}
       />
     </View>
   );
@@ -42,6 +42,6 @@ function formatKm(metres: number): string {
 }
 
 const styles = StyleSheet.create({
-  container: { gap: spacing.sm / 2 },
+  container: { gap: spacing.xs },
   label: { color: colors.textMuted, fontSize: 14 },
 });

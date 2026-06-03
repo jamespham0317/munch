@@ -104,29 +104,29 @@ function formatDate(iso: string): string {
 }
 
 const styles = StyleSheet.create({
-  container: { gap: spacing.md },
+  container: { gap: spacing.gutter },
   heading: { color: colors.text, fontSize: 22, fontWeight: "700" },
-  list: { gap: spacing.md },
+  list: { gap: spacing.gutter },
   row: {
     backgroundColor: colors.surface,
     borderRadius: 12,
-    padding: spacing.md,
-    gap: spacing.sm / 2,
+    padding: spacing.gutter,
+    gap: spacing.xs,
   },
   photo: {
     width: "100%",
     aspectRatio: 16 / 10,
     borderRadius: 12,
-    backgroundColor: "#1f2937",
+    backgroundColor: colors.surfaceHighest,
   },
   name: { color: colors.text, fontSize: 18, fontWeight: "600" },
   meta: { color: colors.textMuted, fontSize: 14 },
   muted: { color: colors.textMuted },
-  error: { color: colors.danger },
+  error: { color: colors.error },
   link: {
-    color: colors.accent,
+    color: colors.brand,
     fontSize: 16,
     fontWeight: "600",
-    paddingTop: spacing.sm,
+    paddingTop: spacing.base,
   },
 });
