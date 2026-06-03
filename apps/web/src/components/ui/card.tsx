@@ -8,11 +8,14 @@ import { cx } from "./cx";
  * (CLAUDE.md §4 — presentational, no data). The web twin of the Phase B mobile Card.
  * An optional image header carries a bottom legibility scrim (charcoal gradient, from
  * the `text` token — not a new colour) so overlaid white text stays readable; the
- * `imageOverlay` slot is positioned over it.
+ * `imageOverlay` slot is positioned over it. `surface` switches the fill from the default
+ * white to the brand amber (charcoal text) for the highlighted cards — the Welcome
+ * "Create a Room" card and the lobby code panel (design-system.md §8).
  */
 export function Card({
   children,
   padding = "md",
+  surface = "default",
   image,
   imageAlt = "",
   imageHeight = 200,
@@ -22,6 +25,8 @@ export function Card({
   children?: ReactNode;
   /** `md` = 24px interior; `decision` = 32px (the swipe card); `none` = no padding. */
   padding?: "md" | "decision" | "none";
+  /** `default` = white surface; `brand` = amber fill with charcoal text. */
+  surface?: "default" | "brand";
   /** A missing src renders the card without a photo header. */
   image?: string;
   imageAlt?: string;
@@ -31,10 +36,13 @@ export function Card({
 }) {
   const padClass =
     padding === "decision" ? "p-8" : padding === "none" ? "" : "p-md";
+  const surfaceClass =
+    surface === "brand" ? "bg-brand text-on-brand" : "bg-surface";
   return (
     <div
       className={cx(
-        "overflow-hidden rounded-xl bg-surface shadow-low",
+        "overflow-hidden rounded-xl shadow-low",
+        surfaceClass,
         className,
       )}
     >

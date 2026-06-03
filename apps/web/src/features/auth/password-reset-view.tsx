@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 
+import { Button, Card, Field, Input } from "@/components/ui";
 import { getSupabaseClient } from "@/lib/supabase";
 
 import { useEmailSignIn } from "./use-email-sign-in";
@@ -85,33 +86,47 @@ export function PasswordResetView() {
     const errorMessage =
       validationError ?? (update.isError ? update.error.message : null);
     return (
-      <section>
-        <h2>Set a new password</h2>
-        <form onSubmit={handleUpdate}>
-          <label>
-            New password
-            <input
+      <Card>
+        <form onSubmit={handleUpdate} className="flex flex-col gap-gutter">
+          <h2 className="text-headline-md text-text">Set a new password</h2>
+          <Field label="New password" htmlFor="reset-new-password">
+            <Input
+              id="reset-new-password"
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="new-password"
+              placeholder="At least 8 characters"
             />
-          </label>
-          {errorMessage ? <p role="alert">{errorMessage}</p> : null}
-          <button type="submit" disabled={update.isPending}>
-            {update.isPending ? "Saving…" : "Save password"}
-          </button>
+          </Field>
+          {errorMessage ? (
+            <p role="alert" className="text-body-md text-error">
+              {errorMessage}
+            </p>
+          ) : null}
+          <Button
+            type="submit"
+            label={update.isPending ? "Saving…" : "Save password"}
+            loading={update.isPending}
+          />
         </form>
-      </section>
+      </Card>
     );
   }
 
   if (requested) {
     return (
-      <section>
-        <p>Check your email for a link to reset your password.</p>
-        <Link href="/">Back home</Link>
-      </section>
+      <Card className="flex flex-col gap-gutter">
+        <p className="text-body-md text-text-muted">
+          Check your email for a link to reset your password.
+        </p>
+        <Link
+          href="/"
+          className="text-body-md text-heat-strong focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/40"
+        >
+          Back home
+        </Link>
+      </Card>
     );
   }
 
@@ -119,24 +134,30 @@ export function PasswordResetView() {
     validationError ??
     (requestReset.isError ? requestReset.error.message : null);
   return (
-    <section>
-      <h2>Reset your password</h2>
-      <form onSubmit={handleRequest}>
-        <label>
-          Email
-          <input
+    <Card>
+      <form onSubmit={handleRequest} className="flex flex-col gap-gutter">
+        <Field label="Email address" htmlFor="reset-email">
+          <Input
+            id="reset-email"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
+            autoCapitalize="none"
+            placeholder="you@example.com"
           />
-        </label>
-        {errorMessage ? <p role="alert">{errorMessage}</p> : null}
-        <button type="submit" disabled={requestReset.isPending}>
-          {requestReset.isPending ? "Sending…" : "Send reset link"}
-        </button>
+        </Field>
+        {errorMessage ? (
+          <p role="alert" className="text-body-md text-error">
+            {errorMessage}
+          </p>
+        ) : null}
+        <Button
+          type="submit"
+          label={requestReset.isPending ? "Sending…" : "Send reset link"}
+          loading={requestReset.isPending}
+        />
       </form>
-      <Link href="/">Back home</Link>
-    </section>
+    </Card>
   );
 }

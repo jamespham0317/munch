@@ -1,10 +1,13 @@
+import { FullScreenView } from "@/components/full-screen-view";
 import { CreateRoomForm } from "@/features/room/create-room-form";
 
 export default function CreateRoomPage() {
   return (
-    <main>
-      <h1>Create a room</h1>
+    <FullScreenView
+      title="Start a Munch Group"
+      subtitle="Set your vibes and let the group decide together."
+    >
       <CreateRoomForm />
-    </main>
+    </FullScreenView>
   );
 }

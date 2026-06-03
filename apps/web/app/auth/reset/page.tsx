@@ -1,3 +1,4 @@
+import { FullScreenView } from "@/components/full-screen-view";
 import { PasswordResetView } from "@/features/auth/password-reset-view";
 
 /**
@@ -6,9 +7,11 @@ import { PasswordResetView } from "@/features/auth/password-reset-view";
  */
 export default function PasswordResetPage() {
   return (
-    <main>
-      <h1>Reset password</h1>
+    <FullScreenView
+      title="Reset password"
+      subtitle="We'll email you a link to set a new password."
+    >
       <PasswordResetView />
-    </main>
+    </FullScreenView>
   );
 }

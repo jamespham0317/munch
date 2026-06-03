@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { Card } from "@/components/ui";
 import { getSupabaseClient } from "@/lib/supabase";
 
 import { currentUserKey } from "./use-current-user";
@@ -60,11 +61,18 @@ export function AuthCallbackView() {
 
   if (error) {
     return (
-      <section>
-        <p role="alert">{error}</p>
-        <Link href="/">Back home</Link>
-      </section>
+      <Card className="flex flex-col gap-gutter">
+        <p role="alert" className="text-body-md text-error">
+          {error}
+        </p>
+        <Link
+          href="/"
+          className="text-body-md text-heat-strong focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/40"
+        >
+          Back home
+        </Link>
+      </Card>
     );
   }
-  return <p>Finishing sign-in…</p>;
+  return <p className="text-body-md text-text-muted">Finishing sign-in…</p>;
 }

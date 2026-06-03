@@ -1,3 +1,4 @@
+import { FullScreenView } from "@/components/full-screen-view";
 import { AuthCallbackView } from "@/features/auth/auth-callback-view";
 
 /**
@@ -6,9 +7,8 @@ import { AuthCallbackView } from "@/features/auth/auth-callback-view";
  */
 export default function AuthCallbackPage() {
   return (
-    <main>
-      <h1>Munch</h1>
+    <FullScreenView>
       <AuthCallbackView />
-    </main>
+    </FullScreenView>
   );
 }

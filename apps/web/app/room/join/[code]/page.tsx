@@ -1,3 +1,4 @@
+import { FullScreenView } from "@/components/full-screen-view";
 import { JoinRoomForm } from "@/features/room/join-room-form";
 
 /**
@@ -11,9 +12,11 @@ export default async function JoinRoomByCodePage({
 }) {
   const { code } = await params;
   return (
-    <main>
-      <h1>Join a room</h1>
+    <FullScreenView
+      title="Join with Code"
+      subtitle="You're invited! Add your name to join the room."
+    >
       <JoinRoomForm initialCode={code} />
-    </main>
+    </FullScreenView>
   );
 }
