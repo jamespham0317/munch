@@ -42,22 +42,34 @@ green tree-wide. The reskin of any screen is deferred to Phase B (mobile) / Phas
 
 ---
 
-## 3. Phase B — Mobile (Expo / React Native)
+## 3. Phase B — Mobile (Expo / React Native) — ✅ Delivered
 
 **Goal:** the mockups, live on iOS + Android.
 
-- Load **Quicksand** (`expo-font` + `@expo-google-fonts/quicksand`) in `app/_layout.tsx`.
-- Repoint `apps/mobile/src/theme/index.ts` at `@munch/ui` (light palette replaces the dark
-  placeholder).
-- Build RN primitives in `components/ui/` (Button, Chip/FoodChip, Card, PriceTile, Field,
-  Avatar, ProgressPill, Toggle, TabBar) per `design-system.md` §7.
-- Add the **bottom-tab shell** (Discover · Match · Profile) as an `expo-router` tab group
-  (`pages.md` §2).
-- Reskin every screen in `pages.md` §3. The existing reanimated/gesture swipe is kept; only
-  the Decision Card visuals change. **Drop the swipe bookmark button.**
+- Loaded **Quicksand** (`expo-font` + `@expo-google-fonts/quicksand`) in `app/_layout.tsx`,
+  gating first render until the faces are ready; the status bar is dark content on cream.
+- Repointed `apps/mobile/src/theme/index.ts` at `@munch/ui` (a RN adapter over the light
+  palette replaced the dark Phase-0 placeholder); typography carries the right Quicksand face
+  per weight and `shadow()`/`pressTranslateY` are derived from the tokens — no value re-defined.
+- Built the RN primitives in `components/ui/` (Button, Chip/FoodChip, Card, PriceTile/
+  SegmentedTile, Field, Input, Avatar, ProgressPill/Badge, RadiusSlider, Toggle, TabBar) per
+  `design-system.md` §7. The restyled functional pieces (`swipe-card`, `member-list`,
+  `invite-panel`, `filters-fieldset`, `filters-summary`) live in `components/`.
+- Added the **bottom-tab shell** (Discover · Match · Profile) as an `expo-router` `(tabs)`
+  group (`pages.md` §2); the room/join routes still present full-screen above the tabs and the
+  join deep link still resolves.
+- Reskinned every screen in `pages.md` §3. The existing reanimated/gesture swipe is kept; only
+  the Decision Card visuals changed. The swipe bookmark button is dropped (like/pass only).
 
-**Exit criteria:** all mobile screens match the mockups on a simulator; tabs navigate;
-the swipe/match/resolution flows still work end-to-end with one provider call per session.
+**Exit criteria — met:** `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build` are green
+tree-wide; the app uses the cream/charcoal light theme with Quicksand; the three tabs navigate;
+every screen in `pages.md` §3 matches its Stitch mockup; the swipe/match/resolution flows keep
+their wiring (a swipe calls `submit_swipe`, resolution calls `resolve_session`) with one
+provider call per session and the card never declares a match; no hardcoded palette, ad-hoc
+font size, or `react-native-web` import remains in the app. Distance is displayed in **km**
+throughout (session/match/resolution); the Stitch mockups are internally inconsistent on units
+(the radius slider shows km, the cards show mi), so the app standardized on km — revisit if a
+US-imperial launch is decided (open, see CLAUDE.md §9).
 
 ---
 

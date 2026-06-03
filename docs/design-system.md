@@ -155,7 +155,7 @@ tokens. They hold **no business logic and read no data** (CLAUDE.md §4).
 - **Field / Input** — pill or `radius-md`; 2px amber border + soft amber outer glow on focus;
   faint placeholder.
 - **Avatar** — circular; optional `online` presence dot; "+" variant for "Invite more".
-- **ProgressPill / Badge** — small caption pills ("Waiting…", "1.2 mi", rating "4.8 ★",
+- **ProgressPill / Badge** — small caption pills ("Waiting…", "1.2 km", rating "4.8 ★",
   "(4/8)"). Rating star uses amber.
 - **RadiusSlider** — amber thumb + amber value pill; bounded to the host's anchor (see §9).
 - **Toggle** — "bite-out-of-a-circle" custom radio when selected (playful selection mark).

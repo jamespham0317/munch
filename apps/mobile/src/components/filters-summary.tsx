@@ -1,7 +1,7 @@
 import { cuisineLabel, type PriceLevel } from "@munch/core";
 import { StyleSheet, Text } from "react-native";
 
-import { colors } from "../theme";
+import { colors, typography } from "../theme";
 
 /**
  * Read-only summary of the room's active filters (RN parity with apps/web's FiltersSummary).
@@ -35,5 +35,5 @@ export function FiltersSummary({
 }
 
 const styles = StyleSheet.create({
-  summary: { color: colors.textMuted, fontSize: 14 },
+  summary: { ...typography.caption, color: colors.textMuted },
 });
