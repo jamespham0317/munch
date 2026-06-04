@@ -8,9 +8,13 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "associatedDomains": ["applinks:munch.app"]
+      "associatedDomains": ["applinks:munch.app"],
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Munch uses your location to center the map on you."
+      }
     },
     "android": {
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -31,7 +35,14 @@
       "expo-status-bar",
       "expo-web-browser",
       "expo-font",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      "@maplibre/maplibre-react-native",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Munch uses your location to center the map on you."
+        }
+      ]
     ]
   }
 }

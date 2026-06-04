@@ -49,6 +49,13 @@ pnpm dev:web           # Next.js web app
 pnpm dev:mobile        # Expo mobile app
 ```
 
+> **Mobile needs a dev build, not Expo Go.** The Create Room anchor map uses
+> `@maplibre/maplibre-react-native` (Phase 4.6), which ships native code Expo Go
+> cannot load. Build a custom dev client once (`npx expo prebuild` + `npx expo run:ios` /
+> `run:android`, or an EAS dev build), then `pnpm dev:mobile` connects to it. The map
+> also requests location once on Create Room; permission is opt-in and never blocks
+> room creation.
+
 The apps talk to a local Supabase. First time:
 
 ```sh
