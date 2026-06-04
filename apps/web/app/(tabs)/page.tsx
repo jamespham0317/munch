@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  ChevronsRight,
-  Coffee,
-  Heart,
-  Plus,
-  Users,
-  UtensilsCrossed,
-} from "lucide-react";
+import { ChevronsRight, Coffee, Heart, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
@@ -35,11 +28,6 @@ export default function HomePage() {
 
   return (
     <section className="flex flex-col gap-md">
-      <div className="flex items-center gap-base">
-        <UtensilsCrossed size={24} className="text-heat" aria-hidden />
-        <span className="text-title-lg text-text">Munch</span>
-      </div>
-
       <header className="flex flex-col gap-base">
         <h1 className="text-display-lg-mobile text-text md:text-display-lg">
           Ready to eat?
