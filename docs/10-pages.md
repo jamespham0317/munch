@@ -66,10 +66,19 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 - **Routes:** mobile `app/room/create.tsx` · web `app/room/create/page.tsx`.
 - **Purpose:** host sets anchor ("Where are we eating?"), cuisine chips, price range tiles,
   radius slider → **Start Room**.
-- **Primitives:** Field (location), FoodChip (cuisines), PriceTile, RadiusSlider, Button.
-- **Wiring:** `create_room` (then lobby). Filters snapshot into the room.
+- **Primitives:** AnchorMap (anchor), Field (optional `anchor_label`), FoodChip (cuisines),
+  PriceTile, RadiusSlider, Button.
+- **Anchor:** set via the **AnchorMap** (MapLibre + OSM tiles, Phase 4.6), **not** manual
+  lat/lng. A fixed center pin marks the anchor (= `map.getCenter()` on move-end); device
+  geolocation centers the map on open (opt-in, never blocks — falls back to a default center
+  with manual pan). An amber radius circle is bound bidirectionally to the RadiusSlider. Map-pick
+  only (no geocoding/search); `anchor_label` stays an optional free-text field. OSM "©
+  OpenStreetMap contributors" attribution is shown.
+- **Wiring:** `create_room` (then lobby). Filters snapshot into the room. The map only populates
+  `anchor_lat`/`anchor_lng`; the `create_room` contract is unchanged.
 - **Invariant:** filters are **host-controlled** for the whole room; cuisines from the closed
-  `CUISINES` taxonomy (docs/01 §8, invariant §2.2).
+  `CUISINES` taxonomy (docs/01 §8, invariant §2.2). No provider call fires on any map pan/zoom,
+  geolocation, or radius-slider change (invariant §2.1).
 
 ### 3.4 Join  ("Join with Name and Code")
 - **Routes:** mobile `app/room/join/index.tsx` + `[code].tsx` (deep link) · web

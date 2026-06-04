@@ -83,8 +83,12 @@ and it is why the provider client lives server-side in an Edge Function, never t
   per-app. See `docs/09-design-system.md`.
 - **Server state:** TanStack Query layered over the `api-client`.
 - **Validation:** Zod (shared).
-- **Maps/geo:** lightweight distance math in `@munch/core`; provider supplies coordinates.
-  A map view is post-v1 (cards show distance, not a live map, in v1).
+- **Maps/geo:** lightweight distance/geo math in `@munch/core` (incl. the radius-circle and
+  zoom helpers in `geo.ts`); provider supplies restaurant coordinates. The **anchor-selection
+  map** on Create Room is in v1 (Phase 4.6): MapLibre GL JS on web (`maplibre-gl`) + MapLibre
+  React Native on mobile (`@maplibre/maplibre-react-native`), over keyless OpenStreetMap raster
+  tiles (no paid key; OSM attribution shown). The restaurant-**card "map preview"** stays post-v1
+  (cards show distance, not a live map, in v1).
 - **Testing:** Vitest or Jest for `@munch/core` domain logic; local Supabase for integration
   tests of Edge Functions.
 - **CI/CD:** GitHub Actions for typecheck/lint/test/build; Expo EAS for mobile builds and

@@ -182,7 +182,9 @@ stuck host-less, consistent with §13's "never an ambiguous or stuck state."
 
 ### Post-v1
 
-- Menu links, review excerpts, multiple photos, hours detail, map preview.
+- Menu links, review excerpts, multiple photos, hours detail, restaurant-card map preview.
+  (The Create Room **anchor-selection** map is in v1 — Phase 4.6; only the card map preview is
+  deferred.)
 
 Rich card content is explicitly a nice-to-have, not a launch blocker.
 
