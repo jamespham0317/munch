@@ -8,7 +8,7 @@ import QRCode from "react-native-qrcode-svg";
 import { colors, radii, shadow, spacing, typography } from "../theme";
 
 /**
- * Invite affordance (pages.md §3.5, "Lobby with QR Code"): the amber code card with the
+ * Invite affordance (10-pages.md §3.5, "Lobby with QR Code"): the amber code card with the
  * 6-digit code, a scannable QR of the join link, and tap-to-copy. The link is built with
  * expo-linking's createURL so it is environment-aware — the dev URL in Expo Go, the
  * `munch://` scheme in a standalone build — and routes to /room/join/{code} (parity with

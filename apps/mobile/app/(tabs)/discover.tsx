@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { colors, radii, spacing, typography } from "../../src/theme";
 
 /**
- * Discover tab placeholder (pages.md §3.9). A browse/discovery feed is post-v1
+ * Discover tab placeholder (10-pages.md §3.9). A browse/discovery feed is post-v1
  * (docs/07 §8); v1 is room-based, so this ships as a styled "coming soon" state so
  * the tab isn't empty. Presentation only — no data wiring, no hooks (CLAUDE.md §4).
  * Mirrors the "Discover - Under Construction" Stitch mockup: a soft amber/heat glow
@@ -12,7 +12,7 @@ import { colors, radii, spacing, typography } from "../../src/theme";
 export default function DiscoverScreen() {
   return (
     <View style={styles.screen}>
-      {/* Decorative warm glow behind the circle cluster (design-system.md §4). */}
+      {/* Decorative warm glow behind the circle cluster (09-design-system.md §4). */}
       <View style={[styles.glow, styles.glowHeat]} />
       <View style={[styles.glow, styles.glowBrand]} />
 

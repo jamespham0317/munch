@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
-/* Theme tokens seeded from @munch/ui (design-system.md §3) — do not hand-edit;
+/* Theme tokens seeded from @munch/ui (09-design-system.md §3) — do not hand-edit;
    see app/theme.generated.css and scripts/generate-theme.ts. */
 @import "./theme.generated.css";
 
 /* Quicksand is loaded by next/font in app/layout.tsx and exposed as
    --font-quicksand on <html>. Map it to the default sans family so every utility
-   and the body inherit the brand face (design-system.md §5). */
+   and the body inherit the brand face (09-design-system.md §5). */
 @theme {
   --font-sans:
     var(--font-quicksand), "Quicksand", ui-sans-serif, system-ui, sans-serif;
@@ -23,7 +23,7 @@
 
 @layer components {
   /* Centered desktop content well: full-width with mobile margins, capped at the
-     1200px container with 48px margins at desktop (design-system.md §6). Reusable
+     1200px container with 48px margins at desktop (09-design-system.md §6). Reusable
      by later prompts' page layouts. */
   .munch-container {
     width: 100%;
@@ -41,7 +41,7 @@
   /* Narrower centered reading column for the full-screen (non-tab) routes —
      create/join/auth forms, the lobby, the swipe deck and the match/result.
      This is the width Tailwind's `max-w-xl` (36rem) was meant to give; we set
-     it explicitly because the seeded `--spacing-xl` token (design-system.md §6)
+     it explicitly because the seeded `--spacing-xl` token (09-design-system.md §6)
      shadows the `xl` key in Tailwind v4's `max-w-*` t-shirt scale, collapsing
      `max-w-xl` to 64px. The cream margins match the mobile screen margin. */
   .munch-column {

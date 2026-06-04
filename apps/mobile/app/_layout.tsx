@@ -17,11 +17,11 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 const queryClient = new QueryClient();
 
 // Hold the native splash until Quicksand is ready so the first frame renders in
-// the brand font, not a fallback (design-system.md §5).
+// the brand font, not a fallback (09-design-system.md §5).
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  // Quicksand is the brand typeface (design-system.md §5); the theme adapter maps
+  // Quicksand is the brand typeface (09-design-system.md §5); the theme adapter maps
   // each weight to one of these loaded faces.
   const [fontsLoaded] = useFonts({
     Quicksand_500Medium,

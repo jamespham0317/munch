@@ -1,7 +1,7 @@
 import { RADIUS_MIN_M } from "@munch/core";
 
 /**
- * Local-only radius slider, restyled to design-system.md §7 (amber thumb + amber value
+ * Local-only radius slider, restyled to 09-design-system.md §7 (amber thumb + amber value
  * pill, "Distance" label). Bound to UI state and the deck's local distance filter —
  * adjusting it NEVER refetches the provider (CLAUDE.md §2.1; widen is a separate flow).
  * The upper bound is the session's snapshotted radius (the radius the deck was fetched

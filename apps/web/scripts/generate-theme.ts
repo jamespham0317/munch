@@ -1,7 +1,7 @@
 /**
  * Seed the web Tailwind v4 theme from the shared `@munch/ui` tokens.
  *
- * Tokens live ONCE in `@munch/ui` (design-system.md §3); they must never be
+ * Tokens live ONCE in `@munch/ui` (09-design-system.md §3); they must never be
  * hand-copied into the app. This script imports them and emits
  * `app/theme.generated.css` — a Tailwind v4 `@theme` block plus a `:root` block
  * of layout constants — re-hyphenating the camelCase token keys into the kebab
@@ -44,13 +44,13 @@ function hexToRgbChannels(hex: string): string {
 
 const themeLines: string[] = [];
 
-// Color roles → `--color-*` (design-system.md §4).
+// Color roles → `--color-*` (09-design-system.md §4).
 for (const [name, value] of Object.entries(colors)) {
   themeLines.push(`  --color-${toKebab(name)}: ${value};`);
 }
 
 // Type scale → `--text-*` with paired line-height / weight / tracking modifiers
-// (design-system.md §5). Line-height is a unitless multiplier; tracking is em.
+// (09-design-system.md §5). Line-height is a unitless multiplier; tracking is em.
 for (const [name, style] of Object.entries(typography)) {
   const n = toKebab(name);
   themeLines.push(`  --text-${n}: ${style.fontSize}px;`);
@@ -61,7 +61,7 @@ for (const [name, style] of Object.entries(typography)) {
   }
 }
 
-// Corner radii → `--radius-*` (design-system.md §6).
+// Corner radii → `--radius-*` (09-design-system.md §6).
 for (const [name, value] of Object.entries(radii)) {
   themeLines.push(`  --radius-${toKebab(name)}: ${value}px;`);
 }
@@ -74,7 +74,7 @@ for (const key of spacingScale) {
   themeLines.push(`  --spacing-${toKebab(key)}: ${spacing[key]}px;`);
 }
 
-// Ambient soft shadows → `--shadow-*` (design-system.md §6). The keys are
+// Ambient soft shadows → `--shadow-*` (09-design-system.md §6). The keys are
 // `shadowLow`/`shadowActive`; strip the leading `shadow-` so the utility is
 // `shadow-low` / `shadow-active`.
 for (const [name, s] of Object.entries(shadows)) {
@@ -84,7 +84,7 @@ for (const [name, s] of Object.entries(shadows)) {
   );
 }
 
-// Layout constants (design-system.md §6) — consumed by the `.munch-container`
+// Layout constants (09-design-system.md §6) — consumed by the `.munch-container`
 // helper and the press affordance; not Tailwind utility namespaces.
 const rootLines = [
   `  --munch-content-max-width: ${spacing.contentMaxWidth}px;`,
@@ -96,7 +96,7 @@ const rootLines = [
 const header = `/*
  * AUTO-GENERATED from @munch/ui by apps/web/scripts/generate-theme.ts.
  * Do NOT edit by hand — run \`pnpm generate-theme\`. Tokens live once in
- * @munch/ui (design-system.md §3); this file re-hyphenates them into the
+ * @munch/ui (09-design-system.md §3); this file re-hyphenates them into the
  * Tailwind v4 theme so the web palette is never duplicated in the app.
  */`;
 

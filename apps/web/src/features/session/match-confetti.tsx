@@ -5,9 +5,9 @@ import confetti from "canvas-confetti";
 import { useEffect } from "react";
 
 /**
- * One-shot match celebration (design-system.md §8, pages.md §3.7). Fires a single confetti
+ * One-shot match celebration (09-design-system.md §8, 10-pages.md §3.7). Fires a single confetti
  * burst on mount in brand/heat colours sourced from @munch/ui (never hardcoded hex —
- * design-system.md §3). Suppressed entirely under prefers-reduced-motion (§10). Pure
+ * 09-design-system.md §3). Suppressed entirely under prefers-reduced-motion (§10). Pure
  * presentation — no data, no provider call (CLAUDE.md §4). Web twin of the Phase B mobile
  * ConfettiCannon.
  */

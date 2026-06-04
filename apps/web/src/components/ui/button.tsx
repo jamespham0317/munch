@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { cx } from "./cx";
 
 /**
- * Pill button primitive (design-system.md §7). Presentational only — no data, no hooks
+ * Pill button primitive (09-design-system.md §7). Presentational only — no data, no hooks
  * (CLAUDE.md §4). The web twin of the Phase B mobile Button: same variant set and look,
  * implemented as a real <button> (so the handler is the DOM-native `onClick`). Variants
  * map to the semantic roles: `primary` (amber fill, charcoal text), `secondary`

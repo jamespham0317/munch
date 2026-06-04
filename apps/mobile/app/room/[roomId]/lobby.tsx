@@ -6,7 +6,7 @@ import { colors, spacing, typography } from "../../../src/theme";
 
 /**
  * Lobby screen. Thin wrapper around the LobbyView feature (CLAUDE.md §4). LobbyView owns
- * its own header ("Waiting for the crew…", pages.md §3.5), so the route only supplies the
+ * its own header ("Waiting for the crew…", 10-pages.md §3.5), so the route only supplies the
  * cream screen container and the missing-param fallback.
  */
 export default function LobbyScreen() {

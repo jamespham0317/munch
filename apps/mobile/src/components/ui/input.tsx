@@ -4,7 +4,7 @@ import { StyleSheet, TextInput, type TextInputProps } from "react-native";
 import { colors, radii, shadow, spacing, typography } from "../../theme";
 
 /**
- * Text input primitive (design-system.md §7 Field/Input): a filled, radius-md control
+ * Text input primitive (09-design-system.md §7 Field/Input): a filled, radius-md control
  * that grows a 2px amber border + soft amber glow on focus, with a faint placeholder.
  * Presentational only (CLAUDE.md §4) — it forwards all TextInputProps so callers keep
  * their own value/handlers/validation. The 2px transparent resting border reserves the

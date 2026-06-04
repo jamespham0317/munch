@@ -5,7 +5,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { colors, radii, spacing, typography } from "../../theme";
 
 /**
- * Local-only radius slider (design-system.md §7: amber thumb + amber value pill). Bound
+ * Local-only radius slider (09-design-system.md §7: amber thumb + amber value pill). Bound
  * to UI state and the deck's local distance filter — adjusting it NEVER refetches the
  * provider (CLAUDE.md §2.1). The upper bound is the session's snapshotted radius; the
  * lower bound is the shared RADIUS_MIN_M constant. Presentational only (CLAUDE.md §4).

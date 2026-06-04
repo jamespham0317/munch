@@ -21,7 +21,7 @@ import { colors, spacing, typography } from "../../theme";
 import { useMatch } from "./use-match";
 
 /**
- * Match announcement screen (RN parity with apps/web's ResultView; pages.md §3.7,
+ * Match announcement screen (RN parity with apps/web's ResultView; 10-pages.md §3.7,
  * "It's a Match!"). Both entry paths (the swiper's own submit_swipe response and a co-member's
  * subscribeSession match event) pre-seed the same query cache key before navigating, so the
  * common case renders instantly; a fresh fetch only runs on a direct or refreshed entry.
@@ -30,7 +30,7 @@ import { useMatch } from "./use-match";
  *
  * "Get Directions" and "Share Match" use only the match payload we already hold — they open an
  * external maps app / the OS share sheet and NEVER call the provider (CLAUDE.md §2.1,
- * design-system.md §8). The confetti is suppressed under reduce-motion (§10).
+ * 09-design-system.md §8). The confetti is suppressed under reduce-motion (§10).
  */
 const SCREEN_WIDTH = Dimensions.get("window").width;
 

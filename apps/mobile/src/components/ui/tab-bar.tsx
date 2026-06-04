@@ -10,7 +10,7 @@ import {
 import { colors, spacing, typography } from "../../theme";
 
 /**
- * Bottom tab-bar presentation primitive (design-system.md §7). PURE PRESENTATION —
+ * Bottom tab-bar presentation primitive (09-design-system.md §7). PURE PRESENTATION —
  * it renders items and reports selection; the actual expo-router navigation wiring is
  * Prompt 3 (CLAUDE.md §4). The active item is brand amber. Each item supplies its own
  * icon via `renderIcon` so the bar stays icon-library-agnostic.

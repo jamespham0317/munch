@@ -5,7 +5,7 @@ import type { InputHTMLAttributes } from "react";
 import { cx } from "./cx";
 
 /**
- * Text input primitive (design-system.md §7 Field/Input): a filled, radius-md control
+ * Text input primitive (09-design-system.md §7 Field/Input): a filled, radius-md control
  * that grows a 2px amber border + soft amber outer glow on focus, with a faint
  * placeholder. Presentational only (CLAUDE.md §4) — it forwards all native input props
  * so callers keep their own value/handlers/validation. The 2px transparent resting

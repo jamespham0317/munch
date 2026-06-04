@@ -11,7 +11,7 @@ import { useCurrentUser } from "@/features/auth/use-current-user";
 import { useMatchHistory } from "./use-match-history";
 
 /**
- * Profile destination (pages.md §3.2, "Profile & Sign In Updated"). Signed-in users see their
+ * Profile destination (10-pages.md §3.2, "Profile & Sign In Updated"). Signed-in users see their
  * saved matches; guests (anonymous, no profile — CLAUDE.md §3) get the "sign in to save" state
  * with the account panel and never fetch history. The signed-in test is the auth identity's
  * anonymity flag, not the presence of a user_id (guests have one too). Screens stay thin —
@@ -122,7 +122,7 @@ function HistoryRow({ entry }: { entry: MatchHistory }) {
   );
 }
 
-/** Card-shaped placeholders so loading never shifts layout (pages.md §4). */
+/** Card-shaped placeholders so loading never shifts layout (10-pages.md §4). */
 function HistorySkeleton() {
   return (
     <section className="flex flex-col gap-md">

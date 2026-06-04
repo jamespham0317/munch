@@ -3,7 +3,7 @@
 import { cx } from "./cx";
 
 /**
- * Selection toggle with the playful "bite-out-of-a-circle" mark (design-system.md §7,
+ * Selection toggle with the playful "bite-out-of-a-circle" mark (09-design-system.md §7,
  * §2). Presentational only (CLAUDE.md §4): value is controlled by the caller. When on,
  * a brand-filled circle has a surface-coloured "bite" notched out of its top-right
  * corner. The web twin of the Phase B mobile Toggle.

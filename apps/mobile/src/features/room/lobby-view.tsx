@@ -13,7 +13,7 @@ import { LobbyFiltersPanel } from "./lobby-filters-panel";
 import { useRoomLobby } from "./use-room-lobby";
 
 /**
- * Room lobby (RN parity with apps/web's LobbyView, pages.md §3.5): an initial getRoom +
+ * Room lobby (RN parity with apps/web's LobbyView, 10-pages.md §3.5): an initial getRoom +
  * getRoomMembers read kept live by subscribeRoom, the amber invite card + the "Squad" grid,
  * and the host-only "Start Session" control. Once any member sees an active session for the
  * room (via the lobby's session subscription), they auto-route to the swipe screen. Screens

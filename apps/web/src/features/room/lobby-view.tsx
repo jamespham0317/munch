@@ -13,7 +13,7 @@ import { MemberList } from "./member-list";
 import { useRoomLobby } from "./use-room-lobby";
 
 /**
- * Room lobby (pages.md §3.5, "Lobby with QR Code"): an initial getRoom + getRoomMembers read
+ * Room lobby (10-pages.md §3.5, "Lobby with QR Code"): an initial getRoom + getRoomMembers read
  * kept live by subscribeRoom, the amber invite card + the "Squad" grid, and the host-only
  * "Start Session" control. Once any member sees an active session for the room (via the
  * lobby's session subscription), they auto-route to the swipe screen. Screens stay thin — all

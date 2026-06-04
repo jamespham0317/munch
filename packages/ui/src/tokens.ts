@@ -1,6 +1,6 @@
 /**
  * Munch design tokens — the single, platform-agnostic source of truth for the
- * visual language (the "Munch Visual Language", docs/design-system.md §4–§6).
+ * visual language (the "Munch Visual Language", docs/09-design-system.md §4–§6).
  *
  * These are plain TypeScript constants: NO React Native and NO DOM imports, so
  * both apps (and, if ever needed, server rendering) consume them and never
@@ -8,13 +8,13 @@
  *
  * Values are stored as primitives (unitless numbers, hex strings) so each
  * platform adapts them — mobile via `StyleSheet`, web via Tailwind `@theme`
- * (docs/design-system.md §3). Keys are camelCase per the repo convention
- * (CLAUDE.md §5); the hyphenated names in design-system.md §4–§6 are the doc's
+ * (docs/09-design-system.md §3). Keys are camelCase per the repo convention
+ * (CLAUDE.md §5); the hyphenated names in 09-design-system.md §4–§6 are the doc's
  * spelling of the same roles, and the web theme re-hyphenates at its boundary.
  */
 
 /**
- * Semantic color roles (docs/design-system.md §4). Components reference the role,
+ * Semantic color roles (docs/09-design-system.md §4). Components reference the role,
  * never the raw hex. These are the SEMANTIC roles — not the Material-style names
  * in the Stitch designMd (e.g. Stitch `primary-container` is our `brand`).
  */
@@ -60,7 +60,7 @@ export const colors = {
 } as const;
 
 /**
- * Type styles (docs/design-system.md §5). The canonical font is Quicksand,
+ * Type styles (docs/09-design-system.md §5). The canonical font is Quicksand,
  * loaded per-app in Phase B/C (`expo-font` mobile, `next/font/google` web).
  *
  * Units: `fontSize` in px (number), `fontWeight` as a string (RN/CSS both accept
@@ -102,7 +102,7 @@ export const typography = {
 } as const;
 
 /**
- * Spacing scale + layout constants (docs/design-system.md §6), all px numbers.
+ * Spacing scale + layout constants (docs/09-design-system.md §6), all px numbers.
  * 8px base; lean to the larger end inside containers for an airy feel.
  */
 export const spacing = {
@@ -122,7 +122,7 @@ export const spacing = {
 } as const;
 
 /**
- * Corner radii (docs/design-system.md §6), px numbers. Sharp corners are avoided
+ * Corner radii (docs/09-design-system.md §6), px numbers. Sharp corners are avoided
  * entirely. Buttons & inputs are `full` (pill); restaurant cards are `xl`.
  */
 export const radii = {
@@ -136,7 +136,7 @@ export const radii = {
 } as const;
 
 /**
- * Ambient soft shadows (docs/design-system.md §6). Stored as structured
+ * Ambient soft shadows (docs/09-design-system.md §6). Stored as structured
  * primitives — each platform renders them differently (RN `shadow*` props /
  * `elevation`, web `box-shadow`), so we keep the parts, not a CSS/RN string.
  * `color` is the deep charcoal; `opacity` is applied to it per platform.
@@ -149,7 +149,7 @@ export const shadows = {
 } as const;
 
 /**
- * Press affordance (docs/design-system.md §6): a 2px downward translate on press
+ * Press affordance (docs/09-design-system.md §6): a 2px downward translate on press
  * to simulate a physical click. Positive y = downward on both platforms.
  */
 export const pressTranslateY = 2;

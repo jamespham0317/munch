@@ -10,7 +10,7 @@ import { MatchConfetti } from "./match-confetti";
 import { useMatch } from "./use-match";
 
 /**
- * Match announcement screen (pages.md §3.7, "It's a Match!"). Both entry paths (the swiper's
+ * Match announcement screen (10-pages.md §3.7, "It's a Match!"). Both entry paths (the swiper's
  * own submit_swipe response and a co-member's subscribeSession match event) pre-seed the same
  * query cache key before navigating, so the common case renders instantly; a fresh fetch only
  * runs on a direct or refreshed entry. Renders both terminal outcomes the same way — a
@@ -19,7 +19,7 @@ import { useMatch } from "./use-match";
  *
  * "Get Directions" and "Share Match" use only the match payload we already hold — they open an
  * external maps app / the OS share sheet (Web Share API, clipboard fallback) and NEVER call the
- * provider (CLAUDE.md §2.1, design-system.md §8). The confetti is suppressed under
+ * provider (CLAUDE.md §2.1, 09-design-system.md §8). The confetti is suppressed under
  * reduce-motion (§10). Web twin of the Phase B mobile ResultView.
  */
 export function ResultView({ sessionId }: { sessionId: string }) {

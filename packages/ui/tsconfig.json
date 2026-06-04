@@ -4,7 +4,7 @@
     // @munch/ui ships as source (no build step) and is consumed by bundlers
     // (Next.js, Metro). "Bundler" resolution lets those tools — and this
     // package's own typecheck — use extensionless relative imports. Mirrors
-    // @munch/core's packaging (docs/design-system.md §3, docs/05 §2).
+    // @munch/core's packaging (docs/09-design-system.md §3, docs/05 §2).
     "module": "ESNext",
     "moduleResolution": "Bundler"
   },

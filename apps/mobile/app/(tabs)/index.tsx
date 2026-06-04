@@ -7,11 +7,11 @@ import { Button, Card, Input } from "../../src/components/ui";
 import { colors, radii, shadow, spacing, typography } from "../../src/theme";
 
 /**
- * Welcome / Home screen (pages.md §3.1, "Welcome to Munch"). The Match-tab root and the
+ * Welcome / Home screen (10-pages.md §3.1, "Welcome to Munch"). The Match-tab root and the
  * room-flow entry point: a guest-by-default surface offering the two ways in — host a room
  * or join one by code. Thin by design (CLAUDE.md §4): the Create card routes into the create
  * flow and the Join card hands the typed code to the existing join flow; neither calls a data
- * endpoint here. Auth lives in the Profile tab now (pages.md §2/§3.2), so there is no sign-in
+ * endpoint here. Auth lives in the Profile tab now (10-pages.md §2/§3.2), so there is no sign-in
  * panel on this screen.
  */
 export default function HomeScreen() {

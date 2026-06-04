@@ -14,8 +14,8 @@ component patterns the apps reskin to. It derives from the Stitch "Munch Visual 
 mockups and turns them into implementation-ready rules shared across mobile (Expo / React
 Native) and web (Next.js).
 
-The companion docs are `pages.md` (which screens exist and what each is wired to) and
-`ui-roadmap.md` (the phased build order). If a token or component here disagrees with the
+The companion docs are `10-pages.md` (which screens exist and what each is wired to) and
+`11-ui-roadmap.md` (the phased build order). If a token or component here disagrees with the
 code, that is a bug — reconcile in the same change (CLAUDE.md §1).
 
 ---

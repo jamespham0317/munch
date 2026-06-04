@@ -6,15 +6,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TabBar, type TabBarItem } from "../../src/components/ui";
 
 /**
- * Bottom-tab shell (pages.md §2): Discover · Match · Profile. Wires expo-router's
- * Tabs to the presentational TabBar primitive (design-system.md §7) — the primitive
+ * Bottom-tab shell (10-pages.md §2): Discover · Match · Profile. Wires expo-router's
+ * Tabs to the presentational TabBar primitive (09-design-system.md §7) — the primitive
  * owns no navigation logic, so this adapter maps router state onto its
  * items/activeKey/onSelect contract. Room-flow screens (room/*) live in the root
- * Stack and present full-screen ABOVE these tabs (pages.md §2).
+ * Stack and present full-screen ABOVE these tabs (10-pages.md §2).
  */
 
 // Three tabs in a fixed order regardless of any single mockup's two-tab bar
-// (pages.md §2). Each route name maps to a Feather glyph + label; the icons match
+// (10-pages.md §2). Each route name maps to a Feather glyph + label; the icons match
 // the Stitch mockups (Match = heart, Profile = person).
 const TAB_META: Record<
   string,
@@ -27,7 +27,7 @@ const TAB_META: Record<
 
 export default function TabsLayout() {
   // Pad the bar past the home indicator without baking the inset into the
-  // presentation primitive (which stays device-agnostic, design-system.md §7).
+  // presentation primitive (which stays device-agnostic, 09-design-system.md §7).
   const insets = useSafeAreaInsets();
 
   return (

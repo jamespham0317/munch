@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text } from "react-native";
 import { colors, radii, spacing, typography } from "../../theme";
 
 /**
- * Selectable price / segment tile (design-system.md §7). Presentational only
+ * Selectable price / segment tile (09-design-system.md §7). Presentational only
  * (CLAUDE.md §4): selection is a prop. Selected = amber (`brand`) fill with charcoal
  * text; unselected = sunken tonal fill. Designed to sit `flex: 1` in a row of tiles
  * ($-$$$$). `caption` is the small descriptor under the glyph (e.g. "Cheap").

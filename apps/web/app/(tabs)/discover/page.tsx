@@ -1,5 +1,5 @@
 /**
- * Discover tab placeholder (pages.md §3.9). A browse/discovery feed is post-v1 (docs/07 §8);
+ * Discover tab placeholder (10-pages.md §3.9). A browse/discovery feed is post-v1 (docs/07 §8);
  * v1 is room-based, so this ships as a styled "coming soon" state so the tab isn't empty.
  * Presentation only — no data, no hooks (CLAUDE.md §4). The web twin of the mobile Discover
  * screen and the "Discover - Under Construction" Stitch mockup: a soft amber/heat glow behind
@@ -8,7 +8,7 @@
 export default function DiscoverPage() {
   return (
     <section className="relative flex min-h-[70vh] flex-col items-center justify-center px-lg text-center">
-      {/* Decorative warm glow behind the circle cluster (design-system.md §4). */}
+      {/* Decorative warm glow behind the circle cluster (09-design-system.md §4). */}
       <div
         aria-hidden
         className="pointer-events-none absolute h-80 w-80 -translate-y-24 translate-x-16 rounded-full bg-heat opacity-20 blur-2xl"

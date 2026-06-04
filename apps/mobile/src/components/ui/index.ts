@@ -1,5 +1,5 @@
 /**
- * Barrel for the mobile UI primitive library (design-system.md §7). Every primitive
+ * Barrel for the mobile UI primitive library (09-design-system.md §7). Every primitive
  * is presentational only and built from the @munch/ui theme adapter — no business
  * logic, no hooks, no @munch/core domain rules (CLAUDE.md §4).
  */

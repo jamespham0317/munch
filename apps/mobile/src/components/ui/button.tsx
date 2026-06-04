@@ -17,7 +17,7 @@ import {
 } from "../../theme";
 
 /**
- * Pill button primitive (design-system.md §7). Presentational only — no data, no
+ * Pill button primitive (09-design-system.md §7). Presentational only — no data, no
  * hooks (CLAUDE.md §4). Variants map to the semantic roles: `primary` (amber fill,
  * charcoal text), `secondary` (burnt-orange fill, white text), `ghost` (2px outline,
  * transparent), `social` (white with a logo slot for provider sign-in). Pressed

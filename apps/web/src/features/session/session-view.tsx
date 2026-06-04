@@ -111,7 +111,7 @@ function SwipeRunner({
     initialStatus,
   );
 
-  // The radius "narrow" control lives behind an "Adjust" affordance (pages.md §3.6) instead
+  // The radius "narrow" control lives behind an "Adjust" affordance (10-pages.md §3.6) instead
   // of being permanently open; toggling it only shows/hides the existing local slider — the
   // setRadiusM wiring is unchanged and never refetches the provider (CLAUDE.md §2.1).
   const [adjustOpen, setAdjustOpen] = useState(false);

@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { cx } from "./cx";
 
 /**
- * Responsive nav presentation primitive (design-system.md §7). PURE PRESENTATION — it
+ * Responsive nav presentation primitive (09-design-system.md §7). PURE PRESENTATION — it
  * renders items and reports selection; the actual Next App Router routing wiring is
  * Prompt 3 (CLAUDE.md §4). The active item is brand amber. `layout` switches between a
  * bottom bar (mobile widths) and a top/side stack (desktop) without changing the API,

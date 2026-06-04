@@ -1,7 +1,7 @@
 # Phase B — Mobile (Expo / React Native): Agent Prompts
 
 **Project:** Munch
-**Source:** `docs/ui-roadmap.md` §3 (Phase B) — expands the "UI polish" bullet of
+**Source:** `docs/11-ui-roadmap.md` §3 (Phase B) — expands the "UI polish" bullet of
 `docs/07-initial-roadmap.md` §6 (Phase 4), layered on the Phase A token foundation.
 **Purpose:** Phase B broken into sequential, self-contained prompts for a Claude Code agent.
 
@@ -15,42 +15,42 @@ Prompts 1–3 and must land before Prompt 6.
 
 **Prepend the shared preamble to every prompt.**
 
-Phase B puts the **"Munch Visual Language"** (`docs/design-system.md`) live on iOS + Android.
+Phase B puts the **"Munch Visual Language"** (`docs/09-design-system.md`) live on iOS + Android.
 The app is **functionally complete through Phase 4.5** and the shared tokens shipped in
 **Phase A** (`@munch/ui`); what's missing on mobile is the *look* — today the app loads no
 brand font, runs a **dark Phase-0 placeholder theme**, and has no primitive library or tab
 shell. This phase is a **reskin, not a rebuild**: every screen keeps its existing hooks,
 endpoints, realtime wiring, and the reanimated/gesture swipe. No domain logic moves out of
-`@munch/core`; no component declares a match or calls the provider (`design-system.md` §9,
+`@munch/core`; no component declares a match or calls the provider (`09-design-system.md` §9,
 CLAUDE.md §2/§4).
 
-### Phase B maps to the roadmap bullets + exit criteria (`ui-roadmap.md` §3)
+### Phase B maps to the roadmap bullets + exit criteria (`11-ui-roadmap.md` §3)
 
 - Load **Quicksand** (`expo-font` + `@expo-google-fonts/quicksand`) in `app/_layout.tsx`
   → Prompt 1
 - Repoint `apps/mobile/src/theme/index.ts` at `@munch/ui` (light palette replaces the dark
   placeholder) → Prompt 1
 - Build the RN primitives in `components/ui/` (Button, Chip/FoodChip, Card, PriceTile, Field,
-  Avatar, ProgressPill, Toggle, TabBar) per `design-system.md` §7 → Prompt 2
+  Avatar, ProgressPill, Toggle, TabBar) per `09-design-system.md` §7 → Prompt 2
 - Add the **bottom-tab shell** (Discover · Match · Profile) as an `expo-router` tab group
-  (`pages.md` §2) → Prompt 3
-- Reskin every screen in `pages.md` §3; keep the existing swipe; **drop the bookmark button**
+  (`10-pages.md` §2) → Prompt 3
+- Reskin every screen in `10-pages.md` §3; keep the existing swipe; **drop the bookmark button**
   → Prompts 4 (entry & account) + 5 (room & session core)
 - Exit: all mobile screens match the mockups on a simulator; tabs navigate; the
   swipe/match/resolution flows still work end-to-end with one provider call per session
   → Prompt 6
 
-### Decisions locked (from `ui-roadmap.md` §1/§7, do not relitigate)
+### Decisions locked (from `11-ui-roadmap.md` §1/§7, do not relitigate)
 
 - Tokens live **once** in **`@munch/ui`** and are **never** re-defined per app. Mobile *adapts*
   them for React Native (StyleSheet, shadow props/elevation, `fontFamily`) — it does not copy
-  the values (`design-system.md` §3).
+  the values (`09-design-system.md` §3).
 - **No `react-native-web`.** Component *implementations* are mobile-native here; web is Phase C.
 - **Presentation only.** Matching/ranking/shuffle stay in `@munch/core`; the swipe still calls
   `submit_swipe`, "Settle for this"/"Fetch New Deck" still call `resolve_session`, and the
   card never declares a match (server-authoritative, CLAUDE.md §2.3).
 - **Drop the swipe "save/super-like" (middle bookmark) button** — v1 is like/pass only; the
-  mockup's middle button is intentionally not built (`design-system.md` §8, `ui-roadmap.md`
+  mockup's middle button is intentionally not built (`09-design-system.md` §8, `11-ui-roadmap.md`
   §7, docs/07 §8).
 - **Discover stays a placeholder** ("Under Construction"); a browse feed is post-v1.
 
@@ -74,14 +74,14 @@ CLAUDE.md §2/§4).
   the rest as feature components during the screen reskins) — not duplicated.
 - `src/features/{room,auth,history,session}/` hold the screen view components the routes
   render; reskin these, leave their hooks/data wiring untouched.
-- Auth surface is **outside-a-room only** (`pages.md` §3.2; docs/04 §2): no mid-room sign-in.
+- Auth surface is **outside-a-room only** (`10-pages.md` §3.2; docs/04 §2): no mid-room sign-in.
 
 **Exit check (after all 6):** `pnpm typecheck`, `pnpm lint`, `pnpm test`, and `pnpm build` are
 green tree-wide; the app boots on an iOS simulator with Quicksand loaded and the cream/charcoal
-palette; the bottom tabs (Discover · Match · Profile) navigate; every screen in `pages.md` §3
+palette; the bottom tabs (Discover · Match · Profile) navigate; every screen in `10-pages.md` §3
 visually matches its Stitch mockup; the swipe → match and swipe → resolution flows complete with
 **one provider call per session** and the card never declares a match; the swipe bookmark button
-is gone; `design-system.md`/`pages.md`/`ui-roadmap.md` describe the app as shipped.
+is gone; `09-design-system.md`/`10-pages.md`/`11-ui-roadmap.md` describe the app as shipped.
 
 ---
 
@@ -89,23 +89,23 @@ is gone; `design-system.md`/`pages.md`/`ui-roadmap.md` describe the app as shipp
 
 ```
 You are working in the Munch monorepo. Before starting:
-- Read CLAUDE.md (root) and, for this phase, docs/design-system.md (§4 color, §5 typography,
+- Read CLAUDE.md (root) and, for this phase, docs/09-design-system.md (§4 color, §5 typography,
   §6 spacing/radii/elevation, §7 primitives, §8 Munch-specific patterns, §9 invariants,
-  §10 a11y), docs/pages.md (the screen inventory + per-page invariants), and
-  docs/ui-roadmap.md (§3 Phase B, §7 constraints).
+  §10 a11y), docs/10-pages.md (the screen inventory + per-page invariants), and
+  docs/11-ui-roadmap.md (§3 Phase B, §7 constraints).
 - This is Phase B (Mobile reskin) of the UI work. The app is FUNCTIONALLY COMPLETE through
   Phase 4.5 and the shared tokens shipped in Phase A (@munch/ui). This phase is a RESKIN,
   NOT A REBUILD and is PRESENTATION-ONLY: do not change any domain logic, endpoint, RPC,
   realtime wiring, hook, or screen behavior. Keep the existing reanimated/gesture swipe; only
   its visuals change. No component declares a match or calls the provider; matching/ranking/
-  shuffle stay in @munch/core (design-system.md §9, CLAUDE.md §2/§4).
+  shuffle stay in @munch/core (09-design-system.md §9, CLAUDE.md §2/§4).
 - Consume tokens from @munch/ui via the mobile theme adapter (apps/mobile/src/theme). NEVER
   hardcode a hex/size that a token already defines, and NEVER re-define the palette in the app
-  (design-system.md §3). Use the SEMANTIC ROLES (brand, heat, surface, text, …), not raw hex.
-- The mockups are the Stitch "Munch Visual Language" screens (titles match pages.md §3). Where
+  (09-design-system.md §3). Use the SEMANTIC ROLES (brand, heat, surface, text, …), not raw hex.
+- The mockups are the Stitch "Munch Visual Language" screens (titles match 10-pages.md §3). Where
   a mockup and the docs disagree, the docs win — specifically: build like/pass only and DROP
-  the swipe middle bookmark button (design-system.md §8); use three tabs Discover·Match·Profile
-  (pages.md §2) regardless of any single mockup's bar.
+  the swipe middle bookmark button (09-design-system.md §8); use three tabs Discover·Match·Profile
+  (10-pages.md §2) regardless of any single mockup's bar.
 - Files kebab-case.ts; React components PascalCase.tsx. TypeScript strict; no `any`; no
   react-native-web. Make the smallest change that satisfies the task.
 - When done, run the stated acceptance checks and report their ACTUAL output. Commit straight
@@ -122,8 +122,8 @@ Goal: load Quicksand app-wide and replace the dark Phase-0 placeholder theme wit
 Native adapter over @munch/ui's light palette, so every screen inherits the cream/charcoal
 Munch look. This is the foundation the primitives and reskins build on. No screen is visually
 polished yet — but after this, screens render in the brand palette and font without crashing.
-Reference: docs/design-system.md §3 (platform mapping: mobile re-exports @munch/ui via
-StyleSheet), §4 color, §5 typography, §6 spacing/radii/elevation; ui-roadmap.md §3.
+Reference: docs/09-design-system.md §3 (platform mapping: mobile re-exports @munch/ui via
+StyleSheet), §4 color, §5 typography, §6 spacing/radii/elevation; 11-ui-roadmap.md §3.
 
 Deliver:
 - apps/mobile/package.json: add "expo-font" and "@expo-google-fonts/quicksand" (versions
@@ -161,8 +161,8 @@ sourced from @munch/ui (no duplicated hex/sizes). Report the simulator boot resu
 ```
 Goal: build the reusable, business-logic-free RN primitives the screen reskins compose, all
 from the theme adapter. Primitives hold NO data and read NO hooks (CLAUDE.md §4).
-Reference: docs/design-system.md §7 (primitives), §6 (radii/elevation/press affordance),
-§10 (44px targets, focus/reduced-motion); pages.md (where each is used). Depends on Prompt 1.
+Reference: docs/09-design-system.md §7 (primitives), §6 (radii/elevation/press affordance),
+§10 (44px targets, focus/reduced-motion); 10-pages.md (where each is used). Depends on Prompt 1.
 
 Deliver in apps/mobile/src/components/ui/ (PascalCase components in kebab-case files):
 - Button — pill (radius full). Variants: primary (brand fill, on-brand charcoal text),
@@ -186,11 +186,11 @@ Deliver in apps/mobile/src/components/ui/ (PascalCase components in kebab-case f
   2px amber border + soft amber glow on focus, faint placeholder; RadiusSlider: amber thumb +
   amber value pill). Leave swipe-card.tsx for Prompt 5.
 
-Respect reduced-motion for any press/scale animation (design-system.md §10). Export everything
+Respect reduced-motion for any press/scale animation (09-design-system.md §10). Export everything
 from a barrel (e.g. components/ui/index.ts). Add no new state library.
 
 Done when: `pnpm --filter @munch/mobile typecheck` and lint pass; each primitive renders in
-isolation matching design-system.md §7 (verify a couple on a simulator or a scratch screen,
+isolation matching 09-design-system.md §7 (verify a couple on a simulator or a scratch screen,
 then remove the scratch); primitives import only the theme adapter + react-native, no feature
 code, no @munch/core domain logic.
 ```
@@ -200,14 +200,14 @@ code, no @munch/core domain logic.
 ## Prompt 3 — Bottom-tab navigation shell (Discover · Match · Profile) + Discover placeholder
 
 ```
-Goal: introduce the three-destination bottom-tab shell from pages.md §2 using an expo-router
+Goal: introduce the three-destination bottom-tab shell from 10-pages.md §2 using an expo-router
 tab group and the TabBar primitive, and add the Discover "Under Construction" placeholder.
 Room flow screens continue to present full-screen ABOVE the tabs. All existing routes
 (including the deep link room/join/[code]) keep working.
-Reference: pages.md §2 (navigation shell + tab→destination table) and §3.9 (Discover);
-design-system.md §7 (TabBar). Depends on Prompts 1–2.
+Reference: 10-pages.md §2 (navigation shell + tab→destination table) and §3.9 (Discover);
+09-design-system.md §7 (TabBar). Depends on Prompts 1–2.
 
-Tab → destination (pages.md §2):
+Tab → destination (10-pages.md §2):
 - Discover → the placeholder screen (§3.9), post-v1 feed.
 - Match → the room flow entry: the Welcome/Home screen (app/index.tsx) is the tab root;
   Create/Join push from it; lobby/session/result present full-screen above the tabs.
@@ -221,7 +221,7 @@ Deliver:
   resolve. Move app/index.tsx and app/history.tsx into the tab group without changing what they
   render (their reskin is Prompts 4–5).
 - Add the Discover placeholder screen ("Under Construction", decorative amber/heat circles,
-  "We're cooking up something special.") per pages.md §3.9 — a styled coming-soon state, no
+  "We're cooking up something special.") per 10-pages.md §3.9 — a styled coming-soon state, no
   data wiring.
 - Active tab item uses brand amber; three tabs regardless of any single mockup that shows two.
 - Keep app/_layout.tsx's GestureHandlerRootView + QueryClientProvider + font loading wrapping
@@ -240,9 +240,9 @@ navigation result.
 ```
 Goal: reskin the non-room screens to their mockups using the Prompt-2 primitives, leaving all
 hooks/endpoints/validation untouched. Define each screen's loading/empty/error states with the
-primitives (pages.md §4).
-Reference: pages.md §3.1 (Welcome), §3.2 (Auth/Profile + History), §3.3 (Create Room),
-§3.4 (Join), §4 (cross-cutting states); design-system.md §4–§8; the Stitch mockups
+primitives (10-pages.md §4).
+Reference: 10-pages.md §3.1 (Welcome), §3.2 (Auth/Profile + History), §3.3 (Create Room),
+§3.4 (Join), §4 (cross-cutting states); 09-design-system.md §4–§8; the Stitch mockups
 "Welcome to Munch", "Join with Name and Code", "Create a Room", "Profile & Sign In Updated".
 Depends on Prompts 1–3. Independent of Prompt 5.
 
@@ -263,11 +263,11 @@ Deliver (reskin the route + its feature view component; do not change wiring):
 - Auth / Profile (features/auth + the Profile tab): "Sign in to save your history"; a `social`
   "Continue with Google" Button; OR divider; email + password Fields; "Remember me" Toggle +
   "Forgot"; amber "Sign In"; "Create an account" link. Signed-in: Avatar + account + entry to
-  history. Guests see the empty/"sign in to save" state, never an error (pages.md §3.2 invariant).
+  history. Guests see the empty/"sign in to save" state, never an error (10-pages.md §3.2 invariant).
 - History (history.tsx / features/history): list styled with Card/Badge primitives; guest empty
   state = the "sign in to save" state (docs/04 §3.11), not an error.
 - Each screen: loading = skeletons/spinners in card shapes (no layout shift); errors mapped from
-  {error:{code,message}} (pages.md §4).
+  {error:{code,message}} (10-pages.md §4).
 
 Done when: typecheck/lint pass; on a simulator each of these screens matches its mockup; the
 create/join/auth/history flows still call the same RPCs with the same payloads (no wiring
@@ -282,8 +282,8 @@ changed); cuisines come from the @munch/core taxonomy; no raw provider/DB error 
 Goal: reskin the product core to its mockups while PRESERVING the swipe gesture, the realtime
 wiring, and every §2/§3 invariant. This is the highest-risk reskin — treat the invariants as
 load-bearing.
-Reference: pages.md §3.5 (Lobby), §3.6 (Session), §3.7 (Match), §3.8 (Host Resolution), §4;
-design-system.md §8 (Decision Card, swipe action row, Match reveal, Host resolution, Squad
+Reference: 10-pages.md §3.5 (Lobby), §3.6 (Session), §3.7 (Match), §3.8 (Host Resolution), §4;
+09-design-system.md §8 (Decision Card, swipe action row, Match reveal, Host resolution, Squad
 list), §9 (UI invariants), §10 (reduced-motion); the Stitch mockups "Lobby with QR Code",
 "Swiping Session", "It's a Match!", "Host Resolution". Depends on Prompts 1–3. Independent of
 Prompt 4.
@@ -330,8 +330,8 @@ the host can start/resolve; all displayed counts are aggregate. Report the end-t
 ```
 Goal: verify Phase B's exit criteria, confirm no invariant was weakened by the reskin, and
 reconcile any doc/code drift so the phase closes green and the docs match reality (CLAUDE.md §1).
-Reference: ui-roadmap.md §3 (Phase B exit) + §5 (Phase D verify checklist as the standard);
-design-system.md §9 (invariants); pages.md §3 (per-screen expectations). Depends on Prompts 1–5.
+Reference: 11-ui-roadmap.md §3 (Phase B exit) + §5 (Phase D verify checklist as the standard);
+09-design-system.md §9 (invariants); 10-pages.md §3 (per-screen expectations). Depends on Prompts 1–5.
 
 Deliver:
 - Run the full gate and report ACTUAL output: `pnpm typecheck`, `pnpm lint`, `pnpm test`,
@@ -343,16 +343,16 @@ Deliver:
 - Token-discipline audit: grep the mobile app for hardcoded hex colors and ad-hoc font sizes;
   confirm screens consume the theme adapter (which sources @munch/ui), with no palette
   re-defined in the app and no react-native-web import.
-- Invariant check (presentation-only, design-system.md §9): confirm NO provider call on swipe
+- Invariant check (presentation-only, 09-design-system.md §9): confirm NO provider call on swipe
   and exactly one provider fetch per session/widen; the card never declares a match (server-
   authoritative); all progress/resolution counts are AGGREGATE (no per-member swipe disclosure);
   filters are host-controlled; cuisines come from the @munch/core CUISINES taxonomy; the swipe
   bookmark button is dropped; only the host can start/resolve. No domain logic left @munch/core.
-- Doc reconciliation: update ui-roadmap.md so Phase B reads as delivered (its exit criteria
-  met); reconcile pages.md / design-system.md with anything that shipped differently (e.g. a
+- Doc reconciliation: update 11-ui-roadmap.md so Phase B reads as delivered (its exit criteria
+  met); reconcile 10-pages.md / 09-design-system.md with anything that shipped differently (e.g. a
   primitive name, a state). Keep edits minimal and factual.
 
-Done when: all four gate commands are green tree-wide; every screen in pages.md §3 visually
+Done when: all four gate commands are green tree-wide; every screen in 10-pages.md §3 visually
 matches its mockup on the simulator; the audits find no hardcoded palette, no weakened
 invariant, and one provider call per session; and the docs describe the mobile app as it now
 exists. Report the command output, the simulator QA notes, and the exact files changed.

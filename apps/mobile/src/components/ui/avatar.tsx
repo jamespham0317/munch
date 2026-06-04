@@ -10,7 +10,7 @@ import {
 import { colors, radii, typography } from "../../theme";
 
 /**
- * Circular avatar primitive (design-system.md §7). Presentational only
+ * Circular avatar primitive (09-design-system.md §7). Presentational only
  * (CLAUDE.md §4). Shows an image, else initials, else — in the `add` variant — a
  * "+" tile for "Invite more". An optional `online` presence dot is the lobby's
  * functional presence color; the data (who is present) is supplied by the caller.

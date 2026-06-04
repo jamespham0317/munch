@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { cx } from "./cx";
 
 /**
- * Cuisine / tag chip primitive (design-system.md §7). Presentational only (CLAUDE.md §4):
+ * Cuisine / tag chip primitive (09-design-system.md §7). Presentational only (CLAUDE.md §4):
  * selection is a prop and the label is supplied by the caller — the closed CUISINES
  * taxonomy lives in @munch/core and is never hardcoded here. Unselected: cream fill,
  * hairline border, muted text. Selected: solid burnt-orange (`heat`) with on-heat text.

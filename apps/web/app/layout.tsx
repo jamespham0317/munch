@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { Providers } from "./providers";
 
 /**
- * Quicksand is the brand typeface (design-system.md §5). Loaded with the three
+ * Quicksand is the brand typeface (09-design-system.md §5). Loaded with the three
  * weights the type scale uses (500 body, 600 titles, 700 headings) and exposed
  * as a CSS variable so globals.css can map it onto --font-sans.
  */

@@ -80,7 +80,7 @@ and it is why the provider client lives server-side in an Edge Function, never t
 - **Styling/UI:** shared design tokens in `@munch/ui` (platform-agnostic constants); **Quicksand**
   font (`expo-font` on mobile, `next/font` on web); **Tailwind v4** on web (theme seeded from the
   tokens), RN `StyleSheet` on mobile. No `react-native-web` — tokens are shared, components are
-  per-app. See `docs/design-system.md`.
+  per-app. See `docs/09-design-system.md`.
 - **Server state:** TanStack Query layered over the `api-client`.
 - **Validation:** Zod (shared).
 - **Maps/geo:** lightweight distance math in `@munch/core`; provider supplies coordinates.

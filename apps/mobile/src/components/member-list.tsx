@@ -5,7 +5,7 @@ import { colors, radii, shadow, spacing, typography } from "../theme";
 import { Avatar } from "./ui/avatar";
 
 /**
- * "The Squad" grid (pages.md §3.5): presence-aware member tiles in a 2-column layout, each
+ * "The Squad" grid (10-pages.md §3.5): presence-aware member tiles in a 2-column layout, each
  * an Avatar (initials + green `online` dot from isPresent), the display name, and a
  * presence-derived label. The trailing "Invite more" tile fires the caller's share handler.
  * Presentational only — receives the already-mapped RoomMember[] and renders it; no data

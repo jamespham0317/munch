@@ -5,7 +5,7 @@ import { Field, FoodChip, PriceTile, Toggle } from "./ui";
 /**
  * Shared host-filter controls (open-now + the closed cuisine taxonomy + price levels),
  * reused by the create-room form and the lobby filter-edit panel so the two stay in sync
- * (restyling here updates both, design-system.md §8). Presentational only — it owns no data
+ * (restyling here updates both, 09-design-system.md §8). Presentational only — it owns no data
  * access and holds the selections as controlled props (CLAUDE.md §4). Cuisines come from the
  * @munch/core CUISINES constant (no free text); the picker only ever emits taxonomy ids.
  * Filters are host-only and whole-room (CLAUDE.md §2.2); there is no per-member narrowing here.

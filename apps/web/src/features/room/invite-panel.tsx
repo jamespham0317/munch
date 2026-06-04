@@ -5,7 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
 
 /**
- * Invite affordance (pages.md §3.5, "Lobby with QR Code"): the amber code card with the
+ * Invite affordance (10-pages.md §3.5, "Lobby with QR Code"): the amber code card with the
  * 6-digit code, a scannable QR of the join link, and tap-to-copy. The link is built from the
  * live origin after mount, so it works in any environment and avoids an SSR/client hydration
  * mismatch (origin is empty on the server and on first client render, then filled in by the

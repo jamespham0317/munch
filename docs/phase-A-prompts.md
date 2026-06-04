@@ -1,7 +1,7 @@
 # Phase A — Shared Token Foundation: Agent Prompts
 
 **Project:** Munch
-**Source:** `docs/ui-roadmap.md` §2 (Phase A) — expands the "UI polish" bullet of
+**Source:** `docs/11-ui-roadmap.md` §2 (Phase A) — expands the "UI polish" bullet of
 `docs/07-initial-roadmap.md` §6 (Phase 4).
 **Purpose:** Phase A broken into sequential, self-contained prompts for a Claude Code agent.
 
@@ -15,7 +15,7 @@ web halves are independent and may be done in either order, but both must land b
 **Prepend the shared preamble to every prompt.**
 
 Phase A is the **shared token foundation** for the reskin (the "Munch Visual Language",
-`docs/design-system.md`). The app is **functionally complete through Phase 4.5**; what's
+`docs/09-design-system.md`). The app is **functionally complete through Phase 4.5**; what's
 missing is the *look*. This phase delivers **one platform-agnostic source of truth** for the
 visual language — the `@munch/ui` package — and proves both apps can consume it. It is
 **presentation-only**: no domain logic, endpoint, or realtime wiring changes; no screen is
@@ -28,9 +28,9 @@ beyond the minimal import proof in Prompt 2.
   and no DOM imports, mirroring `@munch/core` packaging → Prompt 1
 - Wire it into the pnpm workspace + base tsconfig so both apps resolve it → Prompt 2
 - Exit: both apps can import `@munch/ui` tokens and typecheck; values match
-  `design-system.md` exactly → Prompts 2, 3
+  `09-design-system.md` exactly → Prompts 2, 3
 
-### Decisions locked (from `ui-roadmap.md` §1, do not relitigate)
+### Decisions locked (from `11-ui-roadmap.md` §1, do not relitigate)
 
 - Tokens live **once** in **`@munch/ui`** and are **not** duplicated per app.
 - The package mirrors `@munch/core` packaging: **source export, no build step**.
@@ -52,7 +52,7 @@ beyond the minimal import proof in Prompt 2.
 
 **Exit check (after all 3):** `pnpm typecheck`, `pnpm lint`, `pnpm test`, and `pnpm build`
 are green tree-wide; `@munch/ui` exports the full token set with values matching
-`design-system.md` §4–§6 exactly; the package contains no React Native or DOM import; both
+`09-design-system.md` §4–§6 exactly; the package contains no React Native or DOM import; both
 apps declare `@munch/ui` as a dependency and import a token without type error.
 
 ---
@@ -61,17 +61,17 @@ apps declare `@munch/ui` as a dependency and import a token without type error.
 
 ```
 You are working in the Munch monorepo. Before starting:
-- Read CLAUDE.md (root) and, for this phase, docs/design-system.md (§3 packaging, §4 color,
-  §5 typography, §6 spacing/radii/elevation, §9 invariants), docs/ui-roadmap.md (§2 Phase A,
+- Read CLAUDE.md (root) and, for this phase, docs/09-design-system.md (§3 packaging, §4 color,
+  §5 typography, §6 spacing/radii/elevation, §9 invariants), docs/11-ui-roadmap.md (§2 Phase A,
   §7 constraints), and docs/05-folder-structure.md (§2 monorepo rules).
 - This is Phase A (Shared Token Foundation) of the UI reskin. It is PRESENTATION-ONLY:
   do not change any domain logic, endpoint, RPC, realtime wiring, or screen behavior, and
   do not reskin any screen yet (that is Phase B mobile / Phase C web). No component declares
   a match or calls the provider; matching/ranking/shuffle stay in @munch/core
-  (design-system.md §9, CLAUDE.md §2/§4).
+  (09-design-system.md §9, CLAUDE.md §2/§4).
 - Tokens live ONCE in @munch/ui and are never duplicated per app. @munch/ui must contain
   NO React Native and NO DOM imports — platform-agnostic TypeScript constants only.
-- design-system.md is canonical for token VALUES. Use the SEMANTIC ROLES in §4 (brand,
+- 09-design-system.md is canonical for token VALUES. Use the SEMANTIC ROLES in §4 (brand,
   heat, surface, text, …) — NOT the Material-style names in the Stitch designMd. Where a
   doc table and code disagree, that is a bug: reconcile in the same change (CLAUDE.md §1).
 - Make the smallest change that satisfies the task. TypeScript strict everywhere; no `any`.
@@ -85,7 +85,7 @@ You are working in the Munch monorepo. Before starting:
 ```
 Goal: scaffold the @munch/ui package and author tokens.ts — the single, platform-agnostic
 source of truth for Munch's visual language (colors, typography, spacing, radii, shadows).
-Reference: docs/design-system.md §3 (packaging + platform mapping), §4 (color), §5
+Reference: docs/09-design-system.md §3 (packaging + platform mapping), §4 (color), §5
 (typography), §6 (spacing/radii/elevation); docs/05-folder-structure.md §2; mirror the
 packaging of packages/core (package.json exports, tsconfig) exactly.
 
@@ -97,7 +97,7 @@ Deliver:
 - packages/ui/tsconfig.json — extends ../../tsconfig.base.json with module "ESNext",
   moduleResolution "Bundler", include ["src"] (same as packages/core/tsconfig.json).
 - packages/ui/src/tokens.ts — typed `as const` constants, NO React Native / NO DOM imports:
-  - colors: the SEMANTIC ROLES from design-system.md §4 — brand #ffbf00, brand-pressed
+  - colors: the SEMANTIC ROLES from 09-design-system.md §4 — brand #ffbf00, brand-pressed
     #fbbc00, on-brand #1c1b1b, heat #fc7c31, heat-strong #9f4200, on-heat #ffffff,
     background #fcf9f8, surface #ffffff, surface-raised #f6f3f2, surface-sunken #f0eded,
     surface-highest #e5e2e1, text #1c1b1b, text-muted #504532, text-faint #827660,
@@ -115,14 +115,14 @@ Deliver:
     (yOffset 6, blur 12, color #1c1b1b, opacity 0.15) as structured objects (each platform
     renders them differently, so store primitives, not a CSS/RN string); plus the press
     affordance constant (2px downward translate).
-  Keep numbers unitless/primitive so each platform adapts them (design-system.md §3); add a
+  Keep numbers unitless/primitive so each platform adapts them (09-design-system.md §3); add a
   brief comment on any unit decision (e.g. letterSpacing stored in em).
 - packages/ui/src/index.ts — barrel re-exporting tokens (+ their inferred types).
 - Add @munch/ui to the workspace's lint/typecheck reach if any root config enumerates
   packages explicitly (it likely does not — packages/* is globbed).
 
 Done when: `pnpm --filter @munch/ui typecheck` and `pnpm --filter @munch/ui lint` pass; every
-value in tokens.ts matches design-system.md §4–§6 exactly; the package imports nothing from
+value in tokens.ts matches 09-design-system.md §4–§6 exactly; the package imports nothing from
 react-native or any DOM/browser global. Do NOT duplicate these values into apps later.
 ```
 
@@ -133,7 +133,7 @@ react-native or any DOM/browser global. Do NOT duplicate these values into apps 
 ```
 Goal: make @munch/ui resolvable from both apps and prove the Phase A exit criterion —
 "both apps can import @munch/ui tokens and typecheck" — WITHOUT reskinning any screen.
-Reference: docs/ui-roadmap.md §2 (exit criteria), docs/design-system.md §3 (platform
+Reference: docs/11-ui-roadmap.md §2 (exit criteria), docs/09-design-system.md §3 (platform
 mapping). Depends on Prompt 1. The mobile and web halves are independent.
 
 Deliver:
@@ -165,8 +165,8 @@ error; no screen behavior changed (no provider call, no match declaration, no wi
 ```
 Goal: verify Phase A's exit criteria and reconcile any doc/code drift introduced, so the
 phase closes green and the docs match reality (CLAUDE.md §1).
-Reference: docs/ui-roadmap.md §2 (exit criteria) + §5 (Phase D verify checklist as the
-standard), docs/design-system.md §4–§6 (the canonical values), §9 (invariants). Depends on
+Reference: docs/11-ui-roadmap.md §2 (exit criteria) + §5 (Phase D verify checklist as the
+standard), docs/09-design-system.md §4–§6 (the canonical values), §9 (invariants). Depends on
 Prompts 1–2.
 
 Deliver:
@@ -176,18 +176,18 @@ Deliver:
   browser global, and no runtime dependency in packages/ui/package.json. Report the grep/
   inspection result.
 - Token-parity check: confirm every color/typography/spacing/radius/shadow value in
-  tokens.ts matches design-system.md §4–§6 exactly (semantic role names, not the Stitch
+  tokens.ts matches 09-design-system.md §4–§6 exactly (semantic role names, not the Stitch
   Material names). Fix any mismatch in whichever side is wrong, in this change.
 - Invariant check (presentation-only): confirm Phase A changed no domain logic, endpoint,
   realtime wiring, or screen behavior — no component declares a match or calls the provider
-  (design-system.md §9). The only app-side edits are the Prompt 2 import seams.
-- Doc reconciliation: update docs/ui-roadmap.md so Phase A reads as delivered (its exit
+  (09-design-system.md §9). The only app-side edits are the Prompt 2 import seams.
+- Doc reconciliation: update docs/11-ui-roadmap.md so Phase A reads as delivered (its exit
   criteria met) and any doc that described @munch/ui as not-yet-existing (e.g.
-  design-system.md §3's package tree, if it implied a future state) now matches the shipped
+  09-design-system.md §3's package tree, if it implied a future state) now matches the shipped
   package. Keep edits minimal and factual.
 
 Done when: all four gate commands are green tree-wide; @munch/ui has zero platform/runtime
-imports; token values match design-system.md exactly; no UI invariant was weakened; and the
+imports; token values match 09-design-system.md exactly; no UI invariant was weakened; and the
 docs describe the package as it now exists. Report the command output and the exact files
 changed.
 ```

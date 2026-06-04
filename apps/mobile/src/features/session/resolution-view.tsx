@@ -18,7 +18,7 @@ import { useResolutionRanking } from "./use-resolution-ranking";
 import { useResolveSession } from "./use-resolve-session";
 
 /**
- * Host-resolution screen (RN parity with apps/web's ResolutionView; pages.md §3.8), shown
+ * Host-resolution screen (RN parity with apps/web's ResolutionView; 10-pages.md §3.8), shown
  * while the session status is `awaiting_host_resolution` (deck exhausted with no unanimous
  * match — CLAUDE.md §2.3). Non-host members see a passive "waiting on host" state and are
  * routed onward by the next status event; the host sees the closest-to-unanimous ranking

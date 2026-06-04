@@ -3,14 +3,14 @@ import type { ReactNode } from "react";
 import { cx } from "./cx";
 
 /**
- * Surface card primitive (design-system.md §7): radius-xl, soft `shadow-low`, white
+ * Surface card primitive (09-design-system.md §7): radius-xl, soft `shadow-low`, white
  * surface. `padding` exposes the 24px default and the 32px "Decision" card interior
  * (CLAUDE.md §4 — presentational, no data). The web twin of the Phase B mobile Card.
  * An optional image header carries a bottom legibility scrim (charcoal gradient, from
  * the `text` token — not a new colour) so overlaid white text stays readable; the
  * `imageOverlay` slot is positioned over it. `surface` switches the fill from the default
  * white to the brand amber (charcoal text) for the highlighted cards — the Welcome
- * "Create a Room" card and the lobby code panel (design-system.md §8).
+ * "Create a Room" card and the lobby code panel (09-design-system.md §8).
  */
 export function Card({
   children,

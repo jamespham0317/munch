@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import { TabsNav } from "./tabs-nav";
 
 /**
- * Nav-shell layout for the three in-app destinations (pages.md §2). Wraps Discover · Match ·
+ * Nav-shell layout for the three in-app destinations (10-pages.md §2). Wraps Discover · Match ·
  * Profile in the responsive nav (TabsNav) and the centered 1200px content well
- * (design-system.md §6). Room-flow and auth routes live OUTSIDE this route group, so they
+ * (09-design-system.md §6). Room-flow and auth routes live OUTSIDE this route group, so they
  * present full-screen with no nav chrome (mirrors the mobile shell). Presentation only — no
  * data, no hooks; Providers already wrap the tree from the root layout.
  *

@@ -10,7 +10,7 @@ import {
 import { colors, radii, shadow, spacing } from "../../theme";
 
 /**
- * Surface card primitive (design-system.md §7): radius-xl, soft `shadow-low`, white
+ * Surface card primitive (09-design-system.md §7): radius-xl, soft `shadow-low`, white
  * surface. `padding` exposes the 24px default and the 32px "Decision" card interior
  * (CLAUDE.md §4 — presentational, no data). An optional image header carries a
  * bottom legibility scrim so overlaid white text (e.g. the Match reveal) stays
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   },
   imageWrap: { width: "100%", backgroundColor: colors.surfaceHighest },
   image: { width: "100%", height: "100%" },
-  // Subtle bottom band approximating the bottom-inner-shadow of design-system.md §4.
+  // Subtle bottom band approximating the bottom-inner-shadow of 09-design-system.md §4.
   scrim: {
     position: "absolute",
     left: 0,

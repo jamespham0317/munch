@@ -9,7 +9,7 @@ import { FoodChip } from "./ui/chip";
 import { ProgressPill } from "./ui/progress-pill";
 
 /**
- * The Decision Card (design-system.md §8): the swipe card. A photo header with a distance
+ * The Decision Card (09-design-system.md §8): the swipe card. A photo header with a distance
  * pill overlay, the restaurant name + rating chip, a `price • cuisine` line, and decorative
  * cuisine chips, composed from the web UI primitives (which are seeded from @munch/ui). Takes
  * a DeckRestaurant + two button handlers; holds no business logic and reads no data
@@ -24,7 +24,7 @@ import { ProgressPill } from "./ui/progress-pill";
  * computed per pointer move); everything else styles from the Tailwind theme.
  *
  * The middle "save/super-like" bookmark of the mockup is intentionally NOT built — v1 is
- * like/pass only (design-system.md §8, ui-roadmap.md §7).
+ * like/pass only (09-design-system.md §8, 11-ui-roadmap.md §7).
  *
  * `distance_m` is the server-computed value from the haversine helper in 0009; we
  * format it but never recompute it.
@@ -76,7 +76,7 @@ export function SwipeCard({
   return (
     <div aria-label={restaurant.name}>
       {/* Per-frame drag transform is the sole remaining inline style (computed per pointer
-          move, design-system.md §8 / ui-roadmap.md exit); the snap-back transition is dropped
+          move, 09-design-system.md §8 / 11-ui-roadmap.md exit); the snap-back transition is dropped
           under reduced motion. */}
       <div
         onPointerDown={handlePointerDown}

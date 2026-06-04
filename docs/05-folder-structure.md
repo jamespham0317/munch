@@ -26,7 +26,7 @@ group-restaurant-match/
 ├── packages/
 │   ├── core/                   # shared TS: types, domain logic, validation
 │   ├── api-client/             # typed wrapper over Supabase + RPC endpoints
-│   └── ui/                     # shared design tokens (@munch/ui); see docs/design-system.md
+│   └── ui/                     # shared design tokens (@munch/ui); see docs/09-design-system.md
 ├── supabase/
 │   ├── migrations/             # SQL migrations (schema, RLS policies)
 │   ├── functions/              # Edge Functions (server-side logic)
@@ -72,8 +72,8 @@ apps/mobile/
 
 - Consumes `@munch/core`, `@munch/api-client`, and `@munch/ui` (design tokens). No business
   logic duplicated here. Reskin primitives live in `src/components/ui/`; the bottom-tab shell
-  (Discover · Match · Profile) is an `expo-router` tab group. See `docs/design-system.md` and
-  `docs/pages.md`.
+  (Discover · Match · Profile) is an `expo-router` tab group. See `docs/09-design-system.md` and
+  `docs/10-pages.md`.
 - Deterministic deck shuffle lives in `core`; the screen just renders the order.
 - The `/room/join/{code}` link opens `join/[code].tsx`. The `munch://` scheme works in
   dev (Expo Go / dev client); the https universal link declared in `app.json`

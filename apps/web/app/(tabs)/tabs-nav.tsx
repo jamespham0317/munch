@@ -6,16 +6,16 @@ import { usePathname, useRouter } from "next/navigation";
 import { TabBar, type TabBarItem } from "@/components/ui";
 
 /**
- * Three-destination nav shell (pages.md §2): Discover · Match · Profile. The router
- * adapter for the presentational TabBar primitive (design-system.md §7) — it derives the
+ * Three-destination nav shell (10-pages.md §2): Discover · Match · Profile. The router
+ * adapter for the presentational TabBar primitive (09-design-system.md §7) — it derives the
  * active destination from the pathname and routes on select; the primitive owns no
  * navigation logic (CLAUDE.md §4). Mirrors the mobile (tabs) shell, using the same Feather
  * glyphs (compass/heart/user) via lucide-react for cross-platform parity.
  *
  * Renders the SAME bar twice so it can be responsive without a JS viewport check
  * (SSR-safe): a left side rail at desktop (≥1024px, the container breakpoint) and a fixed
- * bottom bar below it (design-system.md §6, "top/side nav at desktop"). Three destinations
- * regardless of any single mockup showing two (pages.md §2).
+ * bottom bar below it (09-design-system.md §6, "top/side nav at desktop"). Three destinations
+ * regardless of any single mockup showing two (10-pages.md §2).
  */
 
 type Destination = {

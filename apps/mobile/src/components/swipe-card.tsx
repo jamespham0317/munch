@@ -16,7 +16,7 @@ import { FoodChip } from "./ui/chip";
 import { ProgressPill } from "./ui/progress-pill";
 
 /**
- * The Decision Card (design-system.md §8): the swipe card. A photo header with a distance
+ * The Decision Card (09-design-system.md §8): the swipe card. A photo header with a distance
  * pill overlay, the restaurant name + rating chip, a `price • cuisine` line, and decorative
  * cuisine chips, composed from the @munch/ui primitives. Takes a DeckRestaurant + two button
  * handlers; holds no business logic and reads no data (CLAUDE.md §4). The matching/shuffle/
@@ -30,7 +30,7 @@ import { ProgressPill } from "./ui/progress-pill";
  * (CLAUDE.md §2.1). The throw animation is skipped under reduce-motion (§10).
  *
  * The middle "save/super-like" bookmark of the mockup is intentionally NOT built — v1 is
- * like/pass only (design-system.md §8, ui-roadmap.md §7).
+ * like/pass only (09-design-system.md §8, 11-ui-roadmap.md §7).
  *
  * `distance_m` is the server-computed value from the haversine helper in 0009; we
  * format it but never recompute it.

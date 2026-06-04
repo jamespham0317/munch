@@ -11,23 +11,23 @@ import {
 import type { TextStyle, ViewStyle } from "react-native";
 
 /**
- * Mobile theme adapter (docs/design-system.md §3): React Native re-exports the
+ * Mobile theme adapter (docs/09-design-system.md §3): React Native re-exports the
  * platform-agnostic `@munch/ui` tokens and ADAPTS them for RN — it never
  * re-defines a value (CLAUDE.md §4). Colors/spacing/radii pass straight through;
  * typography gains a Quicksand `fontFamily` and px-resolved line-height/tracking;
  * shadows become RN `shadow*` props + Android `elevation`.
  */
 
-/** Semantic color roles — the single source is `@munch/ui` (design-system.md §4). */
+/** Semantic color roles — the single source is `@munch/ui` (09-design-system.md §4). */
 export const colors = munchColors;
 
-/** Spacing scale (design-system.md §6), straight from `@munch/ui`. */
+/** Spacing scale (09-design-system.md §6), straight from `@munch/ui`. */
 export const spacing = munchSpacing;
 
-/** Corner radii (design-system.md §6), straight from `@munch/ui`. */
+/** Corner radii (09-design-system.md §6), straight from `@munch/ui`. */
 export const radii = munchRadii;
 
-/** 2px downward press translate to simulate a physical click (design-system.md §6). */
+/** 2px downward press translate to simulate a physical click (09-design-system.md §6). */
 export const pressTranslateY = munchPressTranslateY;
 
 /**
@@ -42,7 +42,7 @@ const fontFamilyForWeight: Record<string, string> = {
 };
 
 /**
- * The 8 type styles (design-system.md §5) as RN text styles. `@munch/ui` stores
+ * The 8 type styles (09-design-system.md §5) as RN text styles. `@munch/ui` stores
  * line-height as a unitless multiplier and tracking in em; RN wants both in px,
  * so we resolve them against `fontSize` here. Each style also carries the right
  * Quicksand face for its weight.
@@ -68,7 +68,7 @@ export const typography = Object.fromEntries(
 ) as Record<TypographyStyle, TextStyle>;
 
 /**
- * Map a `@munch/ui` ambient shadow (design-system.md §6) to RN's shadow props
+ * Map a `@munch/ui` ambient shadow (09-design-system.md §6) to RN's shadow props
  * plus a matching Android `elevation` (Android ignores `shadow*`). The blur
  * approximates elevation; offset y drives the drop. Derived entirely from the
  * token — no new values invented.

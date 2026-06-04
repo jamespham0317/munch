@@ -5,7 +5,7 @@ import { colors, spacing, typography } from "../../theme";
 
 /**
  * Labeled field wrapper — an uppercase eyebrow label above its control
- * (design-system.md §5 label-md, §7). Presentational only; no logic (CLAUDE.md §4).
+ * (09-design-system.md §5 label-md, §7). Presentational only; no logic (CLAUDE.md §4).
  * Generic by design: it labels text Inputs, chip rows, tiles, or the radius slider.
  */
 export function Field({

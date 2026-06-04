@@ -8,7 +8,7 @@ import type { NextConfig } from "next";
  * so Next must transpile them rather than expecting prebuilt JS. @munch/ui is here
  * because its token `colors` are imported at runtime in a client component (the
  * match confetti palette); the Tailwind theme seeds from it at build time too.
- * See CLAUDE.md §4 and ui-roadmap.md §4 (Phase C, Prompt 1).
+ * See CLAUDE.md §4 and 11-ui-roadmap.md §4 (Phase C, Prompt 1).
  */
 const nextConfig: NextConfig = {
   // Pin the workspace root so Turbopack uses the monorepo (two levels up) rather

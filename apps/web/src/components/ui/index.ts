@@ -1,5 +1,5 @@
 /**
- * Barrel for the web UI primitive library (design-system.md §7). Every primitive is
+ * Barrel for the web UI primitive library (09-design-system.md §7). Every primitive is
  * presentational only and built from the Tailwind theme — which is seeded from
  * @munch/ui — with no business logic, no hooks, and no @munch/core domain rules
  * (CLAUDE.md §4). They mirror the Phase B mobile primitives' API and look, implemented

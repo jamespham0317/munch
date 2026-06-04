@@ -10,10 +10,10 @@
 ## 1. Purpose
 
 The screen inventory for the reskin: each page's route on both platforms, what it does, the
-mockup it matches, the primitives it composes (see `design-system.md`), the data it is wired
+mockup it matches, the primitives it composes (see `09-design-system.md`), the data it is wired
 to, and the invariants it must honor. This is layered on the existing, functionally complete
 app (through Phase 4.5) — pages are **reskinned**, not rebuilt; their hooks/endpoints are
-unchanged. Build order is in `ui-roadmap.md`.
+unchanged. Build order is in `11-ui-roadmap.md`.
 
 Endpoint/RPC contracts live in `docs/04-api-specification.md`; this doc only references them.
 
@@ -26,7 +26,7 @@ A bottom **TabBar** (Discover · Match · Profile) wraps the in-app experience.
 - **Mobile:** an `expo-router` tab group. Tabs render once a member is in the app surface
   (outside an active room flow, the room screens present full-screen above the tabs).
 - **Web:** the same three destinations as a bottom bar at mobile widths, promoted to a
-  top/side nav at desktop width (≥1200px container, docs design-system §6).
+  top/side nav at desktop width (≥1200px container, docs 09-design-system §6).
 
 | Tab | Destination |
 |---|---|
