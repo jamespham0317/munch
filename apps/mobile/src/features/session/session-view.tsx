@@ -1,11 +1,13 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { setPresence } from "@munch/api-client";
 import type { DeckRestaurant, SessionStatus } from "@munch/core";
-import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { SwipeCard } from "../../components/swipe-card";
 import { RadiusSlider } from "../../components/ui/radius-slider";
+import { getSupabaseClient } from "../../lib/supabase";
 import { colors, radii, shadow, spacing, typography } from "../../theme";
 import { ResolutionView } from "./resolution-view";
 import { useActiveSession } from "./use-active-session";
@@ -47,6 +49,18 @@ export function SessionView({
       router.replace({ pathname: "/room/[roomId]/lobby", params: { roomId } });
     }
   }, [activeSession, sessionId, sessionQuery.isPending, roomId, router]);
+
+  // Keep the caller present while on the session screen. The lobby's presence assert stops
+  // applying once it blurs on the lobby → session move, so the swiper must re-assert here or
+  // the present-member-scoped match + deck-exhaustion checks (check_unanimous_match /
+  // is_deck_exhausted) count them absent and never match (docs/03 §3.3, docs/04 §3.4:
+  // presence covers the session, not just the lobby). STICKY like the lobby — assert `true`
+  // on focus, never fire a racy `false` on blur. Best-effort — failures are not surfaced.
+  useFocusEffect(
+    useCallback(() => {
+      void setPresence(getSupabaseClient(), roomId, { is_present: true });
+    }, [roomId]),
+  );
 
   if (sessionQuery.isPending || deckQuery.isPending) {
     return <Text style={styles.muted}>Loading session…</Text>;

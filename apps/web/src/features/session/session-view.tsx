@@ -1,5 +1,6 @@
 "use client";
 
+import { setPresence } from "@munch/api-client";
 import type { DeckRestaurant, SessionStatus } from "@munch/core";
 import { SlidersHorizontal, UtensilsCrossed } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -8,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { RadiusSlider } from "@/components/radius-slider";
 import { SwipeCard } from "@/components/swipe-card";
 import { cx } from "@/components/ui/cx";
+import { getSupabaseClient } from "@/lib/supabase";
 
 import { ResolutionView } from "./resolution-view";
 import { useActiveSession } from "./use-active-session";
@@ -49,6 +51,16 @@ export function SessionView({
       router.replace(`/room/${roomId}/lobby`);
     }
   }, [activeSession, sessionId, sessionQuery.isPending, roomId, router]);
+
+  // Keep the caller present while on the session screen. The lobby's presence assert stops
+  // applying once it unmounts on the lobby → session move, so the swiper must re-assert here
+  // or the present-member-scoped match + deck-exhaustion checks (check_unanimous_match /
+  // is_deck_exhausted) count them absent and never match (docs/03 §3.3, docs/04 §3.4:
+  // presence covers the session, not just the lobby). STICKY like the lobby — assert `true`
+  // on mount, never fire a racy `false` on unmount. Best-effort — failures are not surfaced.
+  useEffect(() => {
+    void setPresence(getSupabaseClient(), roomId, { is_present: true });
+  }, [roomId]);
 
   if (sessionQuery.isPending || deckQuery.isPending) {
     return <p className="text-body-md text-text-muted">Loading session…</p>;

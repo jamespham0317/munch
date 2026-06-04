@@ -90,16 +90,16 @@ export function useRoomLobby(roomId: string) {
     };
   }, [roomId, queryClient]);
 
-  // Reflect lobby membership: present on focus, away on blur. On mobile a screen can
-  // be backgrounded while still mounted, so focus/blur (not mount/unmount) is the
-  // right signal. Presence is best-effort, so failures are intentionally not surfaced.
+  // Mark the caller present while they're in the room surface (lobby or session).
+  // STICKY: assert `true` on focus, never flip to `false` on blur — moving lobby→session
+  // blurs this screen, and a fire-and-forget away-write there races the present-write and
+  // can leave the member stuck `away`, breaking the present-member-scoped match +
+  // deck-exhaustion checks (CLAUDE.md §2.3, docs/03 §3.3, docs/04 §3.4). Departure is an
+  // explicit action instead: leaveRoom/endRoom (and the host-leave cancel path) set
+  // is_present=false directly. Best-effort — failures are intentionally not surfaced.
   useFocusEffect(
     useCallback(() => {
-      const client = getSupabaseClient();
-      void setPresence(client, roomId, { is_present: true });
-      return () => {
-        void setPresence(client, roomId, { is_present: false });
-      };
+      void setPresence(getSupabaseClient(), roomId, { is_present: true });
     }, [roomId]),
   );
 
