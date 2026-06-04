@@ -9,15 +9,11 @@ import {
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import { AnchorMap } from "../../components/anchor-map";
 import { FiltersFieldset } from "../../components/filters-fieldset";
 import { Button, Field, Input, RadiusSlider } from "../../components/ui";
 import { colors, spacing, typography } from "../../theme";
 import { useCreateRoom } from "./use-create-room";
-
-/** Empty string → NaN so the Zod number schemas reject a blank coordinate. */
-function toNumber(value: string): number {
-  return value.trim() === "" ? Number.NaN : Number(value);
-}
 
 /**
  * Host create-room form (RN parity with apps/web's CreateRoomForm). Sets the host's
@@ -27,16 +23,17 @@ function toNumber(value: string): number {
  * filters carry only taxonomy ids. Input is validated client-side against the
  * @munch/core schema (docs/06 §3, validate on both ends); the server re-validates
  * authoritatively. Explicit handlers only — no form semantics that conflict with RN
- * (docs/06 §6). The "Where are we eating?" field's pin is a decorative affordance:
- * geocoding/map is deferred (presentation-only reskin), so the host enters lat/lng.
+ * (docs/06 §6). The anchor (anchor_lat/anchor_lng) is set on the AnchorMap by dragging
+ * the map under the fixed center pin (Phase 4.6, docs/07 §6.6); the "Where are we
+ * eating?" field stays an optional free-text label (no geocoding fills it).
  */
 export function CreateRoomForm() {
   const createRoom = useCreateRoom();
 
   const [hostDisplayName, setHostDisplayName] = useState("");
   const [anchorLabel, setAnchorLabel] = useState("");
-  const [anchorLat, setAnchorLat] = useState("");
-  const [anchorLng, setAnchorLng] = useState("");
+  const [anchorLat, setAnchorLat] = useState<number | null>(null);
+  const [anchorLng, setAnchorLng] = useState<number | null>(null);
   const [openNow, setOpenNow] = useState(false);
   const [cuisines, setCuisines] = useState<CuisineId[]>([]);
   const [priceLevels, setPriceLevels] = useState<PriceLevel[]>([]);
@@ -47,8 +44,10 @@ export function CreateRoomForm() {
     const parsed = createRoomRequestSchema.safeParse({
       host_display_name: hostDisplayName,
       anchor_label: anchorLabel,
-      anchor_lat: toNumber(anchorLat),
-      anchor_lng: toNumber(anchorLng),
+      // The map emits a center on mount, so these are set before submit; the NaN
+      // fallback only guards the brief pre-emit window and lets Zod reject it.
+      anchor_lat: anchorLat ?? Number.NaN,
+      anchor_lng: anchorLng ?? Number.NaN,
       filters: {
         open_now: openNow,
         cuisines,
@@ -92,28 +91,13 @@ export function CreateRoomForm() {
           </View>
         </View>
       </Field>
-      <View style={styles.coordRow}>
-        <View style={styles.coordCol}>
-          <Field label="Latitude">
-            <Input
-              value={anchorLat}
-              onChangeText={setAnchorLat}
-              keyboardType="numbers-and-punctuation"
-              placeholder="37.7749"
-            />
-          </Field>
-        </View>
-        <View style={styles.coordCol}>
-          <Field label="Longitude">
-            <Input
-              value={anchorLng}
-              onChangeText={setAnchorLng}
-              keyboardType="numbers-and-punctuation"
-              placeholder="-122.4194"
-            />
-          </Field>
-        </View>
-      </View>
+      <AnchorMap
+        radiusM={radius}
+        onAnchorChange={(lat, lng) => {
+          setAnchorLat(lat);
+          setAnchorLng(lng);
+        }}
+      />
       <FiltersFieldset
         openNow={openNow}
         onOpenNowChange={setOpenNow}
@@ -153,7 +137,5 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: "center",
   },
-  coordRow: { flexDirection: "row", gap: spacing.gutter },
-  coordCol: { flex: 1 },
   error: { ...typography.bodyMd, color: colors.error },
 });
