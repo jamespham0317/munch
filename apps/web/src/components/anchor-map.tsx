@@ -183,8 +183,18 @@ export function AnchorMap({
   }, [radiusM]);
 
   return (
-    <div className="relative h-80 w-full overflow-hidden rounded-xl border border-border">
-      <div ref={containerRef} className="absolute inset-0" />
+    <div className="relative h-80 w-full">
+      {/*
+       * MapLibre attaches to a NORMALLY-POSITIONED, directly-sized container
+       * (`h-full w-full`), never an `absolute` one: a WebGL canvas inside an
+       * absolutely-positioned container fails to composite (renders to its buffer
+       * but never displays) on some GPU/ANGLE configs inside the full app page.
+       * The fixed center pin stays an absolute sibling overlaid on top.
+       */}
+      <div
+        ref={containerRef}
+        className="h-full w-full overflow-hidden rounded-xl border border-border"
+      />
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <MapPin
           size={32}
