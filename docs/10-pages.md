@@ -88,6 +88,9 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 - **Primitives:** Card (amber code panel), QR, MemberList (Avatar + `online` dot),
   ProgressPill, Button.
 - **Wiring:** realtime `room:{room_id}` presence; host `start_session`; `set_presence`.
+- **Anchor/filters:** the host-set anchor (label + radius) and filters show **read-only** to all
+  members; the host keeps an **editable radius** (and filters) here that snapshots into
+  `start_session`. No editable map in the lobby — the anchor is set on Create Room (§3.3, Phase 4.6).
 - **Invariant:** only the host can start; aggregate presence only.
 
 ### 3.6 Swiping Session  ("Swiping Session")
