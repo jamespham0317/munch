@@ -10,16 +10,12 @@ import {
 import { MapPin } from "lucide-react";
 import { type FormEvent, useState } from "react";
 
+import { AnchorMap } from "@/components/anchor-map";
 import { FiltersFieldset } from "@/components/filters-fieldset";
 import { RadiusSlider } from "@/components/radius-slider";
 import { Button, Field, Input } from "@/components/ui";
 
 import { useCreateRoom } from "./use-create-room";
-
-/** Empty string → NaN so the Zod number schemas reject a blank coordinate. */
-function toNumber(value: string): number {
-  return value.trim() === "" ? Number.NaN : Number(value);
-}
 
 /**
  * Host create-room form. Sets the host's name, the search anchor, the room-wide
@@ -27,16 +23,17 @@ function toNumber(value: string): number {
  * the create flow. Cuisines come from the closed @munch/core CUISINES taxonomy via
  * FiltersFieldset (no free text). Input is validated client-side against the @munch/core
  * schema (docs/06 §3, validate on both ends); the server re-validates authoritatively.
- * The "Where are we eating?" pin is a decorative affordance: geocoding/map is deferred
- * (presentation-only reskin), so the host enters lat/lng.
+ * The anchor (anchor_lat/anchor_lng) is set on the AnchorMap by dragging the map under
+ * the fixed center pin (Phase 4.6, docs/07 §6.6); the "Where are we eating?" field stays
+ * an optional free-text label (no geocoding fills it).
  */
 export function CreateRoomForm() {
   const createRoom = useCreateRoom();
 
   const [hostDisplayName, setHostDisplayName] = useState("");
   const [anchorLabel, setAnchorLabel] = useState("");
-  const [anchorLat, setAnchorLat] = useState("");
-  const [anchorLng, setAnchorLng] = useState("");
+  const [anchorLat, setAnchorLat] = useState<number | null>(null);
+  const [anchorLng, setAnchorLng] = useState<number | null>(null);
   const [openNow, setOpenNow] = useState(false);
   const [cuisines, setCuisines] = useState<CuisineId[]>([]);
   const [priceLevels, setPriceLevels] = useState<PriceLevel[]>([]);
@@ -48,8 +45,10 @@ export function CreateRoomForm() {
     const parsed = createRoomRequestSchema.safeParse({
       host_display_name: hostDisplayName,
       anchor_label: anchorLabel,
-      anchor_lat: toNumber(anchorLat),
-      anchor_lng: toNumber(anchorLng),
+      // The map emits a center on mount, so these are set before submit; the NaN
+      // fallback only guards the brief pre-emit window and lets Zod reject it.
+      anchor_lat: anchorLat ?? Number.NaN,
+      anchor_lng: anchorLng ?? Number.NaN,
       filters: {
         open_now: openNow,
         cuisines,
@@ -96,33 +95,12 @@ export function CreateRoomForm() {
           </span>
         </div>
       </Field>
-      <div className="grid grid-cols-2 gap-gutter">
-        <Field label="Latitude" htmlFor="anchor-lat">
-          <Input
-            id="anchor-lat"
-            value={anchorLat}
-            onChange={(event) => setAnchorLat(event.target.value)}
-            inputMode="decimal"
-            placeholder="37.7749"
-          />
-        </Field>
-        <Field label="Longitude" htmlFor="anchor-lng">
-          <Input
-            id="anchor-lng"
-            value={anchorLng}
-            onChange={(event) => setAnchorLng(event.target.value)}
-            inputMode="decimal"
-            placeholder="-122.4194"
-          />
-        </Field>
-      </div>
-      <FiltersFieldset
-        openNow={openNow}
-        onOpenNowChange={setOpenNow}
-        cuisines={cuisines}
-        onCuisinesChange={setCuisines}
-        priceLevels={priceLevels}
-        onPriceLevelsChange={setPriceLevels}
+      <AnchorMap
+        radiusM={radius}
+        onAnchorChange={(lat, lng) => {
+          setAnchorLat(lat);
+          setAnchorLng(lng);
+        }}
       />
       <Field label="Search radius">
         <RadiusSlider
@@ -131,6 +109,14 @@ export function CreateRoomForm() {
           onChange={setRadius}
         />
       </Field>
+      <FiltersFieldset
+        openNow={openNow}
+        onOpenNowChange={setOpenNow}
+        cuisines={cuisines}
+        onCuisinesChange={setCuisines}
+        priceLevels={priceLevels}
+        onPriceLevelsChange={setPriceLevels}
+      />
       {errorMessage ? (
         <p role="alert" className="text-body-md text-error">
           {errorMessage}
