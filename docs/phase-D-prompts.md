@@ -291,10 +291,17 @@ Deliver:
     • docs/11-ui-roadmap.md §5: mark Phase D as ✅ Delivered with its exit criteria met, in the same
       voice as the §2–§4 "Delivered" sections (what was verified, on both platforms, green CI).
     • docs/10-pages.md / docs/09-design-system.md: reconcile anything Prompts 1–4 found shipped
-      differently from the spec (a primitive name, a state, the km decision, the Create Room
-      AnchorMap in §3.3) — keep edits factual and minimal; do NOT add new rules.
-    • If any CLAUDE.md §1–§8 statement now mismatches reality, fix it in the same change; the §9
-      open decision on distance units (km vs imperial) stays OPEN — do not resolve it here.
+      differently from the spec (a primitive name, a state, the Create Room AnchorMap in §3.3) —
+      keep edits factual and minimal; do NOT add new rules.
+    • RESOLVE the distance-units open decision to KM (the project's decision: distance is shown in
+      km on both platforms, not imperial). Drop the "open / revisit if a US-imperial launch is
+      decided" framing wherever it appears — docs/11-ui-roadmap.md §3 (Phase B exit note) and §4
+      (Phase C locked decisions) — and state km as the settled unit. In CLAUDE.md §9, ADD a
+      "Resolved: distance units = km on both platforms" note in the same voice as the existing
+      "Resolved: host leaves mid-session" line, and remove any cross-reference that still calls
+      units open. This is the one open decision Phase D closes; the provider pricing/ToS §9 item
+      stays open.
+    • If any other CLAUDE.md §1–§8 statement now mismatches reality, fix it in the same change.
 - Verification summary in the report: the per-screen QA result on BOTH platforms (attach the mobile
   screenshots + the web mobile/desktop notes from Prompts 2–3), the cross-platform live-run result
   (Prompt 4), the invariant confirmations (one provider call per session/widen, zero per swipe; no
@@ -302,7 +309,8 @@ Deliver:
   the exact files changed (should be docs + any minimal drift fixes only).
 
 Done when: all four gates are green tree-wide; docs/11-ui-roadmap.md §5 records Phase D as
-delivered; the docs match the shipped reskin on both platforms; and the report enumerates the
-per-screen QA (mobile + web), the cross-platform live run, the invariant checks, and every file
-changed. This closes the A → B → C → D UI roadmap.
+delivered; the distance-units decision is RESOLVED to km in the docs (no "open / US-imperial"
+framing remains and CLAUDE.md §9 records the resolution); the docs match the shipped reskin on both
+platforms; and the report enumerates the per-screen QA (mobile + web), the cross-platform live run,
+the invariant checks, and every file changed. This closes the A → B → C → D UI roadmap.
 ```
