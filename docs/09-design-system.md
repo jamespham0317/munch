@@ -163,7 +163,9 @@ tokens. They hold **no business logic and read no data** (CLAUDE.md §4).
 - **RadiusSlider** — amber thumb + amber value pill; bounded to the host's anchor (see §9).
 - **AnchorMap** — the Create Room anchor picker (Phase 4.6): a MapLibre map over keyless
   OpenStreetMap raster tiles with a **fixed center pin** (anchor = map center) and a translucent
-  **amber radius circle** (`brand` low-opacity fill + `heat` stroke) bound to the RadiusSlider.
+  **amber radius ring** (`brand` low-opacity fill + `heat` stroke). The ring is a **fixed-size
+  overlay** centered on the map — it never moves or resizes; the RadiusSlider drives the **map
+  zoom** (`zoomForRadius`) so the ring represents the selected radius and stays fully visible.
   The "© OpenStreetMap contributors" attribution is always visible. Built once per platform
   (`maplibre-gl` web / `@maplibre/maplibre-react-native` mobile, no `react-native-web`);
   presentational only — reads no data and makes no provider call (CLAUDE.md §4, §2.1).

@@ -3,7 +3,7 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import {
-  circlePolygon,
+  circleDiameterPx,
   DEFAULT_MAP_CENTER,
   type LatLng,
   OSM_ATTRIBUTION,
@@ -11,17 +11,21 @@ import {
   zoomForRadius,
 } from "@munch/core";
 import { MapPin } from "lucide-react";
-import type { GeoJSONSource, Map as MaplibreMap } from "maplibre-gl";
-import { useEffect, useRef } from "react";
+import type { Map as MaplibreMap } from "maplibre-gl";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * The Create Room anchor map (Phase 4.6, docs/07-initial-roadmap.md §6.6,
  * 09-design-system.md §7). A MapLibre GL map over keyless OpenStreetMap raster
  * tiles with a FIXED CENTER PIN: the host drags the map underneath the pin, so the
  * anchor is always the map's center — read on "moveend" and emitted via
- * onAnchorChange. A translucent amber radius ring (brand fill, heat stroke) tracks
- * `radiusM`, regenerated from the @munch/core circlePolygon helper, with the zoom
- * re-fit (zoomForRadius) so the ring stays visible as the slider moves.
+ * onAnchorChange.
+ *
+ * The translucent amber radius ring (brand fill, heat stroke) is a FIXED-SIZE
+ * overlay centered on the map — it never moves or resizes. `radiusM` drives the map
+ * ZOOM instead (zoomForRadius, using the center latitude), so a ground circle of the
+ * selected radius projects to exactly the fixed ring: dragging the slider zooms the
+ * map in/out while the ring stays put and fully visible (docs/07 §6.6).
  *
  * Presentational only — no data access, no domain logic, and NO provider call
  * (CLAUDE.md §4 / §2.1). OSM tiles are a separate, keyless source, not the
@@ -33,13 +37,10 @@ import { useEffect, useRef } from "react";
  * its DOM-dependent code never runs during the server render.
  */
 
-const CIRCLE_SOURCE_ID = "anchor-radius";
-const CIRCLE_FILL_LAYER_ID = "anchor-radius-fill";
-const CIRCLE_LINE_LAYER_ID = "anchor-radius-line";
-const CIRCLE_FILL_OPACITY = 0.18;
-const CIRCLE_STROKE_WIDTH = 2;
+const MAP_HEIGHT_PX = 320; // matches the h-80 container; the square-fit fallback.
+const RING_FILL_OPACITY_PCT = 18; // brand fill, low-opacity (09-design-system §7).
 
-/** Square-fit pixel size used to pick a zoom that keeps the ring on screen. */
+/** Square-fit pixel size (smaller side) used to size the ring and pick the zoom. */
 function viewportPx(container: HTMLElement): number {
   return (
     Math.min(container.clientWidth, container.clientHeight) ||
@@ -63,8 +64,10 @@ export function AnchorMap({
   onAnchorChangeRef.current = onAnchorChange;
   const radiusRef = useRef(radiusM);
   radiusRef.current = radiusM;
+  // Tracked container size drives both the fixed ring's diameter and the zoom math.
+  const [vpx, setVpx] = useState(MAP_HEIGHT_PX);
 
-  // Mount once: create the map, the radius ring, and the geolocation request.
+  // Mount once: create the map and the opt-in geolocation request.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -81,54 +84,21 @@ export function AnchorMap({
         container,
         style: OSM_RASTER_STYLE,
         center: [start.lng, start.lat],
-        zoom: zoomForRadius(radiusRef.current, viewportPx(container)),
+        zoom: zoomForRadius(
+          radiusRef.current,
+          viewportPx(container),
+          start.lat,
+        ),
         attributionControl: { customAttribution: OSM_ATTRIBUTION },
       });
       mapRef.current = map;
 
-      // Resolve the amber tokens once (brand fill, heat stroke) — never hardcode hex.
-      const tokens = getComputedStyle(document.documentElement);
-      const fillColor = tokens.getPropertyValue("--color-brand").trim();
-      const strokeColor = tokens.getPropertyValue("--color-heat").trim();
-
-      map.on("load", () => {
-        if (!map) return;
-        map.addSource(CIRCLE_SOURCE_ID, {
-          type: "geojson",
-          data: circlePolygon(start, radiusRef.current),
-        });
-        map.addLayer({
-          id: CIRCLE_FILL_LAYER_ID,
-          type: "fill",
-          source: CIRCLE_SOURCE_ID,
-          paint: {
-            "fill-color": fillColor,
-            "fill-opacity": CIRCLE_FILL_OPACITY,
-          },
-        });
-        map.addLayer({
-          id: CIRCLE_LINE_LAYER_ID,
-          type: "line",
-          source: CIRCLE_SOURCE_ID,
-          paint: {
-            "line-color": strokeColor,
-            "line-width": CIRCLE_STROKE_WIDTH,
-          },
-        });
-      });
-
-      // Anchor = map center: emit it and recenter the ring whenever the map settles.
+      // Anchor = map center: emit it whenever the map settles. The ring is a fixed
+      // overlay centered on the map, so there is nothing to reposition here.
       map.on("moveend", () => {
         if (!map) return;
         const center = map.getCenter();
         onAnchorChangeRef.current(center.lat, center.lng);
-        const source = map.getSource<GeoJSONSource>(CIRCLE_SOURCE_ID);
-        source?.setData(
-          circlePolygon(
-            { lat: center.lat, lng: center.lng },
-            radiusRef.current,
-          ),
-        );
       });
 
       // Emit the starting center immediately so the form's anchor is never NaN.
@@ -139,11 +109,19 @@ export function AnchorMap({
         navigator.geolocation.getCurrentPosition(
           (position) => {
             if (cancelled || !map) return;
-            // setCenter fires "moveend", which emits the anchor and moves the ring.
-            map.setCenter([
-              position.coords.longitude,
-              position.coords.latitude,
-            ]);
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            // Re-fit the zoom to the new latitude so the fixed ring still represents
+            // the selected radius; "moveend" then emits the anchor.
+            map.easeTo({
+              center: [lng, lat],
+              zoom: zoomForRadius(
+                radiusRef.current,
+                viewportPx(map.getContainer()),
+                lat,
+              ),
+              duration: 250,
+            });
           },
           () => {
             // Denied/unavailable: stay on DEFAULT_MAP_CENTER and let the host pan.
@@ -160,20 +138,32 @@ export function AnchorMap({
     };
   }, [initialCenter]);
 
-  // Re-fit the ring + zoom when the radius slider changes (keep it visible).
+  // Track the container size so the fixed ring and the zoom math stay in sync with
+  // responsive width changes.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const update = () => setVpx(viewportPx(container));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  // Radius slider change → only the map zoom changes; the fixed ring stays put. Use
+  // the live center latitude so the ring keeps representing the true ground radius.
   useEffect(() => {
     const map = mapRef.current;
     const container = containerRef.current;
     if (!map || !container) return;
 
     const apply = () => {
-      const center = map.getCenter();
-      const source = map.getSource<GeoJSONSource>(CIRCLE_SOURCE_ID);
-      source?.setData(
-        circlePolygon({ lat: center.lat, lng: center.lng }, radiusM),
-      );
       map.easeTo({
-        zoom: zoomForRadius(radiusM, viewportPx(container)),
+        zoom: zoomForRadius(
+          radiusM,
+          viewportPx(container),
+          map.getCenter().lat,
+        ),
         duration: 250,
       });
     };
@@ -182,6 +172,8 @@ export function AnchorMap({
     else void map.once("load", apply);
   }, [radiusM]);
 
+  const diameter = circleDiameterPx(vpx);
+
   return (
     <div className="relative h-80 w-full">
       {/*
@@ -189,12 +181,30 @@ export function AnchorMap({
        * (`h-full w-full`), never an `absolute` one: a WebGL canvas inside an
        * absolutely-positioned container fails to composite (renders to its buffer
        * but never displays) on some GPU/ANGLE configs inside the full app page.
-       * The fixed center pin stays an absolute sibling overlaid on top.
+       * The fixed ring + center pin stay absolute siblings overlaid on top.
        */}
       <div
         ref={containerRef}
         className="h-full w-full overflow-hidden rounded-xl border border-border"
       />
+      {/*
+       * Fixed-size amber radius ring — never moves or resizes; the map zoom beneath
+       * it represents the selected radius. brand low-opacity fill + heat stroke,
+       * from the seeded CSS tokens (09-design-system §7); CIRCLE_VIEWPORT_FRACTION
+       * keeps it inside the map with margin (always fully visible). The diameter is a
+       * prop-computed dynamic size — the one inline-style exception (docs/11 §4).
+       */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div
+          aria-hidden
+          className="rounded-full border-2 border-heat"
+          style={{
+            width: diameter,
+            height: diameter,
+            backgroundColor: `color-mix(in srgb, var(--color-brand) ${RING_FILL_OPACITY_PCT}%, transparent)`,
+          }}
+        />
+      </div>
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <MapPin
           size={32}

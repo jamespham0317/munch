@@ -71,9 +71,10 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 - **Anchor:** set via the **AnchorMap** (MapLibre + OSM tiles, Phase 4.6), **not** manual
   lat/lng. A fixed center pin marks the anchor (= `map.getCenter()` on move-end); device
   geolocation centers the map on open (opt-in, never blocks — falls back to a default center
-  with manual pan). An amber radius circle is bound bidirectionally to the RadiusSlider. Map-pick
-  only (no geocoding/search); `anchor_label` stays an optional free-text field. OSM "©
-  OpenStreetMap contributors" attribution is shown.
+  with manual pan). A fixed-size amber radius ring sits centered on the map and never moves or
+  resizes; the RadiusSlider drives the map **zoom** so the ring represents the selected radius and
+  stays fully visible. Map-pick only (no geocoding/search); `anchor_label` stays an optional
+  free-text field. OSM "© OpenStreetMap contributors" attribution is shown.
 - **Wiring:** `create_room` (then lobby). Filters snapshot into the room. The map only populates
   `anchor_lat`/`anchor_lng`; the `create_room` contract is unchanged.
 - **Invariant:** filters are **host-controlled** for the whole room; cuisines from the closed

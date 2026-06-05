@@ -132,7 +132,8 @@ signed-in account.
 ## 6.6 Phase 4.6 — Map-based anchor & radius selection
 
 **Goal:** replace manual latitude/longitude entry on the Create Room flow with an interactive
-map and device geolocation, with a radius circle on the map bound to the radius slider.
+map and device geolocation, with a fixed-size radius ring on the map whose represented radius is
+driven by the radius slider (via the map zoom).
 
 - Replace the manual `anchor_lat`/`anchor_lng` text inputs on **Create Room** with an
   interactive **MapLibre** map (free **OpenStreetMap** raster tiles, no paid key) on both
@@ -140,9 +141,12 @@ map and device geolocation, with a radius circle on the map bound to the radius 
 - On open, request **device geolocation** (web `navigator.geolocation`, mobile `expo-location`)
   and center the map on it as the default anchor; on denial/unavailable, fall back to a neutral
   default center with manual pan — geolocation is opt-in and **never blocks room creation**.
-- A translucent **amber radius circle** centered on the pin, bound **bidirectionally** to the
-  existing `RadiusSlider` (`RADIUS_MIN_M` 500 … `RADIUS_MAX_M` 20 000, default 3 000); dragging
-  the slider resizes the circle live and the circle stays centered and visible.
+- A translucent **amber radius ring** rendered as a **fixed-size overlay** centered on the map —
+  it never moves or resizes. The existing `RadiusSlider` (`RADIUS_MIN_M` 500 … `RADIUS_MAX_M`
+  20 000, default 3 000) drives the **map zoom** instead (`zoomForRadius`, using the center
+  latitude), so a ground circle of the selected radius projects to exactly that fixed ring:
+  dragging the slider zooms the map in/out while the ring stays stationary, the same visual size,
+  and **always fully visible**.
 - **Map-pick only** — no geocoding/search; keep an **optional** free-text `anchor_label`.
 - **Client/presentation only:** no change to the `create_room` contract, DB schema, RPCs, or
   migrations — the map populates the existing `anchor_lat`/`anchor_lng`/`default_radius_m`/
@@ -151,15 +155,15 @@ map and device geolocation, with a radius circle on the map bound to the radius 
   the restaurant provider and needs no key, and the server-only Places key never reaches a
   client. Anchor + radius stay **host-controlled** (§2.2); the lobby shows the anchor/radius
   read-only and the host keeps the lobby radius edit.
-- Shared meters↔map geo math (radius-circle geometry, zoom-to-fit) lives in `@munch/core`,
-  unit-tested; circle/pin styling comes from `@munch/ui` tokens; map implementation is
-  **per-platform** (no `react-native-web`).
+- Shared meters↔map geo math (the radius→zoom fit `zoomForRadius` and the fixed ring's
+  `circleDiameterPx`) lives in `@munch/core`, unit-tested; ring/pin styling comes from
+  `@munch/ui` tokens; map implementation is **per-platform** (no `react-native-web`).
 
 **Exit criteria:** on both apps a host sets the room anchor by panning a map (centered on their
-device location when permission is granted, a sensible default otherwise), an amber circle
-tracks the radius slider from 500 m to 20 km and stays visible, room creation still succeeds via
-the **unchanged** `create_room` contract, and no restaurant-provider call fires on any map or
-slider interaction.
+device location when permission is granted, a sensible default otherwise), a fixed-size amber
+ring stays stationary and fully visible while the radius slider (500 m to 20 km) zooms the map
+in/out to represent the selected radius, room creation still succeeds via the **unchanged**
+`create_room` contract, and no restaurant-provider call fires on any map or slider interaction.
 
 **Reverses (by explicit decision, CLAUDE.md §8):** the post-v1 "map view" deferral for the
 **anchor-selection** map (docs/08 §"Maps/geo"; docs/01 deferred list). The restaurant-card
