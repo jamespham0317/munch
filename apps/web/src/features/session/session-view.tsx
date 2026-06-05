@@ -36,6 +36,7 @@ export function SessionView({
   const deckQuery = useDeck(sessionId);
 
   const activeSession = sessionQuery.data ?? null;
+  const sessionMatches = activeSession?.id === sessionId;
 
   // Once SwipeRunner mounts it owns all navigation (via the realtime status channel:
   // matched/resolved → /result, cancelled → /lobby). After that, a stale getActiveSession
@@ -43,14 +44,21 @@ export function SessionView({
   // terminal state — must NOT bounce us, or it would race the runner's own navigation. So
   // this lobby bounce only guards INITIAL entry with no live session (getActiveSession now
   // includes the non-terminal awaiting_host_resolution, so host resolution never bounces).
+  //
+  // It must also wait for the active-session query to SETTLE before bouncing. On a host start
+  // we land here while the shared active-session cache still holds the lobby's stale `null`
+  // (the lobby read it as "no session yet"); React Query refetches it on mount. Bouncing in
+  // that window flips us to the lobby and straight back once the refetch resolves to the live
+  // session — the session→lobby→session start flicker. `isFetching` covers both the first load
+  // and the background refetch, so we only bounce on a CONFIRMED absent session.
   const tookOver = useRef(false);
   useEffect(() => {
-    if (sessionQuery.isPending) return;
+    if (sessionQuery.isFetching) return;
     if (tookOver.current) return;
-    if (!activeSession || activeSession.id !== sessionId) {
+    if (!sessionMatches) {
       router.replace(`/room/${roomId}/lobby`);
     }
-  }, [activeSession, sessionId, sessionQuery.isPending, roomId, router]);
+  }, [sessionMatches, sessionQuery.isFetching, roomId, router]);
 
   // Keep the caller present while on the session screen. The lobby's presence assert stops
   // applying once it unmounts on the lobby → session move, so the swiper must re-assert here
@@ -80,7 +88,16 @@ export function SessionView({
     );
   }
   if (!activeSession || activeSession.id !== sessionId) {
-    return <p className="text-body-md text-text-muted">Returning to lobby…</p>;
+    // Still settling (the active-session refetch right after a host start) vs. confirmed gone:
+    // show a neutral "loading" while fetching so we never flash "Returning to lobby…" on the
+    // way INTO a freshly started session — the effect above only bounces once it's settled.
+    // The explicit null check (rather than `sessionMatches`) also narrows activeSession to
+    // non-null for the SwipeRunner props below.
+    return (
+      <p className="text-body-md text-text-muted">
+        {sessionQuery.isFetching ? "Loading session…" : "Returning to lobby…"}
+      </p>
+    );
   }
 
   tookOver.current = true;
