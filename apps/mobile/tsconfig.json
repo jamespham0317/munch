@@ -1,8 +1,4 @@
 {
-  // Layered extends: the repo base contributes the strict flags (strict,
-  // noUncheckedIndexedAccess, exactOptionalPropertyTypes, …); Expo's base then
-  // overrides module/jsx/lib/resolution for React Native. Order matters — Expo is
-  // last so its bundler settings win, while the repo's strictness is preserved.
   "extends": ["../../tsconfig.base.json", "expo/tsconfig.base"],
-  "include": ["expo-env.d.ts", "**/*.ts", "**/*.tsx", ".expo/types/**/*.ts"]
+  "include": ["**/*.ts", "**/*.tsx"]
 }

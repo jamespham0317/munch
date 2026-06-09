@@ -11,10 +11,16 @@
       "associatedDomains": ["applinks:munch.app"],
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Munch uses your location to center the map on you."
-      }
+      },
+      "bundleIdentifier": "com.anonymous.munch"
     },
     "android": {
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
