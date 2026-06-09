@@ -179,7 +179,7 @@ session-cancel half via the `cancel_active_session` RPC, wired into the api-clie
 
 ## 10. Quick commands
 
-Toolchain scaffolded in Phase 0. Requires Node 22 (`.nvmrc`) + pnpm 9
+Toolchain scaffolded in Phase 0. Requires Node 24 (`.nvmrc`) + pnpm 9
 (`corepack enable pnpm`). See `README.md` for first-time setup.
 
 ```

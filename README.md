@@ -20,11 +20,11 @@ docs/        # specification documents (source of truth)
 
 ## First-time setup
 
-Requires [Node 22](./.nvmrc) and [pnpm 9](https://pnpm.io) (managed via Corepack).
+Requires [Node 24](./.nvmrc) and [pnpm 9](https://pnpm.io) (managed via Corepack).
 
 ```sh
 corepack enable pnpm   # activate the pinned pnpm version
-nvm use                # switch to the Node version in .nvmrc (Node 22)
+nvm use                # switch to the Node version in .nvmrc (Node 24)
 pnpm install           # install all workspace dependencies
 ```
 
