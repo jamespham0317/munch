@@ -12,8 +12,10 @@ import { useJoinRoom } from "./use-join-room";
  * link/QR target; a bare /room/join renders the same form with a blank code for
  * manual entry. Input is validated client-side against the @munch/core schema
  * (docs/06 §3); the server re-validates authoritatively. join_room failures surface the
- * api-client's friendly, code-mapped message (ROOM_NOT_FOUND / ROOM_CLOSED /
- * ALREADY_JOINED / RATE_LIMITED — docs/04 §3.2), never raw provider/DB text.
+ * api-client's friendly, code-mapped message (ROOM_NOT_FOUND / ROOM_CLOSED / ALREADY_JOINED /
+ * RATE_LIMITED, and ROOM_IN_SESSION → "This room's session has already started." once a session
+ * has started — joining is lobby-only, Phase 4.7 — docs/04 §3.2), never raw provider/DB text and
+ * with no auto-retry.
  */
 export function JoinRoomForm({ initialCode = "" }: { initialCode?: string }) {
   const joinRoom = useJoinRoom();

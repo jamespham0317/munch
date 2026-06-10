@@ -1,22 +1,20 @@
 import {
-  getRoomMembers,
   type SessionEvent,
   submitSwipe,
   subscribeSession,
 } from "@munch/api-client";
 import {
   type DeckRestaurant,
-  type RoomMember,
   type SessionStatus,
   shuffleDeck,
   type SubmitSwipeRequest,
   type SubmitSwipeResponse,
 } from "@munch/core";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { useCurrentUser } from "@/features/auth/use-current-user";
+import { useRoomMember } from "@/features/room/use-room-member";
 import { getSupabaseClient } from "@/lib/supabase";
 
 import { deckKey } from "./use-deck";
@@ -42,16 +40,6 @@ import { matchKey } from "./use-match";
  * no swipe ever triggers a refetch. Per CLAUDE.md §2.3 the server is the only thing that
  * declares a match — the client never derives one from local swipe state.
  */
-
-const membersKey = (roomId: string) => ["room-members", roomId] as const;
-
-async function fetchMembers(roomId: string): Promise<RoomMember[]> {
-  const result = await getRoomMembers(getSupabaseClient(), roomId);
-  if (result.error) {
-    throw new Error(result.error.error.message);
-  }
-  return result.data;
-}
 
 export interface SwipeSession {
   /** Cards in this member's shuffled, radius-filtered order. */
@@ -85,20 +73,9 @@ export function useSwipeSession(
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const membersQuery = useQuery<RoomMember[], Error>({
-    queryKey: membersKey(roomId),
-    queryFn: () => fetchMembers(roomId),
-    retry: false,
-  });
-  const userQuery = useCurrentUser();
-
-  const me = useMemo(() => {
-    const userId = userQuery.data?.id;
-    if (!userId || !membersQuery.data) return null;
-    return membersQuery.data.find((member) => member.userId === userId) ?? null;
-  }, [membersQuery.data, userQuery.data]);
-  const memberId = me?.id ?? null;
-  const isHost = me?.role === "host";
+  // The caller's own member id seeds the deterministic shuffle; the lookup is shared with the
+  // lobby + the keepalive layer through the same query key (useRoomMember).
+  const { memberId, isHost } = useRoomMember(roomId);
 
   // Live session status. Seeded from the initial active-session read and advanced by the
   // realtime channel below; SessionView renders the swipe UI vs. the host-resolution view

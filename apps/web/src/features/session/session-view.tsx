@@ -1,6 +1,5 @@
 "use client";
 
-import { setPresence } from "@munch/api-client";
 import type { DeckRestaurant, SessionStatus } from "@munch/core";
 import { SlidersHorizontal, UtensilsCrossed } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -9,7 +8,11 @@ import { useEffect, useRef, useState } from "react";
 import { RadiusSlider } from "@/components/radius-slider";
 import { SwipeCard } from "@/components/swipe-card";
 import { cx } from "@/components/ui/cx";
-import { getSupabaseClient } from "@/lib/supabase";
+import { LeaveRoomControl } from "@/features/room/leave-room-control";
+import { useRemovedRedirect } from "@/features/room/use-removed-redirect";
+import { useRoomExit } from "@/features/room/use-room-exit";
+import { useRoomMember } from "@/features/room/use-room-member";
+import { useRoomPresence } from "@/features/room/use-room-presence";
 
 import { ResolutionView } from "./resolution-view";
 import { useActiveSession } from "./use-active-session";
@@ -35,6 +38,19 @@ export function SessionView({
   const sessionQuery = useActiveSession(roomId);
   const deckQuery = useDeck(sessionId);
 
+  // Keepalive + cosmetic presence run for the whole swipe surface (heartbeat keeps the caller in
+  // the cohort; presence is purely cosmetic). The membership channel inside useRoomPresence keeps
+  // the shared member list live, so an external removal (auto-removal past the grace window, or a
+  // host ending the room) surfaces as the caller dropping out of the active roster → route home.
+  const { memberId, isHost, settled: membersSettled } = useRoomMember(roomId);
+  useRoomPresence(roomId, memberId);
+  const exit = useRoomExit(roomId);
+  useRemovedRedirect({
+    memberId,
+    settled: membersSettled,
+    suppressedRef: exit.exitingRef,
+  });
+
   const activeSession = sessionQuery.data ?? null;
   const sessionMatches = activeSession?.id === sessionId;
 
@@ -59,16 +75,6 @@ export function SessionView({
       router.replace(`/room/${roomId}/lobby`);
     }
   }, [sessionMatches, sessionQuery.isFetching, roomId, router]);
-
-  // Keep the caller present while on the session screen. The lobby's presence assert stops
-  // applying once it unmounts on the lobby → session move, so the swiper must re-assert here
-  // or the present-member-scoped match + deck-exhaustion checks (check_unanimous_match /
-  // is_deck_exhausted) count them absent and never match (docs/03 §3.3, docs/04 §3.4:
-  // presence covers the session, not just the lobby). STICKY like the lobby — assert `true`
-  // on mount, never fire a racy `false` on unmount. Best-effort — failures are not surfaced.
-  useEffect(() => {
-    void setPresence(getSupabaseClient(), roomId, { is_present: true });
-  }, [roomId]);
 
   if (sessionQuery.isPending || deckQuery.isPending) {
     return <p className="text-body-md text-text-muted">Loading session…</p>;
@@ -108,6 +114,8 @@ export function SessionView({
       deck={deckQuery.data}
       sessionRadiusM={activeSession.radiusM}
       initialStatus={activeSession.status}
+      isHost={isHost}
+      exit={exit}
     />
   );
 }
@@ -125,12 +133,16 @@ function SwipeRunner({
   deck,
   sessionRadiusM,
   initialStatus,
+  isHost,
+  exit,
 }: {
   roomId: string;
   sessionId: string;
   deck: DeckRestaurant[];
   sessionRadiusM: number;
   initialStatus: SessionStatus;
+  isHost: boolean;
+  exit: ReturnType<typeof useRoomExit>;
 }) {
   const swipe = useSwipeSession(
     roomId,
@@ -218,6 +230,8 @@ function SwipeRunner({
           No restaurants in this radius. Tap Adjust to widen the distance.
         </p>
       )}
+
+      <LeaveRoomControl isHost={isHost} exit={exit} />
     </section>
   );
 }

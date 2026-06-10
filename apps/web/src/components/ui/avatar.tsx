@@ -1,9 +1,9 @@
 /**
  * Circular avatar primitive (09-design-system.md §7). Presentational only (CLAUDE.md §4).
  * Shows an image, else initials, else — in the `add` variant — a "+" tile for
- * "Invite more". An optional `online` presence dot is the lobby's functional presence
- * colour; the data (who is present) is supplied by the caller. The web twin of the
- * Phase B mobile Avatar; the "+" is an inline 2px-stroke SVG (no icon dependency).
+ * "Invite more". An optional `online` dot is the lobby's COSMETIC presence colour (Phase 4.7:
+ * driven by Realtime Presence `focused`, never read by matchmaking); who is focused is supplied
+ * by the caller. The web twin of the Phase B mobile Avatar; the "+" is an inline 2px-stroke SVG.
  */
 export function Avatar({
   label,

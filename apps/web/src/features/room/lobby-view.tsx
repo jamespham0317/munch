@@ -8,8 +8,11 @@ import { Button, ProgressPill } from "@/components/ui";
 import { useStartSession } from "@/features/session/use-start-session";
 
 import { buildJoinUrl, InvitePanel } from "./invite-panel";
+import { LeaveRoomControl } from "./leave-room-control";
 import { LobbyFiltersPanel } from "./lobby-filters-panel";
 import { MemberList } from "./member-list";
+import { useRemovedRedirect } from "./use-removed-redirect";
+import { useRoomExit } from "./use-room-exit";
 import { useRoomLobby } from "./use-room-lobby";
 
 /**
@@ -22,9 +25,26 @@ import { useRoomLobby } from "./use-room-lobby";
  */
 export function LobbyView({ roomId }: { roomId: string }) {
   const router = useRouter();
-  const { roomQuery, membersQuery, activeSession, currentUserId } =
-    useRoomLobby(roomId);
+  const {
+    roomQuery,
+    membersQuery,
+    activeSession,
+    memberId,
+    isHost,
+    membersSettled,
+    presence,
+  } = useRoomLobby(roomId);
   const startSession = useStartSession(roomId);
+  const exit = useRoomExit(roomId);
+
+  // Route home if the caller is removed by something other than their own action — an auto-removal
+  // after a dropped connection past the grace window (Phase 4.7). A self-initiated leave/end is
+  // suppressed (it routes itself with "You left the room").
+  useRemovedRedirect({
+    memberId,
+    settled: membersSettled,
+    suppressedRef: exit.exitingRef,
+  });
 
   // Any member: route to the session screen the moment a non-terminal session exists. We
   // route on BOTH `active` (the normal start) and `awaiting_host_resolution` — the latter is
@@ -63,10 +83,6 @@ export function LobbyView({ roomId }: { roomId: string }) {
 
   const room = roomQuery.data;
   const members = membersQuery.data;
-  const me = currentUserId
-    ? members.find((member) => member.userId === currentUserId)
-    : undefined;
-  const isHost = me?.role === "host";
 
   // Host-left ended state (CLAUDE.md §2.3 exception): when the host leaves mid-session the
   // session is cancelled AND the room is soft-closed (isActive=false). Members are routed here
@@ -138,7 +154,11 @@ export function LobbyView({ roomId }: { roomId: string }) {
           }
         />
       </div>
-      <MemberList members={members} onInvite={() => void handleInvite()} />
+      <MemberList
+        members={members}
+        presence={presence}
+        onInvite={() => void handleInvite()}
+      />
 
       <LobbyFiltersPanel room={room} isHost={isHost} />
 
@@ -163,6 +183,8 @@ export function LobbyView({ roomId }: { roomId: string }) {
       )}
       {/* No mid-room sign-in (CLAUDE.md §3): a guest who joined this room stays a guest for it.
           Auth lives only outside a room (Profile tab + /history) — no auth control belongs here. */}
+
+      <LeaveRoomControl isHost={isHost} exit={exit} />
     </section>
   );
 }

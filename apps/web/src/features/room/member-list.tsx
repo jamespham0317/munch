@@ -3,40 +3,45 @@ import type { RoomMember } from "@munch/core";
 import { Avatar } from "@/components/ui";
 
 /**
- * "The Squad" grid (10-pages.md §3.5): presence-aware member tiles in a 2-column layout, each
- * an Avatar (initials + green `online` dot from isPresent), the display name, and a
- * presence-derived label. The trailing "Invite more" tile fires the caller's share handler.
- * Presentational only — receives the already-mapped RoomMember[] and renders it; no data
- * access or domain logic (CLAUDE.md §4). Only aggregate presence is shown, never per-member
- * swipes (CLAUDE.md §3). Web twin of the Phase B mobile MemberList.
+ * "The Squad" grid (10-pages.md §3.5): the ACTIVE roster in a 2-column layout, each an Avatar
+ * (initials + green dot) plus the display name and a Here/Away label. Presence is COSMETIC
+ * (Phase 4.7): the dot/label come from the Realtime Presence map (`focused`), never from a DB
+ * field and never read by matchmaking (CLAUDE.md §2.3/§3). A focused member shows the green dot +
+ * "Here"; a connected-but-unfocused or briefly-absent member shows no dot + "Away" but stays
+ * listed as long as they're an active member (a member who left is excluded upstream by
+ * getRoomMembers). Presentational only — no data access or domain logic (CLAUDE.md §4). Web twin
+ * of the Phase B mobile MemberList.
  */
 export function MemberList({
   members,
+  presence,
   onInvite,
 }: {
   members: RoomMember[];
+  /** Cosmetic Realtime Presence, keyed by member id; absence ⇒ no dot, "Away". */
+  presence: Map<string, { focused: boolean }>;
   onInvite?: () => void;
 }) {
   return (
     <ul className="grid grid-cols-2 gap-gutter">
-      {members.map((member) => (
-        <li
-          key={member.id}
-          className="flex flex-col items-center gap-xs rounded-md bg-surface px-base py-md shadow-low"
-        >
-          <Avatar
-            label={initials(member.displayName)}
-            online={member.isPresent}
-          />
-          <span className="max-w-full truncate text-body-md text-text">
-            {member.displayName}
-            {member.role === "host" ? " · host" : ""}
-          </span>
-          <span className="text-caption text-text-muted">
-            {member.isPresent ? "Here" : "Away"}
-          </span>
-        </li>
-      ))}
+      {members.map((member) => {
+        const focused = presence.get(member.id)?.focused ?? false;
+        return (
+          <li
+            key={member.id}
+            className="flex flex-col items-center gap-xs rounded-md bg-surface px-base py-md shadow-low"
+          >
+            <Avatar label={initials(member.displayName)} online={focused} />
+            <span className="max-w-full truncate text-body-md text-text">
+              {member.displayName}
+              {member.role === "host" ? " · host" : ""}
+            </span>
+            <span className="text-caption text-text-muted">
+              {focused ? "Here" : "Away"}
+            </span>
+          </li>
+        );
+      })}
       {onInvite ? (
         <li className="flex">
           <button

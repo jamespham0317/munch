@@ -3,7 +3,7 @@
 import { ChevronsRight, Coffee, Heart, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { Button, Card, Input } from "@/components/ui";
 
@@ -19,6 +19,22 @@ export default function HomePage() {
   const router = useRouter();
   const [code, setCode] = useState("");
 
+  // Surface the room-exit notice (Phase 4.7): a self leave/end (`?notice=left`) or an external
+  // removal — auto-removal past the grace window or a host closing the room (`?notice=disconnected`)
+  // — routes here with a query flag. Read it client-side (no useSearchParams Suspense boundary) and
+  // strip it so a refresh doesn't re-show the banner.
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get("notice");
+    if (param !== "left" && param !== "disconnected") return;
+    setNotice(
+      param === "left"
+        ? "You left the room."
+        : "You were disconnected from the room.",
+    );
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
+
   // Route the typed code into the existing join flow (which owns the join_room call + name
   // field). A blank code opens the bare join screen for manual entry. No wiring added here.
   function goToJoin() {
@@ -28,6 +44,15 @@ export default function HomePage() {
 
   return (
     <section className="flex flex-col gap-md">
+      {notice ? (
+        <p
+          role="status"
+          className="rounded-md bg-surface px-base py-md text-body-md text-text-muted shadow-low"
+        >
+          {notice}
+        </p>
+      ) : null}
+
       <header className="flex flex-col gap-base">
         <h1 className="text-display-lg-mobile text-text md:text-display-lg">
           Ready to eat?

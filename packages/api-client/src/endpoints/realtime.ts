@@ -5,12 +5,13 @@ import type {
   SessionStatus,
   SessionStatusChange,
 } from "@munch/core";
-import type {
-  RealtimeChannel,
-  RealtimePostgresChangesPayload,
-  RealtimePostgresInsertPayload,
-  RealtimePostgresUpdatePayload,
-  SupabaseClient,
+import {
+  REALTIME_SUBSCRIBE_STATES,
+  type RealtimeChannel,
+  type RealtimePostgresChangesPayload,
+  type RealtimePostgresInsertPayload,
+  type RealtimePostgresUpdatePayload,
+  type SupabaseClient,
 } from "@supabase/supabase-js";
 
 import { getDeck } from "./sessions";
@@ -42,11 +43,16 @@ export type RoomMemberChange = RealtimePostgresChangesPayload<{
  * room_members_select_same_room (0003) means a subscriber only receives changes for rooms it
  * belongs to. Returns the channel; the caller unsubscribes via `client.removeChannel(channel)`
  * on teardown.
+ *
+ * `onSubscribed` fires once the channel reaches `SUBSCRIBED`. Cosmetic presence rides this SAME
+ * channel (trackPresence / onPresenceSync), and `channel.track()` is only valid after the join
+ * completes — so the caller layers presence by tracking from this callback (Phase 4.7).
  */
 export function subscribeRoom(
   client: SupabaseClient,
   roomId: string,
   onChange: (payload: RoomMemberChange) => void,
+  onSubscribed?: () => void,
 ): RealtimeChannel {
   return client
     .channel(`room:${roomId}`)
@@ -60,7 +66,9 @@ export function subscribeRoom(
       },
       onChange,
     )
-    .subscribe();
+    .subscribe((status) => {
+      if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) onSubscribed?.();
+    });
 }
 
 /**
