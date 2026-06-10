@@ -327,7 +327,7 @@ interface RawRankingRow {
 
 /**
  * getResolutionRanking (docs/04 §3.8, host only). Thin call to the security-definer
- * `get_resolution_ranking` RPC, which reads ALL present members' swipes and orders the deck
+ * `get_resolution_ranking` RPC, which reads ALL active members' swipes and orders the deck
  * closest-to-unanimous server-side (fewest passes → highest rating → nearest distance,
  * CLAUDE.md §2.4). The RPC raises NOT_HOST / SESSION_INVALID_STATE / UNAUTHENTICATED as its
  * exception message; toApiError maps each onto the matching ErrorCode (raw text never leaks).

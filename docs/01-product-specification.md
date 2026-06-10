@@ -89,7 +89,11 @@ playful, low-friction group game with a clear stopping condition.
 
 The matching rule is the heart of the product and constrains several other decisions.
 
-- **Unanimous.** A match requires a like from *every* current member of the room.
+- **Unanimous.** A match requires a like from *every* **active** member of the room — the
+  members who have joined and not left (`left_at IS NULL`). The cohort is **membership-based**,
+  not focus-based: a member who has the app backgrounded is shown **Away** but is still active,
+  so their like is still required. Activity status (Here/Away) is purely cosmetic and never
+  affects matching (see §7 for how members leave the cohort).
 - **Live.** All members swipe during the same live session; the match is detected and
   broadcast in real time.
 - **Independent decks.** Each member swipes their own shuffled order, so the experience
@@ -141,6 +145,22 @@ premise than raw like count.
 - While the host is deciding, the room enters a brief **"waiting on host"** state so
   members are not swiping into a void.
 
+### Member departure (cohort shrinks)
+
+A non-host member can **leave** at any time, which removes them from the active cohort: their
+swipes for the running session are discarded and the unanimous condition is **immediately
+re-evaluated** across the remaining active members. If that leave makes the remaining likes
+unanimous, the match fires at once — server-side and authoritative — without waiting for
+another swipe. A member who simply **disconnects** (closes the app/tab, loses network) is
+auto-removed the same way once they miss a short liveness grace window; merely backgrounding
+the app (Away) does **not** remove them.
+
+The **minimum cohort is 1**: a single remaining active member matches on their first like. If
+**every** member leaves, the session ends `cancelled` and the room closes.
+
+**Joining is lobby-only.** Once a session has started for a room, no one can join or re-join —
+the roster freezes so the cohort can only shrink during swiping (there is no "join mid-session").
+
 ### Host departure (session ends)
 
 Only the host can start and resolve sessions, so the room cannot continue without one. If
@@ -148,8 +168,9 @@ the **host leaves mid-session**, the session ends immediately in a terminal **ca
 state and the room closes; remaining members are notified live and returned to an ended
 state. Host role is **not** transferred and the session is **not** handed to another member.
 This applies whether the session is `active` or `awaiting_host_resolution`; a host who leaves
-while the room is still in the lobby simply closes the room. This keeps the room from getting
-stuck host-less, consistent with §13's "never an ambiguous or stuck state."
+while the room is still in the lobby simply closes the room. A host who **disconnects** past
+the grace window is treated identically (no special longer grace). This keeps the room from
+getting stuck host-less, consistent with §13's "never an ambiguous or stuck state."
 
 ---
 
@@ -197,7 +218,9 @@ Rich card content is explicitly a nice-to-have, not a launch blocker.
   Google sign-in** — unlocks persistence and is the primary funnel for retention. Accounts are
   created / signed into **outside a room**; a member who joined a room as a guest stays a guest
   for that room (no mid-room sign-in or upgrade).
-- **Sessions are ephemeral.** Nothing is retained for guests after a session ends.
+- **Sessions are ephemeral.** Nothing is retained for guests after a session ends. A member's
+  swipes are also discarded the moment they **leave** (or are auto-removed) mid-session, so a
+  departed member truly stops counting toward a match and cannot "resurrect" earlier likes.
 - **Match history** is saved only for signed-in users (e.g. "You matched on Pizzeria
   Libretto with Sara and Tom on May 12").
 - **No full swipe logging** at launch. Individual like/pass history is not retained;

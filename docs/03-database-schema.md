@@ -105,12 +105,12 @@ create table room_members (
   user_id     uuid references auth.users(id) on delete set null, -- anon uid for guests; null only if that auth user is deleted
   display_name text not null,
   role        member_role not null default 'member',
-  is_present  boolean not null default true,    -- lobby/live presence
   joined_at   timestamptz not null default now(),
-  left_at     timestamptz
+  left_at     timestamptz                        -- null = active (in the match cohort)
 );
 
 create index on room_members (room_id);
+create index on room_members (room_id) where left_at is null;  -- cohort/sweeper scans (0017)
 create unique index on room_members (room_id, user_id)
   where user_id is not null;                     -- a user joins a room once
 ```
@@ -123,8 +123,40 @@ create unique index on room_members (room_id, user_id)
   tolerates those orphaned rows. The join RPC must always set `user_id` — the RLS policies
   below match on `user_id = auth.uid()`, so a member with a null `user_id` could not read
   even their own room.
-- **RLS:** a member may select other members of the same room; may update only their own
-  row (e.g. presence). Inserts go through a join RPC that validates the code.
+- **Active member = the match cohort.** `left_at IS NULL` is the single predicate for "is in
+  the unanimous-match / deck-exhaustion / ranking cohort" — used everywhere (the partial index
+  above keeps those scans cheap). There is **no `is_present` column** (dropped in Phase 4.7,
+  migration 0017): activity status (Here/Away) is purely cosmetic, lives in Realtime Presence
+  (docs/04 §3.4/§4), and is never stored or read by matchmaking. A member leaves the cohort by
+  setting `left_at` (explicit leave or disconnect auto-removal — docs/04 §3.10); re-joining in
+  the lobby reactivates the same row (`left_at = NULL`, fresh `joined_at`).
+- **RLS:** a member may select other members of the same room. Inserts and the leave/rejoin
+  lifecycle go through RPCs (`join_room`, `leave_room`) rather than ad-hoc row updates.
+
+---
+
+### 3.3a `member_heartbeats`
+
+Authoritative liveness for disconnect detection — **separate** from `room_members` on purpose
+(`room_members` is in the realtime publication, and a per-10s heartbeat column there would storm
+every `subscribeRoom` subscriber). Added in migration 0017.
+
+```sql
+create table member_heartbeats (
+  member_id    uuid primary key references room_members(id) on delete cascade,
+  last_seen_at timestamptz not null default now()
+);
+```
+
+- **Writes:** each client upserts its own row every `HEARTBEAT_INTERVAL_S` (10s, from
+  `@munch/core`) while it has a room surface open. **Not** added to the realtime publication.
+- **RLS:** insert/update/select are all scoped to the caller's **own** member row
+  (`auth_owns_member(member_id)`; the self-select policy in 0020 is required because the
+  upsert's `on conflict` must read the conflict-target row). A client can read only its own
+  liveness — never another member's. The sweeper reads all rows via `security definer`.
+- **Reaper:** `prune_absent_members()` (migration 0018) removes any active member whose
+  `COALESCE(last_seen_at, joined_at)` is older than `MEMBER_ABSENCE_GRACE_S` (45s), applying the
+  same removal path as an explicit leave. Scheduled on `pg_cron` every `SWEEP_INTERVAL_S` (15s).
 
 ---
 
@@ -246,9 +278,14 @@ create index on swipes (session_id, member_id);
 ```
 
 - The match check queries: for a given (session, restaurant), is there a `like` from every
-  present member? The `(session_id, restaurant_id)` index supports this efficiently.
+  **active** member (`left_at IS NULL`)? The `(session_id, restaurant_id)` index supports this
+  efficiently.
 - **Privacy:** swipes are session-scoped and not exposed to other members beyond aggregate
   progress; purged when the session ends (no long-term swipe logging in v1).
+- **Deleted on leave.** When a member leaves or is auto-removed mid-session, `leave_room` /
+  `prune_absent_members` (migration 0018) **delete that member's swipes** for the room's
+  non-terminal sessions, so a departed member truly stops counting and a later re-join starts
+  clean (no resurrected likes).
 - **RLS:** a member may insert/select only their own swipes; the match check runs in a
   `security definer` function with broader read scope.
 
@@ -299,8 +336,8 @@ create index on match_history (user_id);
   `record_match_history(p_session_id)` — a `security definer` function (migration 0016) called
   from **both** `submit_swipe` (on a unanimous match) and the `resolve-session` Edge Function
   (on `host_accepted_top`). It snapshots `restaurant_name` + `restaurant_photo_url` from the
-  matched `restaurants` row, `participant_names` from the currently-present members, and
-  `decided_at` from `matches`, inserting **one row per present member that has a `profiles` row**
+  matched `restaurants` row, `participant_names` from the active members (`left_at IS NULL`), and
+  `decided_at` from `matches`, inserting **one row per active member that has a `profiles` row**
   (the signed-in test — guests have a `user_id` but no profile and are excluded; CLAUDE.md §3).
   Idempotent on `unique (user_id, match_id)` (`on conflict do nothing`), so a re-fire writes
   nothing extra.
@@ -325,12 +362,12 @@ alter table sessions
 ## 5. Key query: the match check (conceptual)
 
 ```sql
--- Does `:restaurant_id` have a like from EVERY present member of `:session_id`?
-with present_members as (
+-- Does `:restaurant_id` have a like from EVERY active member of `:session_id`?
+with active_members as (
   select rm.id
   from room_members rm
   join sessions s on s.room_id = rm.room_id
-  where s.id = :session_id and rm.is_present = true
+  where s.id = :session_id and rm.left_at is null
 ),
 likers as (
   select member_id
@@ -339,14 +376,17 @@ likers as (
     and restaurant_id = :restaurant_id
     and decision = 'like'
 )
-select (select count(*) from present_members) > 0
-   and (select count(*) from present_members)
+select (select count(*) from active_members) > 0
+   and (select count(*) from active_members)
      = (select count(*) from likers
-        where member_id in (select id from present_members)) as is_unanimous;
+        where member_id in (select id from active_members)) as is_unanimous;
 ```
 
 Implemented as `check_unanimous_match(p_session_id, p_restaurant_id)` (security definer, so it
-can read all members' swipes) in migration `0010`, called inside the `submit_swipe` transaction.
+can read all members' swipes) in migration `0010`; its cohort predicate was swapped from
+`is_present = true` to `left_at is null` in migration `0017` (Phase 4.7). Called inside the
+`submit_swipe` transaction, and again by `recheck_unanimous_on_membership_change` (0018) so a
+leave can complete a match without another swipe.
 
 ## 6. Key query: closest-to-unanimous ranking (host resolution)
 
@@ -368,9 +408,10 @@ order by pass_count asc, r.rating desc nulls last;  -- distance tiebreak applied
 
 > **Implementation note (migration 0015 `get_resolution_ranking`).** The conceptual query
 > above is superseded by the shipped security-definer RPC, which differs in two ways:
-> it is **present-member-scoped** — `pass_count` / `like_count` count only currently present
-> members (`room_members.is_present = true`), and `member_count` is the present-member count,
-> consistent with the unanimous match check (CLAUDE.md §2.3); and `distance_m` is computed **in
+> it is **active-member-scoped** — `pass_count` / `like_count` count only active members
+> (`room_members.left_at IS NULL`; swapped from `is_present` in migration 0017), and
+> `member_count` is the active-member count, consistent with the unanimous match check
+> (CLAUDE.md §2.3); and `distance_m` is computed **in
 > SQL** via `haversine_m(anchor_lat, anchor_lng, r.lat, r.lng)` against the room anchor (the
 > same helper `get_deck_for_session` uses), not deferred to the app. The full order is
 > `pass_count asc, rating desc nulls last, distance_m asc` (CLAUDE.md §2.4). See docs/04 §3.8.

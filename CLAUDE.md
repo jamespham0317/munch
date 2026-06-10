@@ -51,8 +51,11 @@ If a task seems to require breaking one, stop and flag it rather than proceeding
 
 3. **Server-authoritative match check.** Whether a restaurant has a unanimous like is
    decided **server-side, transactionally** (Edge Function / RPC). Clients may compute
-   optimistic UI but must never declare a match. "Every member" is relative to **currently
-   present** members — re-evaluate when membership changes. One exception: if the **host**
+   optimistic UI but must never declare a match. "Every member" is relative to **active**
+   members (`room_members.left_at IS NULL`) — re-evaluate when membership changes (a member
+   joins/leaves or is auto-removed on disconnect). **Activity status (Here/Away) is purely
+   cosmetic** and must never be read by matchmaking: an Away (backgrounded-but-connected)
+   member is still active and their like is still required. One exception: if the **host**
    leaves mid-session, the session ends (status `cancelled`) and the room closes rather than
    re-evaluating — see `docs/01` §7 and `docs/04` §3.10.
 
@@ -174,6 +177,18 @@ host role is **not** transferred. See invariant 3 above and `docs/01` §7 / `doc
 Both halves are now implemented: Phase 1 soft-closed the room; Phase 2 added the
 session-cancel half via the `cancel_active_session` RPC, wired into the api-client
 `leaveRoom`/`endRoom` host paths.)
+
+(Resolved: *presence vs. match cohort* (Phase 4.7) — these are now **split**. The match
+cohort is the set of **active** members (`room_members.left_at IS NULL`), not "present"
+members; the `is_present` column is gone. **Activity status (Here/Away) is purely cosmetic**,
+driven by Supabase Realtime Presence (`{ memberId, focused }` on `room:{room_id}`), never
+written to the DB and never read by matchmaking — Away means backgrounded-but-connected and
+still counts. Authoritative liveness is a heartbeat to a dedicated `member_heartbeats` table,
+reaped by `prune_absent_members()` on `pg_cron`: a member past the disconnect grace is removed
+exactly like an explicit leave. Leaving removes you from the cohort (deletes your swipes,
+re-checks for an immediate match); min cohort is 1; an emptied room ends `cancelled`; joining
+is lobby-only (`ROOM_IN_SESSION` once a session exists). See `docs/07` §6.7 and `docs/02`
+§5–§6 / `docs/03` §3.3 / `docs/04` §3.4/§3.10.)
 
 ---
 

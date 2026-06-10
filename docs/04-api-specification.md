@@ -26,8 +26,10 @@ Supabase session (anonymous sessions count). Errors use a consistent shape:
 ```
 
 Common error codes: `UNAUTHENTICATED`, `FORBIDDEN`, `ROOM_NOT_FOUND`, `ROOM_CLOSED`,
-`NOT_HOST`, `SESSION_INVALID_STATE`, `ALREADY_JOINED`, `RATE_LIMITED`, `PROVIDER_ERROR`,
-`VALIDATION_ERROR`.
+`ROOM_IN_SESSION`, `NOT_HOST`, `SESSION_INVALID_STATE`, `ALREADY_JOINED`, `RATE_LIMITED`,
+`PROVIDER_ERROR`, `VALIDATION_ERROR`. `ROOM_IN_SESSION` (Phase 4.7) is raised by `join_room`
+when a session already exists for the room — the roster freezes at session start, so no new or
+returning member can join once swiping has begun (§3.2).
 
 ---
 
@@ -130,10 +132,16 @@ Joins an existing room by code (the link/QR resolves to the same code).
   {
     "room": { "id": "uuid", "code": "428913", "anchor_label": "Kensington, Calgary" },
     "member": { "id": "uuid", "role": "member", "display_name": "Sara" },
-    "members": [ { "id": "uuid", "display_name": "Alex", "role": "host", "is_present": true } ]
+    "members": [ { "id": "uuid", "display_name": "Alex", "role": "host", "left_at": null } ]
   }
   ```
-- **Errors:** `ROOM_NOT_FOUND`, `ROOM_CLOSED`, `ALREADY_JOINED`, `RATE_LIMITED`.
+- **Roster freeze (Phase 4.7).** After the `ROOM_CLOSED` check and before the insert, the RPC
+  raises `ROOM_IN_SESSION` if a `sessions` row already exists for the room — joining is
+  lobby-only, so the cohort can only shrink once a session starts. A member who left **in the
+  lobby** (no session yet) may still re-join: the same `room_members` row is reactivated
+  (`left_at = NULL`, fresh `joined_at`) rather than tripping `ALREADY_JOINED`.
+- **Errors:** `ROOM_NOT_FOUND`, `ROOM_CLOSED`, `ROOM_IN_SESSION`, `ALREADY_JOINED`,
+  `RATE_LIMITED`.
 
 ---
 
@@ -149,14 +157,23 @@ Updates room anchor/filters/default radius while in `lobby`.
 
 ---
 
-### 3.4 `set_presence`
+### 3.4 Cosmetic presence (Here/Away) + liveness heartbeat
 
-Marks the calling member present/away in the lobby or session.
+There is **no `set_presence` write** anymore (Phase 4.7 dropped `room_members.is_present`).
+Activity status is split into two mechanisms, **neither of which matchmaking ever reads**:
 
-- **Request:** `{ "is_present": true }`
-- **Response:** `{ "member": { "id": "uuid", "is_present": true } }`
-- **Implementation:** a direct RLS-scoped update of the caller's own `room_members` row (not an
-  RPC) — see the §3 implementation note.
+- **Cosmetic Here/Away — Supabase Realtime Presence.** The client tracks
+  `{ memberId, focused }` on the `room:{room_id}` channel via `channel.track()` (the api-client
+  helpers `trackPresence` / `setFocused` / `onPresenceSync`). `focused` comes from
+  `visibilitychange` (web) / `AppState` (mobile). **Here** = present-and-focused, **Away** =
+  present-but-not-focused, **no dot** = absent from the channel. Ephemeral, zero DB writes, never
+  read by any matchmaking code. See §4.
+- **Authoritative liveness — `heartbeat`.** The client upserts its own `member_heartbeats` row
+  (`{ member_id, last_seen_at: now() }`) every `HEARTBEAT_INTERVAL_S` (10s) while it has a room
+  surface open. RLS scopes the upsert to the caller's own member row. This is the input to the
+  disconnect sweeper (`prune_absent_members`, §3.10), **not** a presence indicator: an Away member
+  keeps heart­beating and stays in the cohort; only a member who stops heartbeating past
+  `MEMBER_ABSENCE_GRACE_S` (45s) is removed.
 
 ---
 
@@ -248,10 +265,10 @@ Records a like/pass and runs the authoritative match check. This is the hot path
   }
   ```
 - **Behavior:** upserts the swipe (idempotent on `(session, member, restaurant)`); on a
-  `like`, transactionally checks whether the restaurant now has likes from all present
-  members. If so, writes `matches`, sets session `matched`, emits a realtime event, and
-  records `match_history` for every signed-in present member (see §3.9). When the swipe
-  produces **no** match, a lightweight exhaustion check runs: if every currently present
+  `like`, transactionally checks whether the restaurant now has likes from all **active**
+  members (`left_at IS NULL`). If so, writes `matches`, sets session `matched`, emits a realtime
+  event, and records `match_history` for every signed-in active member (see §3.9). When the swipe
+  produces **no** match, a lightweight exhaustion check runs: if every active
   member has now swiped every card in the session's `cached_decks`, the session moves
   `active → awaiting_host_resolution` (non-terminal — no `ended_at`). The match check runs
   **first**, so a swipe that is simultaneously the last card and the last unanimous like ends
@@ -262,8 +279,9 @@ Records a like/pass and runs the authoritative match check. This is the hot path
   `record_match_history` on a unanimous match). It is security definer because the
   authoritative match check must read **all** members' swipes in one transaction, which the
   per-member `swipes_select_own` RLS policy would otherwise block (CLAUDE.md §2.3).
-  The exhaustion check is the `is_deck_exhausted(session)` helper (0014), present-member-scoped
-  like the match check. Failures are raised as the bare error code in the exception message
+  The exhaustion check is the `is_deck_exhausted(session)` helper (0014), active-member-scoped
+  like the match check (`left_at IS NULL`; both cohort predicates swapped from `is_present` in
+  migration 0017). Failures are raised as the bare error code in the exception message
   (`UNAUTHENTICATED` / `FORBIDDEN` / `SESSION_INVALID_STATE` / `VALIDATION_ERROR`); the
   api-client maps them and never surfaces raw DB text.
 - **Errors:** `SESSION_INVALID_STATE`, `VALIDATION_ERROR`.
@@ -295,14 +313,14 @@ Returns the closest-to-unanimous ranking for the host resolution prompt.
 - **Notes:** ordered by `pass_count asc`, then `rating desc` (nulls last), then `distance_m asc`
   (closest-to-unanimous, CLAUDE.md §2.4). Top item is the suggested pick.
 - **Implementation:** a **security-definer RPC** (`get_resolution_ranking`, migration 0015,
-  replacing the 0004 stub). Security definer because it must read **all** present members'
+  replacing the 0004 stub). Security definer because it must read **all** active members'
   swipes (broader than `swipes_select_own`, like `submit_swipe`). **Host-only:** the internal
   host check raises `NOT_HOST` for a non-host (and `UNAUTHENTICATED` if unauthenticated) as the
   bare exception message; non-host members never call it — their UI is the passive
-  "waiting on host" state keyed off the realtime status. **Present-member-scoped:** `pass_count`
-  / `like_count` count only currently present members and `member_count` is the present-member
-  count. `distance_m` is computed in SQL via `haversine_m` against the room anchor (not deferred
-  to the app).
+  "waiting on host" state keyed off the realtime status. **Active-member-scoped:** `pass_count`
+  / `like_count` count only active members (`left_at IS NULL`; swapped from `is_present` in
+  migration 0017) and `member_count` is the active-member count. `distance_m` is computed in SQL
+  via `haversine_m` against the room anchor (not deferred to the app).
 - **Errors:** `UNAUTHENTICATED`, `NOT_HOST`.
 
 ---
@@ -337,7 +355,7 @@ Host accepts the top pick or widens criteria.
   ```
 - **Behavior (accept):** writes `matches` (`resolution = 'host_accepted_top'`, idempotent on
   `session_id`), sets the session `resolved` with `matched_restaurant_id` + `ended_at`, records
-  `match_history` for every signed-in present member (via the service-role `record_match_history`
+  `match_history` for every signed-in active member (via the service-role `record_match_history`
   rpc — the same writer `submit_swipe` uses, see §3.9 of the schema), and announces it to all
   members via the realtime status/match events. **Zero** provider calls. The `restaurant_id`
   must be a card already in the session's deck (`VALIDATION_ERROR` else).
@@ -361,25 +379,48 @@ Host accepts the top pick or widens criteria.
 
 ---
 
-### 3.10 `leave_room` / `end_room`
+### 3.10 `leave_room` / `end_room` + auto-removal
 
-- `leave_room` — marks the calling member not present and sets `left_at`. **If the host
-  leaves, the room ends:** any non-terminal session for the room transitions to `cancelled`,
-  the room is soft-closed (`is_active = false`), ephemeral session data is cleaned up, and a
-  realtime event notifies remaining members that the host ended the session. Host role is
-  **not** transferred (this is the resolved policy for the former CLAUDE.md §9 open decision).
-- `end_room` (host) — soft-closes the room (`is_active = false`) and triggers cleanup of
-  ephemeral session data. A host leaving via `leave_room` produces the same outcome.
-- **Implementation:** both are direct RLS-scoped table writes in the api-client (not RPCs) — see
-  the §3 implementation note. `leave_room` updates the caller's own `room_members` row; if that
-  caller is the host it also flips `rooms.is_active = false` (same outcome as `end_room`). The
-  session-cancel half goes through `cancel_active_session(p_room_id)` — a **security-definer RPC**
-  (migration 0011) the host-leave and end-room paths call to move any non-terminal session for
-  the room to `cancelled`. It is the only path that mutates `sessions.status` outside of
-  `start_session` and `submit_swipe` (and Phase 3's `resolve_session`), because `sessions` has no
-  update RLS policy by design. It raises `NOT_HOST` for a non-host caller and is a no-op (no
-  raise) when the room has no non-terminal session — so a host leaving from the lobby still
-  succeeds.
+Removing a member changes the **active cohort**, so it must read all members' swipes and write
+matches/sessions transactionally. Phase 4.7 promoted `leave_room` from a direct table write to a
+**security-definer RPC** (migration 0018).
+
+- `leave_room(p_room_id)` — resolves the caller's own member row, sets `left_at = now()`, and
+  **deletes that member's swipes** for the room's non-terminal sessions (so they stop counting
+  and can't resurrect). Then:
+  - **Host caller →** the room ends: `cancel_active_session(p_room_id)` cancels any non-terminal
+    session (`cancelled`) and `rooms.is_active = false` soft-closes the room. Host role is **not**
+    transferred (the resolved policy for the former CLAUDE.md §9 open decision).
+  - **Non-host caller →** for each non-terminal session: if the removal leaves **zero** active
+    members, cancel the session + close the room (an emptied room ends `cancelled`); otherwise
+    call `recheck_unanimous_on_membership_change(session)` so a leave that makes the remaining
+    likes unanimous fires the match **immediately**, with no further swipe (min cohort = 1).
+  - **Returns** `{ member: { id, left_at }, room_ended: bool }`. Errors are the bare codes
+    `UNAUTHENTICATED` / `FORBIDDEN` (non-member caller).
+- `end_room` (host) — soft-closes the room (`is_active = false`) and cancels any non-terminal
+  session. A host leaving via `leave_room` produces the same outcome.
+- **Immediate recheck — `recheck_unanimous_on_membership_change(p_session_id)`** (security
+  definer, migration 0018). For a non-terminal session (`active` or `awaiting_host_resolution`),
+  it finds any cached-deck restaurant liked by **all** active members (active count > 0); if one
+  or more qualify it picks by closest-to-unanimous order (rating desc nulls last, distance asc —
+  all have 0 active passes) and declares the match: insert `matches` (`resolution = 'unanimous'`,
+  `on conflict (session_id) do nothing`), flip the session `matched` (guarded on a non-terminal
+  status), and call `record_match_history`. Idempotent, so a swipe-path check and a leave-path
+  recheck racing collapse to exactly one match.
+- **Auto-removal — `prune_absent_members()`** (security definer, migration 0018). Removes every
+  active member whose `COALESCE(member_heartbeats.last_seen_at, room_members.joined_at)` is older
+  than `MEMBER_ABSENCE_GRACE_S` (45s — duplicated in SQL with a keep-in-sync comment pointing at
+  `@munch/core`), applying the **same** removal path as `leave_room` (delete swipes → host-close
+  OR empty-cancel OR recheck). A disconnected host is removed exactly like any member (no special
+  longer grace). Scheduled on **`pg_cron`** every `SWEEP_INTERVAL_S` (15s); if `pg_cron` is
+  unavailable in the target environment, a scheduled Edge Function calling the same RPC is the
+  documented fallback.
+- `cancel_active_session(p_room_id)` — the **security-definer RPC** (migration 0011) the
+  host-close and empty-cohort paths call to move any non-terminal session to `cancelled`. It is
+  the only path that mutates `sessions.status` outside of `start_session`, `submit_swipe`, the
+  membership recheck, and `resolve_session`, because `sessions` has no update RLS policy by
+  design. It is a no-op (no raise) when the room has no non-terminal session, so a host leaving
+  from the lobby still succeeds.
 
 ---
 
@@ -415,14 +456,28 @@ Returns the caller's own saved match outcomes for the history screen.
 
 Clients subscribe to per-room channels for live state. Recommended events:
 
-- **`room:{room_id}` presence** — member join/leave/presence changes.
+- **`room:{room_id}` — membership (`postgres_changes` on `room_members`)** — authoritative
+  join/leave/role changes; this is what tells a client the **active roster** changed (and routes
+  a removed member out). `subscribeRoom` invalidates the members query on these. The cohort lives
+  in the row (`left_at IS NULL`), not in presence.
+- **`room:{room_id}` — cosmetic Presence (`channel.track()`)** — the **ephemeral** Here/Away
+  layer carrying `{ memberId, focused }` (Phase 4.7). Drives the green dot + "Here"/"Away" label
+  only. **Zero DB writes; never read by matchmaking.** A member absent from the Presence state
+  shows no dot but may still be an active member (e.g. mid-reconnect) until the heartbeat sweeper
+  removes them.
 - **`session:{session_id}` changes** — status transitions
   (`lobby → active → awaiting_host_resolution → matched/resolved`, or `→ cancelled` when the
-  host leaves/ends the room).
+  host leaves/ends the room **or the last active member leaves**). A `matched` transition can now
+  be triggered by a **membership change** (a leave that completes unanimity), not only a swipe.
 - **`session:{session_id}` progress** — aggregate swipe progress (counts only, never other
   members' individual decisions), used for "X of Y have finished the deck" UI.
 - **`match` event** — fired on the session channel when a match/resolution occurs, carrying
   the chosen restaurant for the announcement screen.
+
+Separately from Realtime, each client upserts a **liveness heartbeat** (`member_heartbeats`,
+§3.4) every `HEARTBEAT_INTERVAL_S`; the server-side sweeper `prune_absent_members` (§3.10) uses
+it to auto-remove members who disconnect past `MEMBER_ABSENCE_GRACE_S`. The heartbeat table is
+**not** in the realtime publication (a per-10s write there would storm `subscribeRoom`).
 
 Realtime is for *notification of state*, authoritative reads still come from RPC/table
 reads under RLS.

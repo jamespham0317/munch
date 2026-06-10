@@ -273,7 +273,7 @@ describe.skipIf(!ENABLED)("Phase 2 core mechanic (integration)", () => {
     }
   });
 
-  it("submit_swipe declares the match only on the last present member's like", async () => {
+  it("submit_swipe declares the match only on the last active member's like", async () => {
     const { roomId, host } = await newRoomWithHost("Host A");
     const code = await roomCode(roomId);
     const g1 = await addGuest(code, "Guest 1");
@@ -311,14 +311,14 @@ describe.skipIf(!ENABLED)("Phase 2 core mechanic (integration)", () => {
       decision: "like" as const,
     };
 
-    // This room has exactly 2 present members (host + g1). The host likes once...
+    // This room has exactly 2 active members (host + g1). The host likes once...
     expect(unwrap(await submitSwipe(host.client, req)).match).toBeNull();
     // ...and re-likes while the session is still active: the insert is idempotent
     // (on conflict do nothing), so this is a no-op that still reports no match.
     expect(unwrap(await submitSwipe(host.client, req)).match).toBeNull();
     expect(await sessionStatus(sessionId)).toBe("active");
 
-    // g1's like is the last present member's → the server declares the match.
+    // g1's like is the last active member's → the server declares the match.
     const declaring = unwrap(await submitSwipe(g1.client, req));
     expect(declaring.match?.restaurant_id).toBe(card);
     expect(await sessionStatus(sessionId)).toBe("matched");
@@ -822,7 +822,7 @@ describe.skipIf(!ENABLED)("Phase 3 host resolution (integration)", () => {
 
   // --- Deck exhaustion → awaiting_host_resolution --------------------------
 
-  it("exhausts to awaiting_host_resolution once every present member has swiped every card", async () => {
+  it("exhausts to awaiting_host_resolution once every active member has swiped every card", async () => {
     const { roomId, host } = await newRoomWithHost("P3 Host A");
     const code = await roomCode(roomId);
     const g1 = await addGuest(code, "Guest 1");
@@ -837,15 +837,15 @@ describe.skipIf(!ENABLED)("Phase 3 host resolution (integration)", () => {
     unwrap(await submitSwipe(host.client, pass(sessionId, c0)));
     unwrap(await submitSwipe(g1.client, pass(sessionId, c0)));
     unwrap(await submitSwipe(host.client, pass(sessionId, c1)));
-    // g1 still has an unswiped card → the present cohort is NOT exhausted yet.
+    // g1 still has an unswiped card → the active cohort is NOT exhausted yet.
     expect(await sessionStatus(sessionId)).toBe("active");
 
-    // g1's last swipe completes the deck for every present member → exhausted.
+    // g1's last swipe completes the deck for every active member → exhausted.
     unwrap(await submitSwipe(g1.client, pass(sessionId, c1)));
     expect(await sessionStatus(sessionId)).toBe("awaiting_host_resolution");
   });
 
-  it("flips to awaiting_host_resolution when an absent member shrinks the exhausted cohort", async () => {
+  it("flips to awaiting_host_resolution when a member leaving shrinks the exhausted cohort", async () => {
     const { roomId, host } = await newRoomWithHost("P3 Host B");
     const code = await roomCode(roomId);
     const g1 = await addGuest(code, "Guest 1");
@@ -899,7 +899,7 @@ describe.skipIf(!ENABLED)("Phase 3 host resolution (integration)", () => {
 
   // --- get_resolution_ranking ---------------------------------------------
 
-  it("ranks by fewest passes, then rating, then distance (present-member-scoped)", async () => {
+  it("ranks by fewest passes, then rating, then distance (active-member-scoped)", async () => {
     const { roomId, host } = await newRoomWithHost("P3 Host D");
     const code = await roomCode(roomId);
     const g1 = await addGuest(code, "Guest 1");
@@ -926,7 +926,7 @@ describe.skipIf(!ENABLED)("Phase 3 host resolution (integration)", () => {
     }
     unwrap(await submitSwipe(host.client, pass(sessionId, e)));
     unwrap(await submitSwipe(g1.client, pass(sessionId, e)));
-    // Every present member swiped every card with no unanimous like → awaiting.
+    // Every active member swiped every card with no unanimous like → awaiting.
     expect(await sessionStatus(sessionId)).toBe("awaiting_host_resolution");
 
     const { ranking } = unwrap(
@@ -936,7 +936,7 @@ describe.skipIf(!ENABLED)("Phase 3 host resolution (integration)", () => {
     );
     // Order: pass 1 group [a(4.6), b(4.0 near), c(4.0 far), d(null)], then e (pass 2).
     expect(ranking.map((r) => r.restaurant_id)).toEqual([a, b, c, d, e]);
-    // Present-member-scoped counts: 2 members, a has 1 pass / 1 like.
+    // Active-member-scoped counts: 2 members, a has 1 pass / 1 like.
     const top = at(ranking, 0);
     expect(top.member_count).toBe(2);
     expect(top.pass_count).toBe(1);
@@ -1372,14 +1372,14 @@ describe.skipIf(!ENABLED)("Phase 4 match_history write (integration)", () => {
     }
   });
 
-  it("writes one history row per signed-in present member on a unanimous match", async () => {
+  it("writes one history row per signed-in active member on a unanimous match", async () => {
     const { roomId, host } = await newRoomWithSignedInHost("Alice");
     const code = await roomCode(roomId);
     const guest = await addMember(code, "Bob", true);
     const { sessionId, restaurantIds } = await seedActiveSession(roomId, 3);
     const card = at(restaurantIds, 0);
 
-    // Both present members are signed-in and both like card 0 → unanimous match.
+    // Both active members are signed-in and both like card 0 → unanimous match.
     unwrap(await submitSwipe(host.client, like(sessionId, card)));
     const declaring = unwrap(
       await submitSwipe(guest.client, like(sessionId, card)),
@@ -1787,6 +1787,60 @@ describe.skipIf(!ENABLED)(
       expect(await sessionStatus(sessionId)).toBe("matched");
     });
 
+    it("a swipe-vs-leave race collapses to exactly one match (and the leaver's swipes don't resurrect)", async () => {
+      // Two independent paths can declare the SAME unanimous match across {host, g1}: g2 leaving
+      // (remove_member -> recheck_unanimous_on_membership_change) and any swipe that re-runs
+      // check_unanimous_match in submit_swipe. matches.session_id is unique and every declarer
+      // inserts ON CONFLICT DO NOTHING, so a real-world race between the two collapses to exactly
+      // one match (docs/02 §5, CLAUDE.md §2.3). We declare via the leave path, then fire the
+      // recheck a second time (the racer that "lost") and assert a single match row.
+      const { roomId, host } = await newRoomWithHost("4.7 Host G");
+      const code = await roomCode(roomId);
+      const g1 = await addGuest(code, "Guest 1");
+      const g2 = await addGuest(code, "Guest 2"); // passes the card, then leaves
+      const { sessionId, restaurantIds } = await seedActiveSession(roomId, 2);
+      const card = at(restaurantIds, 0);
+
+      // host + g1 like the card; g2 PASSES it (a real swipe row) → not unanimous across the 3.
+      unwrap(await submitSwipe(host.client, like(sessionId, card)));
+      unwrap(await submitSwipe(g1.client, like(sessionId, card)));
+      unwrap(
+        await submitSwipe(g2.client, {
+          session_id: sessionId,
+          restaurant_id: card,
+          decision: "pass",
+        }),
+      );
+      expect(await sessionStatus(sessionId)).toBe("active");
+      expect(await swipeCountFor(sessionId, g2.memberId)).toBe(1);
+
+      // Path 1 (membership): g2 leaves → recheck declares the {host, g1} match immediately.
+      const leave = (await g2.client.rpc("leave_room", {
+        p_room_id: roomId,
+      })) as { data: RawLeave | null; error: { message: string } | null };
+      expect(leave.error).toBeNull();
+      expect(await sessionStatus(sessionId)).toBe("matched");
+
+      // Path 2 (the losing racer): the same recheck fired again is a pure no-op — the session is
+      // terminal and matches.session_id is unique. Driven via the service-role client, like the
+      // prune test above (the internal RPC is not granted to clients).
+      const { error: rc } = await admin.rpc(
+        "recheck_unanimous_on_membership_change",
+        { p_session_id: sessionId },
+      );
+      expect(rc).toBeNull();
+
+      // Exactly one match for the session — never two.
+      const { count: matchCount } = await admin
+        .from("matches")
+        .select("id", { count: "exact", head: true })
+        .eq("session_id", sessionId);
+      expect(matchCount).toBe(1);
+
+      // g2's swipes were deleted on removal and stay gone — no resurrection (CLAUDE.md §3).
+      expect(await swipeCountFor(sessionId, g2.memberId)).toBe(0);
+    });
+
     it("join_room raises ROOM_IN_SESSION once a session exists but allows a clean lobby re-join", async () => {
       const { roomId } = await newRoomWithHost("4.7 Host F");
       const code = await roomCode(roomId);
@@ -1834,7 +1888,7 @@ describe.skipIf(!ENABLED)(
  *     satisfies it) — the FakeProvider now honors filters at the single provider call;
  *   * an initial pool that matches NOTHING routes the session to awaiting_host_resolution
  *     (host can widen) rather than stranding it `active` with no cards;
- *   * the host accept_top path writes match_history for signed-in present members with ZERO
+ *   * the host accept_top path writes match_history for signed-in active members with ZERO
  *     provider calls, idempotently.
  * Gated on EDGE_ENABLED (start-session + resolve-session served with PROVIDER=fake).
  */

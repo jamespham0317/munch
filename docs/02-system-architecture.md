@@ -129,17 +129,22 @@ a durable copy of provider content.
 ## 5. Real-time match detection
 
 - Each swipe is written via an Edge Function (or a transactional RPC) that records the
-  like/pass and, for a like, checks whether that restaurant now has a like from **every**
-  current member of the session.
+  like/pass and, for a like, checks whether that restaurant now has a like from **every
+  active** member of the session (`room_members.left_at IS NULL`). Activity status (Here/Away)
+  is purely cosmetic and is never read here — an Away member is still active and still required.
 - The match check runs server-side to be authoritative and avoid race conditions when
   multiple members like the same place near-simultaneously. The write + check should be
-  transactional so exactly one match event is emitted.
+  transactional so exactly one match event is emitted (the `matches` row is unique on
+  `session_id`, so a swipe-path check and a leave-path recheck racing both collapse to one).
 - On match, a `matches` row is written and the session is marked ended; Realtime broadcasts
   the change to all members, which drives the match-announcement UI.
-- Membership changes mid-session (someone leaves) must re-evaluate the unanimous condition,
-  since "every member" is relative to current membership. The exception is the **host**
-  leaving: that ends the session (status `cancelled`) and closes the room rather than
-  re-evaluating, since only the host can start/resolve sessions (see §6 and product spec §7).
+- **Membership changes** (a member leaves, or is auto-removed after disconnecting past the
+  liveness grace) must re-evaluate the unanimous condition immediately, since "every member"
+  is relative to the current **active** cohort — a leave that makes the remaining likes
+  unanimous fires the match at once, without another swipe. Two exceptions end the session
+  `cancelled` instead of re-evaluating: the **host** leaving/being removed (only the host can
+  start/resolve sessions — see §6 and product spec §7), and the **last** active member
+  leaving (an emptied cohort). Otherwise the minimum cohort is 1.
 
 ---
 
@@ -159,24 +164,27 @@ a durable copy of provider content.
      v                           v
    resolved (end)              active (fresh unseen cards appended)
 
-   (any non-terminal state) ---- host leaves the room ----> cancelled (end)
+   (any non-terminal state) -- host leaves/removed OR last active member leaves --> cancelled (end)
 ```
 
 - `lobby` — members joining; no deck yet.
 - `active` — deck cached; members swiping.
 - `awaiting_host_resolution` — deck exhausted; members in "waiting on host" state. The
   `active → awaiting_host_resolution` transition is detected in `submit_swipe` (migration 0014)
-  via the present-member-scoped `is_deck_exhausted(session)` helper, after a swipe that produced
-  no match. It is **non-terminal** (no `ended_at`).
+  via the active-member-scoped `is_deck_exhausted(session)` helper (`left_at IS NULL`; the cohort
+  swap landed in migration 0017), after a swipe that produced no match. It is **non-terminal**
+  (no `ended_at`).
 - `matched` / `resolved` — terminal states with a chosen restaurant. `resolved` is reached when
   the host accepts the top pick via the `resolve_session` Edge Function (`host_accepted_top`).
 - The `awaiting_host_resolution → active` edge is a **widen**: `resolve_session` makes exactly
   one additional provider fetch for unseen restaurants and appends them to `cached_decks` with
   `added_round = n+1`. Earlier swipes/likes are never deleted — they still count toward a later
   unanimous match (a like recorded before the widen can complete a unanimous match after it).
-- `cancelled` — terminal state with no decision; entered when the **host leaves**
-  mid-session (or ends the room). The room is soft-closed and ephemeral session data is
-  purged. Host role is not transferred.
+- `cancelled` — terminal state with no decision; entered when the **host leaves** mid-session
+  (or ends the room, or disconnects past the grace), **or when the last active member leaves**
+  (an emptied cohort). The room is soft-closed and ephemeral session data is purged. Host role
+  is not transferred. A non-host leave that does *not* empty the cohort instead re-evaluates the
+  match (see §5) and the session stays live.
 
 ---
 

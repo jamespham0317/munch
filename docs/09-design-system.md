@@ -192,8 +192,12 @@ tokens. They hold **no business logic and read no data** (CLAUDE.md §4).
   + cuisine chips + "Fetch New Deck" → widen).
 - **Squad list (lobby)** — a 2-column grid of avatar tiles with presence dots and a presence
   label (Here/Away), an "Invite more" tile, and the amber shareable-code + QR card (tap to copy
-  the join link). The squad count is the number of members joined. (v1 has no per-member status
-  text — the mockup's flavor snippets aren't backed by data.)
+  the join link). The squad count is the number of **active** members (`left_at IS NULL`); a
+  member who leaves drops out of the list. The dot/label are **cosmetic only**, driven by
+  Supabase Realtime Presence (`focused` → Here, connected-but-unfocused → Away, absent from the
+  channel → no dot) — never by any matchmaking state, and an Away member is still in the match
+  cohort (docs/04 §3.4, CLAUDE.md §2.3). (v1 has no per-member status text — the mockup's flavor
+  snippets aren't backed by data.)
 
 ---
 
@@ -208,6 +212,10 @@ The reskin is visual; it must not move domain logic or weaken the §2/§3 invari
 - **Aggregate counts only.** The resolution "N/M friends liked this" pill and any progress UI
   show counts, never which member liked/passed (docs/03 §3.7, CLAUDE.md §3). Avatars shown
   there are decorative, not a per-swipe disclosure.
+- **Activity status (Here/Away) is presentation-only.** The presence dot/label come from Realtime
+  Presence and must **never** be read by matching, ranking, or the cohort — the cohort is active
+  membership (`left_at IS NULL`), and an Away member's like is still required (docs/04 §3.4,
+  CLAUDE.md §2.3). Components must not infer "out of the room" from a missing dot.
 - The **radius slider** narrows within the host's anchor; filters are **host-controlled** for
   the room (docs/01 §8, invariant §2.2).
 - Cuisine selection uses the closed `CUISINES` taxonomy from `@munch/core` — a fixed picker,
