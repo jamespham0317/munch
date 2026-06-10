@@ -304,7 +304,7 @@ begin
 
   return jsonb_build_object(
     'room', jsonb_build_object(
-      'id', v_room.id, 'code', v_room.code, 'anchor_label', v_room.anchor_label
+      'id', v_room.id, 'code', v_room.code
     ),
     'member', jsonb_build_object(
       'id', v_member_id, 'role', 'member', 'display_name', p_display_name

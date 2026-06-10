@@ -21,7 +21,6 @@ create table rooms (
   id                  uuid primary key default gen_random_uuid(),
   code                text not null unique,           -- 6-digit join code
   host_member_id      uuid,                            -- set after host member row exists
-  anchor_label        text,                            -- human-readable area/address
   anchor_lat          double precision not null,
   anchor_lng          double precision not null,
   filter_open_now     boolean not null default true,

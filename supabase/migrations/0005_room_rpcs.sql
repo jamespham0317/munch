@@ -4,7 +4,8 @@
 -- writes that cross an RLS boundary, so they are `security definer` (rooms/room_members have
 -- no insert policy on purpose — doc 03 §3.2/§3.3, phase-1-prompts.md). They reuse the
 -- membership helpers from 0003 (auth_is_room_host); they do NOT touch match/ranking logic.
--- Migrations are immutable once applied (CLAUDE.md §6): never edit this file, add another.
+-- Migrations are rewritten in place here (CLAUDE.md §6): `supabase db reset` rebuilds from the
+-- edited files. This file was edited in Phase 4.8 to drop the vestigial anchor text label.
 --
 -- ERROR CONVENTION (relied on by the api-client in Prompt 3 — keep it exact):
 --   Every failure is `raise exception` whose MESSAGE is EXACTLY one of the doc-04 error
@@ -28,7 +29,6 @@
 -- FK is nullable (0002) precisely to allow this two-step insert inside one transaction.
 create function public.create_room(
   p_host_display_name   text,
-  p_anchor_label        text,
   p_anchor_lat          double precision,
   p_anchor_lng          double precision,
   p_filter_open_now     boolean       default true,
@@ -73,11 +73,11 @@ begin
     v_code := lpad((floor(random() * 1000000))::int::text, 6, '0');
     begin
       insert into rooms (
-        code, anchor_label, anchor_lat, anchor_lng,
+        code, anchor_lat, anchor_lng,
         filter_open_now, filter_cuisines, filter_price_levels, default_radius_m
       )
       values (
-        v_code, p_anchor_label, p_anchor_lat, p_anchor_lng,
+        v_code, p_anchor_lat, p_anchor_lng,
         coalesce(p_filter_open_now, true),
         coalesce(p_filter_cuisines, '{}'),
         coalesce(p_filter_price_levels, '{}'),
@@ -166,7 +166,7 @@ begin
 
   return jsonb_build_object(
     'room', jsonb_build_object(
-      'id', v_room.id, 'code', v_room.code, 'anchor_label', v_room.anchor_label
+      'id', v_room.id, 'code', v_room.code
     ),
     'member', jsonb_build_object(
       'id', v_member_id, 'role', 'member', 'display_name', p_display_name
@@ -198,7 +198,6 @@ $$;
 -- RPC — acceptable for Phase 1's lobby editing.
 create function public.update_room_filters(
   p_room_id             uuid,
-  p_anchor_label        text          default null,
   p_anchor_lat          double precision default null,
   p_anchor_lng          double precision default null,
   p_filter_open_now     boolean       default null,
@@ -234,7 +233,6 @@ begin
   end if;
 
   update rooms set
-    anchor_label        = coalesce(p_anchor_label, anchor_label),
     anchor_lat          = coalesce(p_anchor_lat, anchor_lat),
     anchor_lng          = coalesce(p_anchor_lng, anchor_lng),
     filter_open_now     = coalesce(p_filter_open_now, filter_open_now),
@@ -248,7 +246,6 @@ begin
   return jsonb_build_object(
     'room', jsonb_build_object(
       'id', v_room.id,
-      'anchor_label', v_room.anchor_label,
       'anchor_lat', v_room.anchor_lat,
       'anchor_lng', v_room.anchor_lng,
       'filters', jsonb_build_object(
@@ -266,18 +263,18 @@ $$;
 -- Revoking from PUBLIC stops the `anon` role (truly unauthenticated requests) from executing;
 -- the in-body auth.uid() null check is belt-and-suspenders.
 revoke execute on function public.create_room(
-  text, text, double precision, double precision, boolean, text[], price_level[], integer
+  text, double precision, double precision, boolean, text[], price_level[], integer
 ) from public;
 grant execute on function public.create_room(
-  text, text, double precision, double precision, boolean, text[], price_level[], integer
+  text, double precision, double precision, boolean, text[], price_level[], integer
 ) to authenticated;
 
 revoke execute on function public.join_room(text, text) from public;
 grant execute on function public.join_room(text, text) to authenticated;
 
 revoke execute on function public.update_room_filters(
-  uuid, text, double precision, double precision, boolean, text[], price_level[], integer
+  uuid, double precision, double precision, boolean, text[], price_level[], integer
 ) from public;
 grant execute on function public.update_room_filters(
-  uuid, text, double precision, double precision, boolean, text[], price_level[], integer
+  uuid, double precision, double precision, boolean, text[], price_level[], integer
 ) to authenticated;
