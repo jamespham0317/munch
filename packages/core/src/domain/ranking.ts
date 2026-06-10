@@ -7,15 +7,16 @@
  *   2. highest rating
  *   3. nearest distance
  *
- * Pass (and like) counts are scoped to the CURRENTLY PRESENT members — the same
- * cohort the unanimous check evaluates against (see `matching.ts` and CLAUDE.md
- * §2.3). The authoritative ranking runs server-side in `get_resolution_ranking`
- * (docs/04 §3.8); this is the shared sort the server and clients agree on.
+ * Pass (and like) counts are scoped to the ACTIVE members (`left_at IS NULL`) —
+ * the same cohort the unanimous check evaluates against (see `matching.ts` and
+ * CLAUDE.md §2.3). The authoritative ranking runs server-side in
+ * `get_resolution_ranking` (docs/04 §3.8); this is the shared sort the server and
+ * clients agree on.
  */
 
 export interface ResolutionRankingEntry {
   restaurantId: string;
-  /** Number of present members who passed on this restaurant. */
+  /** Number of active members who passed on this restaurant. */
   passCount: number;
   rating: number | null;
   /** Distance from the room anchor, in metres. */

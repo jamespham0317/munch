@@ -9,27 +9,27 @@
 
 export interface UnanimousCheckInput {
   /**
-   * Ids of members currently present in the session — i.e. those with
-   * `room_members.is_present = true` at the moment of the check. A member
-   * toggling presence mid-session changes the cohort this function evaluates
-   * against; the server RPC re-evaluates the same way on every call (CLAUDE.md
-   * §2.3, docs/02 §5).
+   * Ids of the room's ACTIVE members — those with `room_members.left_at IS NULL`
+   * at the moment of the check. Membership changes (a leave or disconnect
+   * auto-removal) change the cohort this function evaluates against; the server
+   * RPC re-evaluates the same way (CLAUDE.md §2.3, docs/02 §5). Cosmetic Here/Away
+   * never affects this set.
    */
-  presentMemberIds: readonly string[];
+  activeMemberIds: readonly string[];
   /** Ids of members who have liked the restaurant in question. */
   likerMemberIds: readonly string[];
 }
 
 /**
- * Pure check: true iff there is at least one present member and every present
+ * Pure check: true iff there is at least one active member and every active
  * member has liked the restaurant. Mirrors the SQL in docs/03-database-schema.md
  * §5. The empty-cohort case returns false deliberately (no vacuous match).
  */
 export function isUnanimousLike({
-  presentMemberIds,
+  activeMemberIds,
   likerMemberIds,
 }: UnanimousCheckInput): boolean {
-  if (presentMemberIds.length === 0) return false;
+  if (activeMemberIds.length === 0) return false;
   const likers = new Set(likerMemberIds);
-  return presentMemberIds.every((id) => likers.has(id));
+  return activeMemberIds.every((id) => likers.has(id));
 }

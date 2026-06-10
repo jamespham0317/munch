@@ -17,6 +17,25 @@ export const ROOM_SIZE_MAX = 10;
 export const JOIN_CODE_LENGTH = 6;
 
 /**
+ * Liveness timing for the presence/membership split (roadmap §6.7).
+ *
+ * Cosmetic Here/Away rides Realtime Presence (no DB writes); authoritative
+ * liveness is a heartbeat to `member_heartbeats`, reaped by `prune_absent_members()`
+ * on a schedule. A member is auto-removed once their last heartbeat is older than
+ * the grace window.
+ *
+ * KEEP IN SYNC: the SQL sweeper migration duplicates MEMBER_ABSENCE_GRACE_S and
+ * SWEEP_INTERVAL_S (SQL can't import this package); update both together — same
+ * pattern as the radius bounds mirrored in the start-session function.
+ */
+/** How often each client upserts its heartbeat, in seconds. */
+export const HEARTBEAT_INTERVAL_S = 10;
+/** A member is removed once their last heartbeat is older than this, in seconds. */
+export const MEMBER_ABSENCE_GRACE_S = 45;
+/** How often the sweeper runs `prune_absent_members()`, in seconds. */
+export const SWEEP_INTERVAL_S = 15;
+
+/**
  * Closed v1 cuisine taxonomy. The single source of truth for the host's cuisine
  * picker (web + mobile) AND the server's cuisine→Google-type mapping in
  * `supabase/functions/_shared/normalize.ts` (Prompt 3 reconciles that map to these

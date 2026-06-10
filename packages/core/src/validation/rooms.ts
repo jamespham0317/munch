@@ -59,7 +59,6 @@ export const joinRoomResponseSchema = z.object({
       id: z.uuid(),
       display_name: z.string(),
       role: memberRoleSchema,
-      is_present: z.boolean(),
     }),
   ),
 });
@@ -93,28 +92,20 @@ export type UpdateRoomFiltersResponse = z.infer<
   typeof updateRoomFiltersResponseSchema
 >;
 
-// 3.4 set_presence
-export const setPresenceRequestSchema = z.object({
-  is_present: z.boolean(),
-});
-export type SetPresenceRequest = z.infer<typeof setPresenceRequestSchema>;
-
-export const setPresenceResponseSchema = z.object({
-  member: z.object({ id: z.uuid(), is_present: z.boolean() }),
-});
-export type SetPresenceResponse = z.infer<typeof setPresenceResponseSchema>;
+// 3.4 presence is no longer a server write — cosmetic Here/Away rides Supabase
+// Realtime Presence (ephemeral, zero DB), so there is no set_presence request/
+// response schema (roadmap §6.7, docs/04 §3.4).
 
 // 3.10 leave_room — acts on the caller's own membership; no mutable body. The
 // target room is identified by the api-client's roomId argument (path-style) +
-// RLS, mirroring how set_presence carries no room_id (docs/04 §3.10).
+// RLS (docs/04 §3.10).
 export const leaveRoomRequestSchema = z.object({});
 export type LeaveRoomRequest = z.infer<typeof leaveRoomRequestSchema>;
 
 export const leaveRoomResponseSchema = z.object({
   member: z.object({
     id: z.uuid(),
-    is_present: z.boolean(), // false after leaving
-    left_at: z.string().nullable(),
+    left_at: z.string().nullable(), // set once the caller has left
   }),
   // True when the caller was host: leaving soft-closes the room (resolved
   // host-leave policy, was CLAUDE.md §9). Host role is not transferred.

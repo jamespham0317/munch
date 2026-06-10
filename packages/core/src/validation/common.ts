@@ -43,6 +43,9 @@ export const errorCodeSchema = z.enum([
   "NOT_HOST",
   "SESSION_INVALID_STATE",
   "ALREADY_JOINED",
+  // The room's session has already started; the roster is frozen and joining is
+  // lobby-only (roadmap §6.7, docs/04 §3.2).
+  "ROOM_IN_SESSION",
   "RATE_LIMITED",
   "PROVIDER_ERROR",
   "VALIDATION_ERROR",
