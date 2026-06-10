@@ -346,21 +346,21 @@ describe.skipIf(!ENABLED)("Phase 2 core mechanic (integration)", () => {
       decision: "like" as const,
     };
 
-    // 2 of 3 present members like the card → not unanimous yet.
+    // 2 of 3 active members like the card → not unanimous yet.
     expect(unwrap(await submitSwipe(g1.client, req)).match).toBeNull();
     expect(unwrap(await submitSwipe(g2.client, req)).match).toBeNull();
     expect(await sessionStatus(sessionId)).toBe("active");
 
-    // The host (the lone non-liker) leaves → present cohort is now {g1, g2}, both likers.
-    const { error: presenceErr } = await admin
+    // The host (the lone non-liker) leaves → active cohort is now {g1, g2}, both likers.
+    const { error: leaveErr } = await admin
       .from("room_members")
-      .update({ is_present: false })
+      .update({ left_at: new Date().toISOString() })
       .eq("id", host.memberId);
-    expect(presenceErr).toBeNull();
+    expect(leaveErr).toBeNull();
 
     // A re-evaluation by a remaining member declares the match against the smaller cohort
-    // (CLAUDE.md §2.3 — "every currently PRESENT member"). g1's like already exists, so this
-    // is an idempotent insert whose match check now passes.
+    // (CLAUDE.md §2.3 — "every currently ACTIVE member", left_at IS NULL). g1's like already
+    // exists, so this is an idempotent insert whose match check now passes.
     const reeval = unwrap(await submitSwipe(g1.client, req));
     expect(reeval.match?.restaurant_id).toBe(card);
     expect(await sessionStatus(sessionId)).toBe("matched");
@@ -737,15 +737,12 @@ describe.skipIf(!ENABLED)("Phase 3 host resolution (integration)", () => {
     if (error) throw new Error(`setAwaiting: ${error.message}`);
   }
 
-  async function setPresence(
-    memberId: string,
-    isPresent: boolean,
-  ): Promise<void> {
+  async function setMemberLeft(memberId: string, left: boolean): Promise<void> {
     const { error } = await admin
       .from("room_members")
-      .update({ is_present: isPresent })
+      .update({ left_at: left ? new Date().toISOString() : null })
       .eq("id", memberId);
-    if (error) throw new Error(`setPresence: ${error.message}`);
+    if (error) throw new Error(`setMemberLeft: ${error.message}`);
   }
 
   async function sessionStatus(sessionId: string): Promise<string> {
@@ -860,7 +857,7 @@ describe.skipIf(!ENABLED)("Phase 3 host resolution (integration)", () => {
     const c0 = at(restaurantIds, 0);
     const c1 = at(restaurantIds, 1);
 
-    // host + g1 swipe both cards (all passes); g2 swipes only c0. Present cohort {host,g1,g2}
+    // host + g1 swipe both cards (all passes); g2 swipes only c0. Active cohort {host,g1,g2}
     // is not exhausted — g2 still has c1 unswiped.
     for (const m of [host, g1]) {
       unwrap(await submitSwipe(m.client, pass(sessionId, c0)));
@@ -869,9 +866,9 @@ describe.skipIf(!ENABLED)("Phase 3 host resolution (integration)", () => {
     unwrap(await submitSwipe(g2.client, pass(sessionId, c0)));
     expect(await sessionStatus(sessionId)).toBe("active");
 
-    // g2 leaves the present cohort → remaining {host,g1} have swiped everything. Detection
+    // g2 leaves the active cohort → remaining {host,g1} have swiped everything. Detection
     // lives on submit_swipe, so the next (idempotent) swipe is what flips the status.
-    await setPresence(g2.memberId, false);
+    await setMemberLeft(g2.memberId, true);
     unwrap(await submitSwipe(host.client, pass(sessionId, c0)));
     expect(await sessionStatus(sessionId)).toBe("awaiting_host_resolution");
   });
@@ -1129,11 +1126,11 @@ describe.skipIf(!ENABLED)("Phase 3 host resolution (integration)", () => {
     );
     expect(await sessionStatus(sessionId)).toBe("active");
 
-    // g2 (the lone r1-passer) leaves the present cohort; a fresh member joins and likes r1.
+    // g2 (the lone r1-passer) leaves the active cohort; a fresh member joins and likes r1.
     // r1 is a PRE-widen card: host + g1 liked it before the widen and those likes were never
-    // deleted. With g2 gone and the newcomer's like, the present cohort {host, g1, g3} have
+    // deleted. With g2 gone and the newcomer's like, the active cohort {host, g1, g3} have
     // all liked r1 → a unanimous match on a pre-widen card (earlier likes still count).
-    await setPresence(g2.memberId, false);
+    await setMemberLeft(g2.memberId, true);
     const g3 = await addGuest(code, "Guest 3");
     const declaring = unwrap(await submitSwipe(g3.client, like(sessionId, r1)));
     expect(declaring.match?.restaurant_id).toBe(r1);
