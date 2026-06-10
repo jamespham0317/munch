@@ -5,38 +5,42 @@ import { colors, radii, shadow, spacing, typography } from "../theme";
 import { Avatar } from "./ui/avatar";
 
 /**
- * "The Squad" grid (10-pages.md §3.5): presence-aware member tiles in a 2-column layout, each
- * an Avatar (initials + green `online` dot from isPresent), the display name, and a
- * presence-derived label. The trailing "Invite more" tile fires the caller's share handler.
- * Presentational only — receives the already-mapped RoomMember[] and renders it; no data
- * access or domain logic (CLAUDE.md §4). Only aggregate presence is shown, never per-member
- * swipes (CLAUDE.md §3). The list is small (room members), so a plain map is preferred over a
- * FlatList, which must not nest inside the lobby's ScrollView.
+ * "The Squad" grid (10-pages.md §3.5): the ACTIVE roster in a 2-column layout, each an Avatar
+ * (initials + green dot) plus the display name and a Here/Away label. Presence is COSMETIC
+ * (Phase 4.7): the dot/label come from the Realtime Presence map (`focused`), never from a DB
+ * field and never read by matchmaking (CLAUDE.md §2.3/§3). A focused member shows the green dot +
+ * "Here"; a connected-but-unfocused or briefly-absent member shows no dot + "Away" but stays
+ * listed as long as they're an active member (a member who left is excluded upstream by
+ * getRoomMembers). The trailing "Invite more" tile fires the caller's share handler.
+ * Presentational only — no data access or domain logic (CLAUDE.md §4). The list is small (room
+ * members), so a plain map is preferred over a FlatList, which must not nest inside the lobby's
+ * ScrollView.
  */
 export function MemberList({
   members,
+  presence,
   onInvite,
 }: {
   members: RoomMember[];
+  /** Cosmetic Realtime Presence, keyed by member id; absence ⇒ no dot, "Away". */
+  presence: Map<string, { focused: boolean }>;
   onInvite?: () => void;
 }) {
   return (
     <View style={styles.grid}>
-      {members.map((member) => (
-        <View key={member.id} style={styles.tile}>
-          <Avatar
-            label={initials(member.displayName)}
-            online={member.isPresent}
-          />
-          <Text style={styles.name} numberOfLines={1}>
-            {member.displayName}
-            {member.role === "host" ? " · host" : ""}
-          </Text>
-          <Text style={styles.status}>
-            {member.isPresent ? "Here" : "Away"}
-          </Text>
-        </View>
-      ))}
+      {members.map((member) => {
+        const focused = presence.get(member.id)?.focused ?? false;
+        return (
+          <View key={member.id} style={styles.tile}>
+            <Avatar label={initials(member.displayName)} online={focused} />
+            <Text style={styles.name} numberOfLines={1}>
+              {member.displayName}
+              {member.role === "host" ? " · host" : ""}
+            </Text>
+            <Text style={styles.status}>{focused ? "Here" : "Away"}</Text>
+          </View>
+        );
+      })}
       {onInvite ? (
         <Pressable
           onPress={onInvite}
