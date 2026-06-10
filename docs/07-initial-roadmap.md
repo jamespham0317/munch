@@ -171,6 +171,58 @@ in/out to represent the selected radius, room creation still succeeds via the **
 
 ---
 
+## 6.7 Phase 4.7 — Presence/membership split
+
+**Goal:** make activity status **purely cosmetic** and base matchmaking on **room
+membership**, so every member's swipes count and members control their participation by
+joining/leaving — not by whether their app happens to be focused.
+
+- **Split presence from the match cohort.** Today `room_members.is_present` is *both* the
+  cosmetic "Here/Away" indicator and the unanimous-match cohort. Separate them: **presence**
+  becomes cosmetic-only (never read by matchmaking) and the **match cohort** becomes the set of
+  **active members** (`room_members.left_at IS NULL`). The unanimous check
+  (`check_unanimous_match`), deck-exhaustion (`is_deck_exhausted`), and ranking
+  (`get_resolution_ranking`) swap their `is_present = true` predicate for `left_at IS NULL`;
+  every member's swipes count regardless of presence.
+- **Cosmetic Here/Away** via Supabase Realtime **Presence** on `room:{room_id}` (a `focused`
+  flag from `visibilitychange` / `AppState`) — zero DB writes, no effect on the cohort. Drop the
+  `is_present` column; add `last_seen_at` for liveness.
+- **Explicit leave removes you from the cohort.** A non-host "Leave room" (host: "End room")
+  sets `left_at`, deletes the member's swipes for non-terminal sessions, and **immediately**
+  re-runs the authoritative match check across the remaining active members — a leave can
+  complete a unanimous match the instant the last blocker leaves. `leave_room` becomes a
+  security-definer RPC; **host-leave keeps the resolved policy** (cancel session, close room, no
+  transfer).
+- **Auto-remove on disconnect.** A client heartbeat (`last_seen_at`) plus a server sweeper
+  (`prune_absent_members`, pg_cron) removes any active member whose heartbeat goes stale past a
+  grace window: a closed app/tab or lost connection leaves the room (and its swipes stop
+  counting) after grace, while a brief blip within grace never removes them. A
+  backgrounded-but-connected member stays in the cohort (just shows "Away").
+- **Min cohort = 1; roster freezes at start.** A solo remaining active member matches on their
+  first like; if every member leaves, the session ends `cancelled` and the room closes. Joining
+  is **lobby-only** — once a session has started, `join_room` rejects new *and* returning members
+  with `ROOM_IN_SESSION`, so the cohort can only shrink once swiping begins.
+- Update `@munch/core` (cohort logic + the new constants), the api-client (`leave_room` RPC,
+  presence/heartbeat helpers, `ROOM_IN_SESSION` mapping), the SQL functions above, and both apps
+  (leave control, presence dots driven by Realtime Presence, removed-state routing). Update the
+  lockstep docs in the same change (CLAUDE.md §2.3/§9, docs/01–04, docs/09).
+
+**Exit criteria:** activity status is visibly cosmetic — a backgrounded member shows "Away" yet
+their like is still required and still completes a match; closing the app removes the member
+after the grace window and their swipes stop counting; a member tapping "Leave" is removed
+immediately and, if that makes the remaining likes unanimous, the match fires at once; a solo
+remaining member can match and an emptied room ends `cancelled`; no one can join or re-join
+after the session has started; and no matchmaking path reads presence. `pnpm typecheck`, `lint`,
+`test`, `build` are green tree-wide.
+
+**Supersedes:** the present-member-scoped cohort definition (CLAUDE.md §2.3, docs/02 §5,
+docs/03 §5–§6, docs/04 §3.4/§3.7/§3.8) — "every member" becomes **every active member**, and
+activity status is reclassified as presentation-only (docs/09 §9). **Preserves** the host-leave
+policy and all four CLAUDE.md §2 invariants (per-session caching, shared deck + host-controlled
+filters, server-authoritative match check, closest-to-unanimous ranking).
+
+---
+
 ## 7. Phase 5 — Hardening for public launch
 
 **Goal:** safe, observable, store-ready.
