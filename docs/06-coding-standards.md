@@ -125,8 +125,10 @@
 - Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`) for a readable history.
 - Trunk-based with short-lived branches; small PRs even when solo (good audit trail).
 - CI runs: install → typecheck → lint → unit tests → build. Block merge on failure.
-- Migrations are committed to `supabase/migrations` and never edited after being applied;
-  add a new migration to change schema.
+- Migrations live in `supabase/migrations` and may be **rewritten in place** to change schema
+  (rebuild with `supabase db reset`); adding a new migration is equally fine. An in-place rewrite
+  reaches a database only when it is reset from the files, so reset/forward-migrate any shared DB
+  the migration has already touched.
 
 ---
 

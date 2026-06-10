@@ -125,8 +125,12 @@ Monorepo (pnpm/Turborepo). Full tree in `docs/05-folder-structure.md`. The rule 
 
 ## 6. Database & migrations
 
-- Schema changes are **new migrations** in `supabase/migrations/`. **Never edit an
-  already-applied migration** — add another one.
+- **Schema changes: rewrite migrations in place.** Editing an existing file in
+  `supabase/migrations/` — rewriting it as though the schema had always been that way — is an
+  allowed, standard workflow here; adding a new migration is equally fine. Either way,
+  `supabase db reset` rebuilds the database from the files. (Operational note, not a restriction:
+  an in-place rewrite only reaches a database that is reset from these files, so reset or
+  forward-migrate any shared/remote DB the migration has already been applied to.)
 - Every new table needs: RLS enabled, a policy, and (if it holds provider data)
   retention/cleanup handling.
 - The two highest-risk queries — the unanimous match check and the closest-to-unanimous

@@ -223,6 +223,54 @@ filters, server-authoritative match check, closest-to-unanimous ranking).
 
 ---
 
+## 6.8 Phase 4.8 — Remove the free-text anchor label
+
+**Goal:** drop the vestigial "Where are we eating?" **text field** on Create Room and move
+that prompt onto the components that actually set the anchor — the **map + radius slider** —
+removing a false-search affordance left over from Phase 4.6.
+
+Since Phase 4.6 made the anchor **map-pick only** (no geocoding), the `anchor_label` input has
+been decorative: typing in it never moves the pin or shapes the deck; it only fed
+`rooms.anchor_label`, shown read-only in the lobby. This phase removes the field **and** the
+column end-to-end (the "full removal" option, not a UI-only hide), so no dead schema lingers
+(CLAUDE.md §8 — smallest change that fully satisfies the task, applied to the whole column's
+blast radius rather than half of it).
+
+- **UI (both apps).** Delete the `anchor_label` `Input` from `create-room-form.tsx` (web +
+  mobile); re-head the existing **AnchorMap + RadiusSlider** group with the "Where are we
+  eating?" prompt. The anchor is still `map.getCenter()` on move-end (Phase 4.6, unchanged); the
+  radius slider still drives the map zoom. No new map/search behavior.
+- **Lobby.** `AnchorSummary` (both apps) drops its `anchorLabel` prop and shows a static
+  "Pinned location" (+ radius); `lobby-filters-panel` stops passing the label. Anchor/filters
+  stay **host-controlled** and read-only to non-hosts (invariant §2.2).
+- **Contract + core.** Remove `anchor_label` from the `@munch/core` schemas
+  (`createRoomRequestSchema`, `joinRoomResponseSchema`, `updateRoomFiltersRequest/Response`) and
+  the `Room` type, and from the api-client (request mapping, raw/result shapes, `mapRoomRow` /
+  `ROOM_COLUMNS`, integration-test payloads).
+- **DB (rewrite migrations in place).** `anchor_label` is removed by **editing the existing
+  migrations in place** (the standard workflow, CLAUDE.md §6 — no additive migration), as if the
+  column never existed: drop the column from `0002`; drop the `p_anchor_label` parameter from
+  `create_room` / `update_room_filters` in `0005` (with their `REVOKE`/`GRANT` signatures) and
+  `anchor_label` from every `join_room` return JSON across `0005`, `0017`, and `0019`. All four
+  files change together (a stale `v_room.anchor_label` reference would fail `db reset`).
+- **Presentation only.** No matchmaking, caching, provider, or realtime change; all four §2
+  invariants untouched. The `create_room` contract changes only by the removal of one optional,
+  always-decorative field.
+
+**Exit criteria:** Create Room (web + mobile) shows **no** location text field, with "Where are
+we eating?" heading the map/radius group; a room still creates via the (now `anchor_label`-free)
+`create_room` contract; the lobby shows "Pinned location"; the `rooms.anchor_label` column and
+every code reference to it are gone (incl. the rewritten migrations); `supabase db reset` applies
+the edited migration set on a fresh DB and `pnpm typecheck`, `lint`, `test`, `build` are green
+tree-wide.
+
+**Reverses (by explicit decision, CLAUDE.md §8):** the Phase 4.6 choice to "keep an **optional**
+free-text `anchor_label`" (§6.6; docs/10 §3.3) — the field and column are removed, not retained.
+Update the lockstep docs in the same change (docs/03 §3.2, docs/04 §3.1/§3.2, docs/09, docs/10
+§3.3, this §6.6 bullet).
+
+---
+
 ## 7. Phase 5 — Hardening for public launch
 
 **Goal:** safe, observable, store-ready.

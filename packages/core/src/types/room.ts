@@ -10,7 +10,6 @@ export interface Room {
   code: string;
   /** Set after the host's member row exists; null at creation time. */
   hostMemberId: string | null;
-  anchorLabel: string | null;
   anchorLat: number;
   anchorLng: number;
   filterOpenNow: boolean;

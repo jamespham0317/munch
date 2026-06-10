@@ -18,7 +18,6 @@ import { roomFiltersSchema } from "./filters";
 // 3.1 create_room
 export const createRoomRequestSchema = z.object({
   host_display_name: displayNameSchema,
-  anchor_label: z.string(),
   anchor_lat: latSchema,
   anchor_lng: lngSchema,
   filters: roomFiltersSchema,
@@ -47,7 +46,6 @@ export const joinRoomResponseSchema = z.object({
   room: z.object({
     id: z.uuid(),
     code: joinCodeSchema,
-    anchor_label: z.string(),
   }),
   member: z.object({
     id: z.uuid(),
@@ -66,7 +64,6 @@ export type JoinRoomResponse = z.infer<typeof joinRoomResponseSchema>;
 
 // 3.3 update_room_filters (host only) — all fields optional; only provided fields change.
 export const updateRoomFiltersRequestSchema = z.object({
-  anchor_label: z.string().optional(),
   anchor_lat: latSchema.optional(),
   anchor_lng: lngSchema.optional(),
   filters: roomFiltersSchema.partial().optional(),
@@ -81,7 +78,6 @@ export type UpdateRoomFiltersRequest = z.infer<
 export const updateRoomFiltersResponseSchema = z.object({
   room: z.object({
     id: z.uuid(),
-    anchor_label: z.string(),
     anchor_lat: latSchema,
     anchor_lng: lngSchema,
     filters: roomFiltersSchema,
