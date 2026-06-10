@@ -27,12 +27,14 @@ function authError(status: number, message: string) {
 // The doc-04 codes the RPCs raise as their exception MESSAGE (0005/0010/0011 convention).
 // A `raise exception 'X'` arrives as a PostgrestError with code P0001 and message 'X'.
 // FORBIDDEN was added in Phase 2 (submit_swipe, 0010, raises it for a non-member of the
-// session's room) — included here so the mapping is locked down.
+// session's room) — included here so the mapping is locked down. ROOM_IN_SESSION was added in
+// Phase 4.7 (join_room, 0019, raises it once a session exists — the roster freeze).
 const RPC_CODES: ErrorCode[] = [
   "UNAUTHENTICATED",
   "FORBIDDEN",
   "ROOM_NOT_FOUND",
   "ROOM_CLOSED",
+  "ROOM_IN_SESSION",
   "NOT_HOST",
   "ALREADY_JOINED",
   "RATE_LIMITED",

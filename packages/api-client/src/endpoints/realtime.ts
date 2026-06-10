@@ -29,15 +29,19 @@ export type RoomMemberChange = RealtimePostgresChangesPayload<{
   room_id: string;
   display_name: string;
   role: string;
-  is_present: boolean;
+  left_at: string | null;
 }>;
 
 /**
- * Subscribe to a room's presence changes (`room:{room_id}`). Fires `onChange` on any
+ * Subscribe to a room's MEMBERSHIP changes (`room:{room_id}`). Fires `onChange` on any
  * insert/update/delete of a `room_members` row for this room so the lobby can refresh its
- * member list. room_members_select_same_room (0003) means a subscriber only receives changes
- * for rooms it belongs to. Returns the channel; the caller unsubscribes via
- * `client.removeChannel(channel)` on teardown.
+ * roster — a join, a leave/auto-removal (left_at set), or a role change. This is the
+ * AUTHORITATIVE membership layer (the row); cosmetic Here/Away is a separate, ephemeral
+ * Realtime Presence layer on the SAME channel (see trackPresence / onPresenceSync below) and
+ * is never persisted or read by matchmaking (Phase 4.7; CLAUDE.md §2.3/§3).
+ * room_members_select_same_room (0003) means a subscriber only receives changes for rooms it
+ * belongs to. Returns the channel; the caller unsubscribes via `client.removeChannel(channel)`
+ * on teardown.
  */
 export function subscribeRoom(
   client: SupabaseClient,
@@ -57,6 +61,54 @@ export function subscribeRoom(
       onChange,
     )
     .subscribe();
+}
+
+/**
+ * Cosmetic presence payload tracked on the `room:{room_id}` channel. This is the Realtime
+ * Presence layer: ephemeral, zero DB writes, and NEVER read by any matchmaking code — Here/Away
+ * is presentation-only (Phase 4.7; CLAUDE.md §2.3/§3). The match cohort is ACTIVE membership
+ * (room_members.left_at IS NULL), surfaced by subscribeRoom above. `focused` is driven by the
+ * app's focus signal (web `visibilitychange`, mobile `AppState`): true = Here, false = connected
+ * but Away. A member absent from the channel renders as "no dot" while still in the cohort.
+ */
+export interface PresenceMeta {
+  memberId: string;
+  focused: boolean;
+}
+
+/**
+ * Track (or re-track) the caller's cosmetic presence on a `room:{room_id}` channel. Call once on
+ * join and again whenever `focused` changes — `channel.track` replaces the caller's payload, so
+ * passing the full meta each time is how focus toggles are published. No DB write.
+ */
+export async function trackPresence(
+  channel: RealtimeChannel,
+  meta: PresenceMeta,
+): Promise<void> {
+  await channel.track(meta);
+}
+
+/**
+ * Register a callback for presence sync on a `room:{room_id}` channel. Fires on every Realtime
+ * Presence change (join/leave/update) with a `Map<memberId, { focused }>` built from
+ * `channel.presenceState()` — the cosmetic source for the member list's Here/Away dots. Returns
+ * the channel for chaining; presence state is purely client-side and never read by matchmaking.
+ */
+export function onPresenceSync(
+  channel: RealtimeChannel,
+  cb: (presence: Map<string, { focused: boolean }>) => void,
+): RealtimeChannel {
+  return channel.on("presence", { event: "sync" }, () => {
+    const state = channel.presenceState<PresenceMeta>();
+    const map = new Map<string, { focused: boolean }>();
+    for (const presences of Object.values(state)) {
+      for (const p of presences) {
+        // Last write per memberId wins; a member may briefly appear from >1 ref while reconnecting.
+        map.set(p.memberId, { focused: p.focused });
+      }
+    }
+    cb(map);
+  });
 }
 
 /** A row-change event on `sessions` delivered to a `subscribeRoomSessions` callback. */

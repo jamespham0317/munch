@@ -3,7 +3,14 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { signInAnonymously } from "./auth";
-import { createRoom, joinRoom, updateRoomFilters } from "./endpoints/rooms";
+import {
+  createRoom,
+  getRoomMembers,
+  heartbeat,
+  joinRoom,
+  leaveRoom,
+  updateRoomFilters,
+} from "./endpoints/rooms";
 import type { ClientResult } from "./errors";
 
 /**
@@ -68,6 +75,30 @@ function makeCreateReq(name: string): CreateRoomRequest {
     filters: { open_now: true, cuisines: [], price_levels: [] },
     default_radius_m: 3000,
   };
+}
+
+/**
+ * Insert a session row for a room via the service-role client so the roster-freeze guard
+ * (join_room → ROOM_IN_SESSION, 0019) fires deterministically. The guard keys on a session row
+ * EXISTING for the room, so the exact status doesn't matter; we use 'active' as the realistic
+ * post-start state. No deck/swipes are needed for the guard.
+ */
+async function startFakeSession(
+  admin: SupabaseClient,
+  roomId: string,
+): Promise<void> {
+  const { error } = await admin.from("sessions").insert({
+    room_id: roomId,
+    status: "active",
+    radius_m: 3000,
+    filter_open_now: true,
+    filter_cuisines: [],
+    filter_price_levels: [],
+    started_at: new Date().toISOString(),
+  });
+  if (error) {
+    throw new Error(`failed to seed session: ${error.message}`);
+  }
 }
 
 /** Find a 6-digit code not currently in use, so a ROOM_NOT_FOUND case is deterministic. */
@@ -181,6 +212,91 @@ describe.skipIf(!ENABLED)("membership RPCs (integration)", () => {
       await joinRoom(guest, { code: room.code, display_name: "Guest" }),
       "ALREADY_JOINED",
     );
+  });
+
+  it("join_room raises ROOM_IN_SESSION once a session exists (roster freeze)", async () => {
+    // A fresh host per scenario so these added tests don't exhaust the shared host's
+    // per-identity create budget (0005: 10 creates/hour).
+    const roomHost = await newGuest();
+    const { room } = unwrap(await createRoom(roomHost, makeCreateReq("Host")));
+    createdRoomIds.push(room.id);
+    // A session row means swiping has begun; the cohort can only shrink now (Phase 4.7).
+    await startFakeSession(admin, room.id);
+
+    const guest = await newGuest();
+    expectErrorCode(
+      await joinRoom(guest, { code: room.code, display_name: "Late" }),
+      "ROOM_IN_SESSION",
+    );
+  });
+
+  it("leave_room lets a member re-join the lobby cleanly (no session yet)", async () => {
+    const roomHost = await newGuest();
+    const { room } = unwrap(await createRoom(roomHost, makeCreateReq("Host")));
+    createdRoomIds.push(room.id);
+
+    const guest = await newGuest();
+    unwrap(await joinRoom(guest, { code: room.code, display_name: "Guest" }));
+    // Non-host lobby leave: removes the member, room stays open (host still active).
+    const left = unwrap(await leaveRoom(guest, room.id));
+    expect(left.roomEnded).toBe(false);
+    expect(left.member.leftAt).not.toBeNull();
+    // Re-join reactivates the SAME row instead of tripping ALREADY_JOINED (0019).
+    const rejoined = unwrap(
+      await joinRoom(guest, { code: room.code, display_name: "Guest" }),
+    );
+    expect(rejoined.members).toHaveLength(2);
+  });
+
+  it("getRoomMembers returns only active members (left members drop out)", async () => {
+    const roomHost = await newGuest();
+    const { room } = unwrap(await createRoom(roomHost, makeCreateReq("Host")));
+    createdRoomIds.push(room.id);
+
+    const guest = await newGuest();
+    unwrap(await joinRoom(guest, { code: room.code, display_name: "Guest" }));
+    expect(unwrap(await getRoomMembers(roomHost, room.id))).toHaveLength(2);
+
+    unwrap(await leaveRoom(guest, room.id));
+    const remaining = unwrap(await getRoomMembers(roomHost, room.id));
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]?.role).toBe("host");
+  });
+
+  it("leave_room closes the room when the host leaves (no transfer)", async () => {
+    const roomHost = await newGuest();
+    const { room } = unwrap(
+      await createRoom(roomHost, makeCreateReq("Solo Host")),
+    );
+    createdRoomIds.push(room.id);
+
+    const result = unwrap(await leaveRoom(roomHost, room.id));
+    expect(result.roomEnded).toBe(true);
+    expect(result.member.leftAt).not.toBeNull();
+    // The room is soft-closed; a fresh guest can no longer join.
+    const guest = await newGuest();
+    expectErrorCode(
+      await joinRoom(guest, { code: room.code, display_name: "Late" }),
+      "ROOM_CLOSED",
+    );
+  });
+
+  it("heartbeat upserts the caller's liveness row idempotently", async () => {
+    const roomHost = await newGuest();
+    const { room, member } = unwrap(
+      await createRoom(roomHost, makeCreateReq("Host")),
+    );
+    createdRoomIds.push(room.id);
+
+    unwrap(await heartbeat(roomHost, member.id));
+    unwrap(await heartbeat(roomHost, member.id)); // upsert: 2nd beat updates, not duplicates.
+
+    const { data } = await admin
+      .from("member_heartbeats")
+      .select("member_id")
+      .eq("member_id", member.id)
+      .returns<{ member_id: string }[]>();
+    expect(data).toHaveLength(1);
   });
 
   it("update_room_filters rejects a non-host with NOT_HOST", async () => {

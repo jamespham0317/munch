@@ -6,7 +6,6 @@ import type {
   PriceLevel,
   Room,
   RoomMember,
-  SetPresenceRequest,
   UpdateRoomFiltersRequest,
 } from "@munch/core";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
@@ -23,9 +22,13 @@ type RpcResult<T> = { data: T | null; error: PostgrestError | null };
 /**
  * Room + membership endpoints (docs/04 §3.1–§3.4, §3.10). This is the only place that knows
  * endpoint names/shapes (CLAUDE.md §4). Privileged writes that cross an RLS boundary go
- * through the security-definer RPCs from 0005 (create_room / join_room / update_room_filters);
- * presence, member self-leave, and end-room are direct RLS-scoped table writes permitted by
- * the 0003 policies (room_members_update_own, rooms_update_host) — no RPC needed.
+ * through the security-definer RPCs (create_room / join_room / update_room_filters from 0005;
+ * leave_room from 0018). leave_room must read ALL members' swipes and write matches/sessions
+ * for the immediate membership recheck (Phase 4.7), so it is a security-definer RPC, not a
+ * client write. End-room is the host close — a direct RLS-scoped `rooms` write
+ * (rooms_update_host, 0003) plus cancel_active_session (0011). Cosmetic Here/Away is NOT a DB
+ * write any more — it lives in Realtime Presence (see realtime.ts); only the authoritative
+ * liveness heartbeat (`member_heartbeats`, 0017) is written here.
  *
  * Results map snake_case → camelCase here, the api-client boundary (docs/06 §5). The
  * snake_case wire contract (request bodies, RPC return shapes) lives in @munch/core validation;
@@ -42,7 +45,7 @@ export interface CreateRoomResult {
 export interface JoinRoomResult {
   room: Pick<Room, "id" | "code" | "anchorLabel">;
   member: Pick<RoomMember, "id" | "role" | "displayName">;
-  members: Pick<RoomMember, "id" | "displayName" | "role" | "isPresent">[];
+  members: Pick<RoomMember, "id" | "displayName" | "role">[];
 }
 
 export interface UpdateRoomFiltersResult {
@@ -59,13 +62,12 @@ export interface UpdateRoomFiltersResult {
   >;
 }
 
-export interface SetPresenceResult {
-  member: Pick<RoomMember, "id" | "isPresent">;
-}
-
 export interface LeaveRoomResult {
-  member: Pick<RoomMember, "id" | "isPresent" | "leftAt">;
-  /** True when the caller was host: leaving soft-closes the room (resolved host-leave policy). */
+  member: Pick<RoomMember, "id" | "leftAt">;
+  /**
+   * True when leaving closed the room: the caller was the host (resolved host-leave policy,
+   * no transfer) OR they were the last active member (the room empties → cancelled + closed).
+   */
   roomEnded: boolean;
 }
 
@@ -88,7 +90,6 @@ interface RawJoinRoomResponse {
     id: string;
     display_name: string;
     role: MemberRole;
-    is_present: boolean;
   }[];
 }
 
@@ -168,7 +169,6 @@ export async function joinRoom(
         id: m.id,
         displayName: m.display_name,
         role: m.role,
-        isPresent: m.is_present,
       })),
     },
     error: null,
@@ -215,85 +215,67 @@ export async function updateRoomFilters(
   };
 }
 
-// --- direct RLS-scoped table writes (no RPC) --------------------------------
+// --- membership lifecycle ---------------------------------------------------
 
-/**
- * set_presence (docs/04 §3.4): mark the caller present/away. Updates the caller's own
- * room_members row — RLS (room_members_update_own) scopes the write to `user_id = auth.uid()`,
- * and `room_id` selects which membership when the caller is in more than one room.
- */
-export async function setPresence(
-  client: SupabaseClient,
-  roomId: string,
-  req: SetPresenceRequest,
-): Promise<ClientResult<SetPresenceResult>> {
-  const { data, error } = await client
-    .from("room_members")
-    .update({ is_present: req.is_present })
-    .eq("room_id", roomId)
-    .select("id, is_present")
-    .single()
-    .returns<{ id: string; is_present: boolean }>();
-  if (error) {
-    return { data: null, error: toApiError(error) };
-  }
-  return {
-    data: { member: { id: data.id, isPresent: data.is_present } },
-    error: null,
-  };
+/** Raw jsonb returned by the leave_room RPC (0018). */
+interface RawLeaveRoomResponse {
+  member: { id: string; left_at: string | null };
+  room_ended: boolean;
 }
 
 /**
- * leave_room (docs/04 §3.10): member self-leave — set is_present=false, left_at=now() on the
- * caller's own row. If the caller is the host, the room ends: soft-close it (is_active=false)
- * AND any non-terminal session for the room moves to `cancelled` via cancel_active_session
- * (0011). This is the resolved host-leave policy (was CLAUDE.md §9); host role is NOT
- * transferred. The session-cancel half is a no-op when the host leaves from the lobby
- * (no session yet) so this works for both Phase-1 and Phase-2 flows.
+ * leave_room (docs/04 §3.10): member self-leave via the security-definer RPC (0018). The RPC
+ * sets the caller's own `left_at`, DELETES that member's swipes for the room's non-terminal
+ * sessions (so they truly stop counting — CLAUDE.md §3), then:
+ *   • host leave → cancel any non-terminal session + soft-close the room (resolved host-leave
+ *     policy; host role is NOT transferred — CLAUDE.md invariant 3);
+ *   • non-host leave → if it empties the active cohort the session is cancelled and the room
+ *     closes; otherwise the remaining active members are re-checked and an immediate match is
+ *     declared if their existing likes are now unanimous (Phase 4.7, roadmap §6.7).
+ * All of that is server-authoritative and transactional — the client only reports the outcome.
+ * Bare-code errors (UNAUTHENTICATED / FORBIDDEN) map through toApiError.
  */
 export async function leaveRoom(
   client: SupabaseClient,
   roomId: string,
 ): Promise<ClientResult<LeaveRoomResult>> {
-  const { data, error } = await client
-    .from("room_members")
-    .update({ is_present: false, left_at: new Date().toISOString() })
-    .eq("room_id", roomId)
-    .select("id, is_present, left_at, role")
-    .single()
-    .returns<{
-      id: string;
-      is_present: boolean;
-      left_at: string | null;
-      role: MemberRole;
-    }>();
-  if (error) {
+  const { data: raw, error } = (await client.rpc("leave_room", {
+    p_room_id: roomId,
+  })) as RpcResult<RawLeaveRoomResponse>;
+  if (error || !raw) {
     return { data: null, error: toApiError(error) };
   }
-
-  let roomEnded = false;
-  if (data.role === "host") {
-    const { error: closeError } = await client
-      .from("rooms")
-      .update({ is_active: false, updated_at: new Date().toISOString() })
-      .eq("id", roomId);
-    if (closeError) {
-      return { data: null, error: toApiError(closeError) };
-    }
-    const cancelError = await cancelActiveSession(client, roomId);
-    if (cancelError) {
-      return { data: null, error: cancelError };
-    }
-    roomEnded = true;
-  }
-
   return {
     data: {
-      member: { id: data.id, isPresent: data.is_present, leftAt: data.left_at },
-      roomEnded,
+      member: { id: raw.member.id, leftAt: raw.member.left_at },
+      roomEnded: raw.room_ended,
     },
     error: null,
   };
+}
+
+/**
+ * Write the caller's authoritative liveness heartbeat (`member_heartbeats`, 0017). Upserts
+ * `{ member_id, last_seen_at: now() }` under RLS (the policy scopes the write to a member row
+ * the caller owns). Fire-and-forget: the loop in the room surfaces calls this every
+ * HEARTBEAT_INTERVAL_S; if it lapses past MEMBER_ABSENCE_GRACE_S the sweeper (prune_absent_members,
+ * 0018) auto-removes the member. The table is NOT in the realtime publication and is never read
+ * by clients — only the security-definer sweeper reads it.
+ */
+export async function heartbeat(
+  client: SupabaseClient,
+  memberId: string,
+): Promise<ClientResult<void>> {
+  const { error } = await client
+    .from("member_heartbeats")
+    .upsert(
+      { member_id: memberId, last_seen_at: new Date().toISOString() },
+      { onConflict: "member_id" },
+    );
+  if (error) {
+    return { data: null, error: toApiError(error) };
+  }
+  return { data: undefined, error: null };
 }
 
 /**
@@ -383,7 +365,7 @@ function mapRoomRow(row: RoomRow): Room {
 }
 
 const MEMBER_COLUMNS =
-  "id, room_id, user_id, display_name, role, is_present, joined_at, left_at";
+  "id, room_id, user_id, display_name, role, joined_at, left_at";
 
 interface MemberRow {
   id: string;
@@ -391,7 +373,6 @@ interface MemberRow {
   user_id: string | null;
   display_name: string;
   role: MemberRole;
-  is_present: boolean;
   joined_at: string;
   left_at: string | null;
 }
@@ -403,7 +384,6 @@ function mapMemberRow(row: MemberRow): RoomMember {
     userId: row.user_id,
     displayName: row.display_name,
     role: row.role,
-    isPresent: row.is_present,
     joinedAt: row.joined_at,
     leftAt: row.left_at,
   };
@@ -427,9 +407,11 @@ export async function getRoom(
 }
 
 /**
- * Read a room's members in join order (RLS: room_members_select_same_room scopes this to
- * co-members of rooms the caller belongs to), mapped to `RoomMember[]`. Only co-member rows
- * are ever exposed — never another member's swipes (none exist in Phase 1).
+ * Read a room's ACTIVE members in join order (RLS: room_members_select_same_room scopes this to
+ * co-members of rooms the caller belongs to), mapped to `RoomMember[]`. Filters to `left_at is
+ * null` so the lobby shows the live roster (Phase 4.7) — a member who left or was auto-removed
+ * disappears, and the caller detects their own removal by their absence from this list. Only
+ * co-member rows are ever exposed — never another member's swipes (CLAUDE.md §3).
  */
 export async function getRoomMembers(
   client: SupabaseClient,
@@ -439,6 +421,7 @@ export async function getRoomMembers(
     .from("room_members")
     .select(MEMBER_COLUMNS)
     .eq("room_id", roomId)
+    .is("left_at", null)
     .order("joined_at")
     .returns<MemberRow[]>();
   if (error) {

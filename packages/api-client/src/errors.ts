@@ -25,6 +25,7 @@ const DEFAULT_MESSAGE: Record<ErrorCode, string> = {
   FORBIDDEN: "You don't have access to that.",
   ROOM_NOT_FOUND: "No room for that code.",
   ROOM_CLOSED: "That room is closed.",
+  ROOM_IN_SESSION: "This room's session has already started.",
   NOT_HOST: "Only the host can do that.",
   SESSION_INVALID_STATE: "That action isn't available right now.",
   ALREADY_JOINED: "You're already in this room.",
@@ -52,11 +53,12 @@ function isAuthError(error: unknown): error is { status?: number } {
 
 /**
  * Error codes the RPCs raise as their exception MESSAGE (the convention pinned at the top of
- * supabase/migrations/0005_room_rpcs.sql and reused by 0010/0011). A `raise exception 'X'`
- * reaches us as a PostgrestError with code `P0001` and message `X`, so we map the message onto
- * the matching `ErrorCode`. `FORBIDDEN` lands here because submit_swipe (0010) raises it as a
- * message for a non-member of the session's room; a Postgres 42501 RLS denial still maps to
- * FORBIDDEN via the code path above. PROVIDER_ERROR is never raised from an RPC — only the
+ * supabase/migrations/0005_room_rpcs.sql and reused by 0010/0011/0018/0019). A `raise exception
+ * 'X'` reaches us as a PostgrestError with code `P0001` and message `X`, so we map the message
+ * onto the matching `ErrorCode`. `FORBIDDEN` lands here because submit_swipe (0010) and leave_room
+ * (0018) raise it as a message for a non-member of the room; a Postgres 42501 RLS denial still
+ * maps to FORBIDDEN via the code path above. `ROOM_IN_SESSION` is raised by join_room (0019) once
+ * a session exists (roster freeze). PROVIDER_ERROR is never raised from an RPC — only the
  * start-session Edge Function surfaces it (see sessions.ts).
  */
 const RPC_ERROR_CODES: ReadonlySet<ErrorCode> = new Set([
@@ -64,6 +66,7 @@ const RPC_ERROR_CODES: ReadonlySet<ErrorCode> = new Set([
   "FORBIDDEN",
   "ROOM_NOT_FOUND",
   "ROOM_CLOSED",
+  "ROOM_IN_SESSION",
   "NOT_HOST",
   "ALREADY_JOINED",
   "RATE_LIMITED",
