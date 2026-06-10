@@ -71,14 +71,15 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   lat/lng. A fixed center pin marks the anchor (= `map.getCenter()` on move-end); device
   geolocation centers the map on open (opt-in, never blocks — falls back to a default center
   with manual pan). A fixed-size amber radius ring sits centered on the map and never moves or
-  resizes; the RadiusSlider drives the map **zoom** so the ring represents the selected radius and
-  stays fully visible. Map-pick only (no geocoding/search); "Where are we eating?" heads the
+  resizes; the RadiusSlider is the **only** zoom control so the ring represents the selected
+  radius and stays fully visible — the map **pans but does not zoom on gesture** (every user
+  zoom gesture is disabled). Map-pick only (no geocoding/search); "Where are we eating?" heads the
   map + radius group (no free-text label field — removed in Phase 4.8). OSM "© OpenStreetMap
   contributors" attribution is shown.
 - **Wiring:** `create_room` (then lobby). Filters snapshot into the room. The map only populates
   `anchor_lat`/`anchor_lng`; the `create_room` contract is unchanged.
 - **Invariant:** filters are **host-controlled** for the whole room; cuisines from the closed
-  `CUISINES` taxonomy (docs/01 §8, invariant §2.2). No provider call fires on any map pan/zoom,
+  `CUISINES` taxonomy (docs/01 §8, invariant §2.2). No provider call fires on any map pan,
   geolocation, or radius-slider change (invariant §2.1).
 
 ### 3.4 Join  ("Join with Name and Code")

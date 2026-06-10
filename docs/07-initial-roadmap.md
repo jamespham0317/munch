@@ -146,7 +146,10 @@ driven by the radius slider (via the map zoom).
   20 000, default 3 000) drives the **map zoom** instead (`zoomForRadius`, using the center
   latitude), so a ground circle of the selected radius projects to exactly that fixed ring:
   dragging the slider zooms the map in/out while the ring stays stationary, the same visual size,
-  and **always fully visible**.
+  and **always fully visible**. The slider is the **only** zoom control: every user zoom gesture
+  (scroll, pinch, double-tap, keyboard `+`/`-`) is disabled so the map can only **pan** and the
+  ring can never desync from the selected radius; programmatic zoom (slider re-fit, geolocation
+  recenter) is unaffected.
 - **Map-pick only** — no geocoding/search; keep an **optional** free-text `anchor_label`
   (removed in Phase 4.8 — §6.8).
 - **Client/presentation only:** no change to the `create_room` contract, DB schema, RPCs, or

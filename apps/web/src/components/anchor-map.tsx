@@ -27,6 +27,13 @@ import { useEffect, useRef, useState } from "react";
  * selected radius projects to exactly the fixed ring: dragging the slider zooms the
  * map in/out while the ring stays put and fully visible (docs/07 §6.6).
  *
+ * The RadiusSlider is the ONLY zoom control: every user zoom gesture (scroll, pinch,
+ * double-tap, box-zoom, and keyboard +/-) is disabled at construction, so the host can
+ * only PAN the map. This keeps the fixed ring honest — it always represents the
+ * selected radius, since nothing but the slider can change the zoom it was fitted to.
+ * Programmatic camera moves (the slider re-fit and the geolocation recenter below) are
+ * not gated by these handlers, so they still work.
+ *
  * Presentational only — no data access, no domain logic, and NO provider call
  * (CLAUDE.md §4 / §2.1). OSM tiles are a separate, keyless source, not the
  * restaurant provider; the required "© OpenStreetMap contributors" attribution is
@@ -90,6 +97,15 @@ export function AnchorMap({
           start.lat,
         ),
         attributionControl: { customAttribution: OSM_ATTRIBUTION },
+        // Slider-only zoom: disable every user zoom gesture; keep drag-pan (default).
+        // `keyboard` binds both arrow-pan and +/- zoom and can't be split, so it goes
+        // too (drag-pan remains the way to move the map).
+        scrollZoom: false,
+        boxZoom: false,
+        doubleClickZoom: false,
+        touchZoomRotate: false,
+        dragRotate: false,
+        keyboard: false,
       });
       mapRef.current = map;
 

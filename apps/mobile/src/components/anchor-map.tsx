@@ -38,6 +38,13 @@ import { colors, radii, spacing, typography } from "../theme";
  * selected radius projects to exactly the fixed ring: dragging the slider zooms the
  * map in/out while the ring stays put and fully visible (docs/07 §6.6).
  *
+ * The RadiusSlider is the ONLY zoom control: every user zoom gesture (pinch/scroll,
+ * double-tap, double-tap-hold) is disabled, so the host can only PAN the map
+ * (`dragPan` stays default-true). This keeps the fixed ring honest — it always
+ * represents the selected radius, since nothing but the slider can change the zoom it
+ * was fitted to. The Camera's programmatic zoom (the slider re-fit and the geolocation
+ * recenter) is not gated by these gesture toggles, so it still works.
+ *
  * Presentational only — no data access, no domain logic, and NO provider call
  * (CLAUDE.md §4 / §2.1). OSM tiles are a separate, keyless source, not the restaurant
  * provider; the required "© OpenStreetMap contributors" attribution is rendered as a
@@ -148,6 +155,13 @@ export function AnchorMap({
         onRegionDidChange={handleRegionDidChange}
         compass={false}
         logo={false}
+        // Slider-only zoom: disable every user zoom gesture (and rotate/pitch); pan
+        // stays via the default-true dragPan. Programmatic Camera zoom is unaffected.
+        touchZoom={false}
+        doubleTapZoom={false}
+        doubleTapHoldZoom={false}
+        touchRotate={false}
+        touchPitch={false}
       >
         <Camera
           ref={cameraRef}
