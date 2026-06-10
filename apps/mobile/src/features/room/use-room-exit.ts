@@ -16,18 +16,17 @@ import { getSupabaseClient } from "../../lib/supabase";
  * left_at, deletes their swipes) and, if that makes the remaining active members unanimous, declares
  * the match immediately; the host "End room" soft-closes the room and cancels any session (no host
  * transfer — CLAUDE.md invariant 3). Both are server-authoritative; the client only routes home
- * afterwards with a "you left" notice.
+ * afterwards (no notice shown).
  *
  * `exitingRef` flips true the instant either mutation starts so the surface's removed-state routing
- * (useRemovedRedirect) stays quiet for a SELF-initiated exit — the user sees "You left the room",
- * not the "You were disconnected" message meant for an external removal.
+ * (useRemovedRedirect) stays quiet for a SELF-initiated exit and doesn't double-route.
  */
 export function useRoomExit(roomId: string) {
   const router = useRouter();
   const exitingRef = useRef(false);
 
   const goHome = () => {
-    router.replace({ pathname: "/", params: { notice: "left" } });
+    router.replace("/");
   };
 
   const leave = useMutation<LeaveRoomResult, Error, void>({

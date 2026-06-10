@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { type ComponentProps, useEffect, useState } from "react";
+import { useRouter } from "expo-router";
+import { type ComponentProps, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Button, Card, Input } from "../../src/components/ui";
@@ -17,22 +17,6 @@ import { colors, radii, shadow, spacing, typography } from "../../src/theme";
 export default function HomeScreen() {
   const router = useRouter();
   const [code, setCode] = useState("");
-
-  // Surface the room-exit notice (Phase 4.7, RN parity with apps/web's home): a self leave/end
-  // (notice=left) or an external removal — auto-removal past the grace window or a host closing the
-  // room (notice=disconnected) — routes here with a param. Capture it once into local state and
-  // strip the param so re-entering the tab doesn't re-show the banner.
-  const { notice: noticeParam } = useLocalSearchParams<{ notice?: string }>();
-  const [notice, setNotice] = useState<string | null>(null);
-  useEffect(() => {
-    if (noticeParam !== "left" && noticeParam !== "disconnected") return;
-    setNotice(
-      noticeParam === "left"
-        ? "You left the room."
-        : "You were disconnected from the room.",
-    );
-    router.setParams({ notice: undefined });
-  }, [noticeParam, router]);
 
   // Route the typed code into the existing join flow (which owns the join_room call + name
   // field). A blank code opens the bare join screen for manual entry. No wiring added here.
@@ -51,14 +35,6 @@ export default function HomeScreen() {
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
-      {notice ? (
-        <View style={styles.notice}>
-          <Text style={styles.noticeText} accessibilityRole="alert">
-            {notice}
-          </Text>
-        </View>
-      ) : null}
-
       <View style={styles.brandRow}>
         <MaterialCommunityIcons
           name="silverware-fork-knife"
@@ -176,14 +152,6 @@ const STEP_ICON = 44;
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.background },
   container: { padding: spacing.screenMarginMobile, gap: spacing.md },
-  notice: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
-    ...shadow("shadowLow"),
-  },
-  noticeText: { ...typography.bodyMd, color: colors.textMuted },
   brandRow: { flexDirection: "row", alignItems: "center", gap: spacing.base },
   brand: { ...typography.titleLg, color: colors.text },
   title: { ...typography.displayLgMobile, color: colors.text },

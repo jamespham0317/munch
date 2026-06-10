@@ -10,8 +10,8 @@ import { type RefObject, useEffect, useRef } from "react";
  *
  * Guards against false positives: it only fires once the member read has `settled` (never during
  * the initial loading window) and only if we'd previously resolved a member id. `suppressedRef`
- * (the exit hook's flag) silences it for a SELF-initiated leave/end so that path keeps its own
- * "You left the room" notice instead of "You were disconnected".
+ * (the exit hook's flag) silences it for a SELF-initiated leave/end so that path owns the routing
+ * and this hook doesn't double-route.
  */
 export function useRemovedRedirect(opts: {
   memberId: string | null;
@@ -28,6 +28,6 @@ export function useRemovedRedirect(opts: {
       return;
     }
     if (!settled || suppressedRef.current || !wasMember.current) return;
-    router.replace({ pathname: "/", params: { notice: "disconnected" } });
+    router.replace("/");
   }, [memberId, settled, suppressedRef, router]);
 }
