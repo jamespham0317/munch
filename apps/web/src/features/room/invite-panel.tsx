@@ -19,11 +19,6 @@ export function buildJoinUrl(code: string): string {
   return `${origin}/room/join/${code}`;
 }
 
-/** Display the 6-digit code as `123-456` for readability; the stored value is unchanged. */
-function formatCode(code: string): string {
-  return code.length === 6 ? `${code.slice(0, 3)}-${code.slice(3)}` : code;
-}
-
 export function InvitePanel({ code }: { code: string }) {
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
@@ -49,7 +44,7 @@ export function InvitePanel({ code }: { code: string }) {
       className="flex w-full flex-col items-center gap-gutter rounded-xl bg-brand p-md text-on-brand shadow-low transition-transform active:translate-y-[var(--munch-press-translate-y)] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/40"
     >
       <span className="text-display-lg-mobile tracking-[0.25em] text-on-brand">
-        {formatCode(code)}
+        {code}
       </span>
       <span className="rounded-md bg-surface p-base">
         <QRCodeSVG value={joinUrl} size={140} />

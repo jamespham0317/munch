@@ -20,11 +20,6 @@ export function buildJoinUrl(code: string): string {
   return Linking.createURL(`/room/join/${code}`);
 }
 
-/** Display the 6-digit code as `123-456` for readability; the stored value is unchanged. */
-function formatCode(code: string): string {
-  return code.length === 6 ? `${code.slice(0, 3)}-${code.slice(3)}` : code;
-}
-
 export function InvitePanel({ code }: { code: string }) {
   const joinUrl = buildJoinUrl(code);
   const [copied, setCopied] = useState(false);
@@ -46,7 +41,7 @@ export function InvitePanel({ code }: { code: string }) {
       accessibilityLabel="Copy join link"
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      <Text style={styles.code}>{formatCode(code)}</Text>
+      <Text style={styles.code}>{code}</Text>
       <View style={styles.qr}>
         <QRCode value={joinUrl} size={140} />
       </View>
