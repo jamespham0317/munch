@@ -1462,6 +1462,372 @@ describe.skipIf(!ENABLED)("Phase 4 match_history write (integration)", () => {
 });
 
 /**
+ * Phase 4.7 membership lifecycle (CLAUDE.md §2.3; docs/04 §3.2/§3.10; roadmap §6.7). The cohort
+ * is now ACTIVE members (left_at IS NULL); cosmetic presence never reaches matchmaking. These
+ * exercise the new server-authoritative lifecycle RPCs end-to-end against a local Supabase:
+ *   * leave_room — explicit self-leave: removes the caller, deletes their swipes, and fires an
+ *     IMMEDIATE unanimous match across the smaller cohort without another swipe;
+ *   * emptying the cohort cancels the session + closes the room; host-leave closes the room;
+ *   * prune_absent_members — disconnect auto-removal: a stale heartbeat drives the same outcomes;
+ *   * join_room roster freeze — ROOM_IN_SESSION once a session exists, with a clean lobby re-join.
+ *
+ * leave_room / prune_absent_members are called DIRECTLY via rpc (not the api-client wrappers,
+ * which still do direct writes until Prompt 4 repoints them) — same convention as the
+ * cancel_active_session test above. prune is driven through the service-role client (the only
+ * role with execute on the internal sweeper) with a hand-staled heartbeat, so the test is
+ * deterministic and uses no real timers. Gated on ENABLED (pure RPC paths; no Edge Function).
+ */
+describe.skipIf(!ENABLED)(
+  "Phase 4.7 membership lifecycle (integration)",
+  () => {
+    const createdRoomIds: string[] = [];
+    const createdUserIds: string[] = [];
+
+    let admin: SupabaseClient;
+    let url: string;
+    let anonKey: string;
+
+    interface Member {
+      client: SupabaseClient;
+      memberId: string;
+      userId: string;
+    }
+
+    async function newClient(): Promise<{
+      client: SupabaseClient;
+      userId: string;
+    }> {
+      const client = makeClient(url, anonKey);
+      const session = unwrap(await signInAnonymously(client));
+      createdUserIds.push(session.user.id);
+      return { client, userId: session.user.id };
+    }
+
+    async function newRoomWithHost(
+      name: string,
+    ): Promise<{ roomId: string; host: Member }> {
+      const { client, userId } = await newClient();
+      const { room, member } = unwrap(
+        await createRoom(client, makeCreateReq(name)),
+      );
+      createdRoomIds.push(room.id);
+      return { roomId: room.id, host: { client, memberId: member.id, userId } };
+    }
+
+    async function addGuest(code: string, name: string): Promise<Member> {
+      const { client, userId } = await newClient();
+      const { member } = unwrap(
+        await joinRoom(client, { code, display_name: name }),
+      );
+      return { client, memberId: member.id, userId };
+    }
+
+    async function roomCode(roomId: string): Promise<string> {
+      const { data, error } = await admin
+        .from("rooms")
+        .select("code")
+        .eq("id", roomId)
+        .single()
+        .returns<{ code: string }>();
+      if (error || !data) throw new Error(`roomCode failed: ${error?.message}`);
+      return data.code;
+    }
+
+    /** Seed an `active` session + cached deck via the service-role client (no Edge Function). */
+    async function seedActiveSession(
+      roomId: string,
+      deckSize: number,
+    ): Promise<{ sessionId: string; restaurantIds: string[] }> {
+      const expiresAt = new Date(Date.now() + 3_600_000).toISOString();
+      const restRows = Array.from({ length: deckSize }, (_, i) => ({
+        provider: SEED_PROVIDER,
+        provider_ref: `seed-${randomUUID()}`,
+        name: `Seed Restaurant ${i}`,
+        lat: 37.775 + i * 0.001,
+        lng: -122.419 - i * 0.001,
+        rating: 4.0,
+        price_level: "2",
+        cuisines: ["italian"],
+        photo_url: null,
+        is_open_now: true,
+        expires_at: expiresAt,
+      }));
+      const { data: rests, error: rErr } = await admin
+        .from("restaurants")
+        .insert(restRows)
+        .select("id")
+        .returns<{ id: string }[]>();
+      if (rErr || !rests) throw new Error(`seed restaurants: ${rErr?.message}`);
+      const restaurantIds = rests.map((r) => r.id);
+
+      const { data: sess, error: sErr } = await admin
+        .from("sessions")
+        .insert({
+          room_id: roomId,
+          status: "active",
+          radius_m: 3000,
+          filter_open_now: false,
+          filter_cuisines: [],
+          filter_price_levels: [],
+          started_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single()
+        .returns<{ id: string }>();
+      if (sErr || !sess) throw new Error(`seed session: ${sErr?.message}`);
+
+      const deckRows = restaurantIds.map((restaurant_id) => ({
+        session_id: sess.id,
+        restaurant_id,
+        added_round: 0,
+      }));
+      const { error: dErr } = await admin.from("cached_decks").insert(deckRows);
+      if (dErr) throw new Error(`seed cached_decks: ${dErr.message}`);
+
+      return { sessionId: sess.id, restaurantIds };
+    }
+
+    async function sessionStatus(sessionId: string): Promise<string> {
+      const { data, error } = await admin
+        .from("sessions")
+        .select("status")
+        .eq("id", sessionId)
+        .single()
+        .returns<{ status: string }>();
+      if (error || !data) throw new Error(`sessionStatus: ${error?.message}`);
+      return data.status;
+    }
+
+    async function roomIsActive(roomId: string): Promise<boolean> {
+      const { data, error } = await admin
+        .from("rooms")
+        .select("is_active")
+        .eq("id", roomId)
+        .single()
+        .returns<{ is_active: boolean }>();
+      if (error || !data) throw new Error(`roomIsActive: ${error?.message}`);
+      return data.is_active;
+    }
+
+    async function memberLeft(memberId: string): Promise<boolean> {
+      const { data, error } = await admin
+        .from("room_members")
+        .select("left_at")
+        .eq("id", memberId)
+        .single()
+        .returns<{ left_at: string | null }>();
+      if (error || !data) throw new Error(`memberLeft: ${error?.message}`);
+      return data.left_at !== null;
+    }
+
+    async function swipeCountFor(
+      sessionId: string,
+      memberId: string,
+    ): Promise<number> {
+      const { count, error } = await admin
+        .from("swipes")
+        .select("id", { count: "exact", head: true })
+        .eq("session_id", sessionId)
+        .eq("member_id", memberId);
+      if (error) throw new Error(`swipeCountFor: ${error.message}`);
+      return count ?? 0;
+    }
+
+    /** Set (or stale) a member's authoritative heartbeat directly, for the prune tests. */
+    async function setHeartbeat(
+      memberId: string,
+      secondsAgo: number,
+    ): Promise<void> {
+      const last = new Date(Date.now() - secondsAgo * 1000).toISOString();
+      const { error } = await admin
+        .from("member_heartbeats")
+        .upsert(
+          { member_id: memberId, last_seen_at: last },
+          { onConflict: "member_id" },
+        );
+      if (error) throw new Error(`setHeartbeat: ${error.message}`);
+    }
+
+    /** Raw leave_room RPC result (snake_case jsonb); the api-client wrapper lands in Prompt 4. */
+    interface RawLeave {
+      member: { id: string; left_at: string | null };
+      room_ended: boolean;
+    }
+
+    const like = (session_id: string, restaurant_id: string) => ({
+      session_id,
+      restaurant_id,
+      decision: "like" as const,
+    });
+
+    beforeAll(() => {
+      url = required("SUPABASE_TEST_URL", TEST_URL);
+      anonKey = required("SUPABASE_TEST_ANON_KEY", ANON_KEY);
+      const serviceKey = required(
+        "SUPABASE_TEST_SERVICE_ROLE_KEY",
+        SERVICE_KEY,
+      );
+      admin = makeClient(url, serviceKey);
+    });
+
+    afterAll(async () => {
+      if (createdRoomIds.length > 0) {
+        await admin.from("rooms").delete().in("id", createdRoomIds);
+      }
+      await admin.from("restaurants").delete().eq("provider", SEED_PROVIDER);
+      for (const uid of createdUserIds) {
+        await admin.auth.admin.deleteUser(uid);
+      }
+    });
+
+    it("leave_room by a non-liker fires an immediate unanimous match without another swipe", async () => {
+      const { roomId, host } = await newRoomWithHost("4.7 Host A");
+      const code = await roomCode(roomId);
+      const g1 = await addGuest(code, "Guest 1");
+      const g2 = await addGuest(code, "Guest 2"); // the lone non-liker
+      const { sessionId, restaurantIds } = await seedActiveSession(roomId, 2);
+      const card = at(restaurantIds, 0);
+
+      // host + g1 like the card; g2 has not → not unanimous across the cohort of 3.
+      unwrap(await submitSwipe(host.client, like(sessionId, card)));
+      unwrap(await submitSwipe(g1.client, like(sessionId, card)));
+      expect(await sessionStatus(sessionId)).toBe("active");
+
+      // g2 leaves via the RPC. The remaining active cohort {host, g1} have BOTH liked the card,
+      // so the match is declared at once — no further swipe (roadmap §6.7).
+      const { data, error } = (await g2.client.rpc("leave_room", {
+        p_room_id: roomId,
+      })) as { data: RawLeave | null; error: { message: string } | null };
+      expect(error).toBeNull();
+      expect(data?.room_ended).toBe(false);
+      expect(data?.member.left_at).not.toBeNull();
+
+      expect(await sessionStatus(sessionId)).toBe("matched");
+      // The leaver's swipes were deleted on removal (CLAUDE.md §3) — none can resurrect.
+      expect(await swipeCountFor(sessionId, g2.memberId)).toBe(0);
+    });
+
+    it("leave_room emptying the active cohort cancels the session and closes the room", async () => {
+      const { roomId, host } = await newRoomWithHost("4.7 Host B");
+      const code = await roomCode(roomId);
+      const g1 = await addGuest(code, "Guest 1");
+      const { sessionId } = await seedActiveSession(roomId, 2);
+
+      // The host leaves first → host-leave closes the room outright (no transfer).
+      const hostLeave = (await host.client.rpc("leave_room", {
+        p_room_id: roomId,
+      })) as { data: RawLeave | null; error: unknown };
+      expect((hostLeave.data as RawLeave).room_ended).toBe(true);
+      expect(await sessionStatus(sessionId)).toBe("cancelled");
+      expect(await roomIsActive(roomId)).toBe(false);
+
+      // The session is already terminal; g1 leaving is a clean no-op (still removed, no error).
+      const g1Leave = (await g1.client.rpc("leave_room", {
+        p_room_id: roomId,
+      })) as { data: RawLeave | null; error: { message: string } | null };
+      expect(g1Leave.error).toBeNull();
+      expect(await memberLeft(g1.memberId)).toBe(true);
+    });
+
+    it("leave_room emptying a host-less cohort cancels + closes (min cohort = 1 boundary)", async () => {
+      // A room whose host already left, leaving a lone non-host active member mid-session: their
+      // leave drops the cohort to 0 → cancelled + closed (the empty-room branch, not host-close).
+      const { roomId, host } = await newRoomWithHost("4.7 Host C");
+      const code = await roomCode(roomId);
+      const solo = await addGuest(code, "Solo");
+      const { sessionId } = await seedActiveSession(roomId, 2);
+
+      // Drop the host out of the cohort directly (host-leave would close the room itself).
+      await admin
+        .from("room_members")
+        .update({ left_at: new Date().toISOString() })
+        .eq("id", host.memberId);
+
+      const { data } = (await solo.client.rpc("leave_room", {
+        p_room_id: roomId,
+      })) as { data: RawLeave | null; error: unknown };
+      expect((data as RawLeave).room_ended).toBe(true);
+      expect(await sessionStatus(sessionId)).toBe("cancelled");
+      expect(await roomIsActive(roomId)).toBe(false);
+    });
+
+    it("leave_room raises FORBIDDEN for a non-member caller", async () => {
+      const { roomId } = await newRoomWithHost("4.7 Host D");
+      const { client: outsider } = await newClient();
+
+      const { error } = await outsider.rpc("leave_room", { p_room_id: roomId });
+      expect(error?.message).toBe("FORBIDDEN");
+    });
+
+    it("prune_absent_members removes a stale-heartbeat member and fires the same match outcome", async () => {
+      const { roomId, host } = await newRoomWithHost("4.7 Host E");
+      const code = await roomCode(roomId);
+      const g1 = await addGuest(code, "Guest 1");
+      const g2 = await addGuest(code, "Guest 2"); // will disconnect (stale heartbeat)
+      const { sessionId, restaurantIds } = await seedActiveSession(roomId, 2);
+      const card = at(restaurantIds, 0);
+
+      unwrap(await submitSwipe(host.client, like(sessionId, card)));
+      unwrap(await submitSwipe(g1.client, like(sessionId, card)));
+
+      // host + g1 keep a FRESH heartbeat; g2's is older than the 45s grace → only g2 is swept.
+      await setHeartbeat(host.memberId, 1);
+      await setHeartbeat(g1.memberId, 1);
+      await setHeartbeat(g2.memberId, 120);
+
+      const { data: removed, error } = (await admin.rpc(
+        "prune_absent_members",
+      )) as { data: number | null; error: { message: string } | null };
+      expect(error).toBeNull();
+      expect(removed ?? 0).toBeGreaterThanOrEqual(1);
+
+      // g2 auto-removed; the recheck across {host, g1} (both likers) declares the match.
+      expect(await memberLeft(g2.memberId)).toBe(true);
+      expect(await memberLeft(host.memberId)).toBe(false);
+      expect(await sessionStatus(sessionId)).toBe("matched");
+    });
+
+    it("join_room raises ROOM_IN_SESSION once a session exists but allows a clean lobby re-join", async () => {
+      const { roomId } = await newRoomWithHost("4.7 Host F");
+      const code = await roomCode(roomId);
+
+      // Lobby (no session yet): a guest joins, leaves, then re-joins → the SAME row reactivates.
+      const g1 = await addGuest(code, "Guest 1");
+      const { error: leaveErr } = await g1.client.rpc("leave_room", {
+        p_room_id: roomId,
+      });
+      expect(leaveErr).toBeNull();
+      expect(await memberLeft(g1.memberId)).toBe(true);
+
+      const rejoined = unwrap(
+        await joinRoom(g1.client, { code, display_name: "Guest 1 again" }),
+      );
+      // Reactivated the same member row (not a second one), now active again.
+      expect(rejoined.member.id).toBe(g1.memberId);
+      expect(await memberLeft(g1.memberId)).toBe(false);
+      const { count: rowCount } = await admin
+        .from("room_members")
+        .select("id", { count: "exact", head: true })
+        .eq("room_id", roomId)
+        .eq("user_id", g1.userId);
+      expect(rowCount).toBe(1);
+
+      // Start a session → the roster freezes. A brand-new identity can no longer join. join_room
+      // raises 'ROOM_IN_SESSION' as the bare exception message; we assert it at the RPC boundary
+      // (the api-client error mapping for this code lands with the rest of Prompt 4) — same
+      // convention as the cancel_active_session NOT_HOST test above.
+      await seedActiveSession(roomId, 2);
+      const { client: latecomer } = await newClient();
+      const { error: joinErr } = await latecomer.rpc("join_room", {
+        p_code: code,
+        p_display_name: "Latecomer",
+      });
+      expect(joinErr?.message).toBe("ROOM_IN_SESSION");
+    });
+  },
+);
+
+/**
  * Phase 4 filters + empty-deck edge + accept_top history, through the served Edge Functions
  * (CLAUDE.md §2.1, §2.2, §3; docs/04 §3.5, §3.9). These prove that:
  *   * a host cuisine filter visibly SHAPES the cached deck (smaller, and every cached row
