@@ -96,7 +96,6 @@ Creates a room and the host member row.
   ```json
   {
     "host_display_name": "Alex",
-    "anchor_label": "Kensington, Calgary",
     "anchor_lat": 51.053,
     "anchor_lng": -114.085,
     "filters": {
@@ -130,7 +129,7 @@ Joins an existing room by code (the link/QR resolves to the same code).
 - **Response:**
   ```json
   {
-    "room": { "id": "uuid", "code": "428913", "anchor_label": "Kensington, Calgary" },
+    "room": { "id": "uuid", "code": "428913" },
     "member": { "id": "uuid", "role": "member", "display_name": "Sara" },
     "members": [ { "id": "uuid", "display_name": "Alex", "role": "host", "left_at": null } ]
   }

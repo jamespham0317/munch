@@ -66,15 +66,15 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 - **Routes:** mobile `app/room/create.tsx` · web `app/room/create/page.tsx`.
 - **Purpose:** host sets anchor ("Where are we eating?"), cuisine chips, price range tiles,
   radius slider → **Start Room**.
-- **Primitives:** AnchorMap (anchor), Field (optional `anchor_label`), FoodChip (cuisines),
-  PriceTile, RadiusSlider, Button.
+- **Primitives:** AnchorMap (anchor), FoodChip (cuisines), PriceTile, RadiusSlider, Button.
 - **Anchor:** set via the **AnchorMap** (MapLibre + OSM tiles, Phase 4.6), **not** manual
   lat/lng. A fixed center pin marks the anchor (= `map.getCenter()` on move-end); device
   geolocation centers the map on open (opt-in, never blocks — falls back to a default center
   with manual pan). A fixed-size amber radius ring sits centered on the map and never moves or
   resizes; the RadiusSlider drives the map **zoom** so the ring represents the selected radius and
-  stays fully visible. Map-pick only (no geocoding/search); `anchor_label` stays an optional
-  free-text field. OSM "© OpenStreetMap contributors" attribution is shown.
+  stays fully visible. Map-pick only (no geocoding/search); "Where are we eating?" heads the
+  map + radius group (no free-text label field — removed in Phase 4.8). OSM "© OpenStreetMap
+  contributors" attribution is shown.
 - **Wiring:** `create_room` (then lobby). Filters snapshot into the room. The map only populates
   `anchor_lat`/`anchor_lng`; the `create_room` contract is unchanged.
 - **Invariant:** filters are **host-controlled** for the whole room; cuisines from the closed
@@ -98,8 +98,9 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 - **Primitives:** Card (amber code panel), QR, MemberList (Avatar + `online` dot),
   ProgressPill, Button.
 - **Wiring:** realtime `room:{room_id}` presence; host `start_session`; `set_presence`.
-- **Anchor/filters:** the host-set anchor (label + radius) and filters show **read-only** to all
-  members; the host keeps an **editable radius** (and filters) here that snapshots into
+- **Anchor/filters:** the host-set anchor ("Pinned location" + radius) and filters show
+  **read-only** to all members; the host keeps an **editable radius** (and filters) here that
+  snapshots into
   `start_session`. No editable map in the lobby — the anchor is set on Create Room (§3.3, Phase 4.6).
 - **Invariant:** only the host can start; aggregate presence only.
 

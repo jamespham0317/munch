@@ -147,7 +147,8 @@ driven by the radius slider (via the map zoom).
   latitude), so a ground circle of the selected radius projects to exactly that fixed ring:
   dragging the slider zooms the map in/out while the ring stays stationary, the same visual size,
   and **always fully visible**.
-- **Map-pick only** — no geocoding/search; keep an **optional** free-text `anchor_label`.
+- **Map-pick only** — no geocoding/search; keep an **optional** free-text `anchor_label`
+  (removed in Phase 4.8 — §6.8).
 - **Client/presentation only:** no change to the `create_room` contract, DB schema, RPCs, or
   migrations — the map populates the existing `anchor_lat`/`anchor_lng`/`default_radius_m`/
   `anchor_label`, still validated by `@munch/core` (`latSchema`/`lngSchema`). Map and slider
