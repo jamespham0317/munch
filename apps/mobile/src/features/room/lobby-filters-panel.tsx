@@ -36,10 +36,7 @@ export function LobbyFiltersPanel({
     return (
       <View style={styles.section}>
         <Text style={styles.heading}>Filters</Text>
-        <AnchorSummary
-          anchorLabel={room.anchorLabel}
-          radiusM={room.defaultRadiusM}
-        />
+        <AnchorSummary radiusM={room.defaultRadiusM} />
         <FiltersSummary
           openNow={room.filterOpenNow}
           cuisines={room.filterCuisines}
@@ -79,7 +76,7 @@ function HostFilters({ room }: { room: Room }) {
       <Text style={styles.heading}>Filters</Text>
       {/* Anchor is host-controlled and set on Create Room via the map (no editable map in the
           lobby, Phase 4.6) — shown read-only here; the radius stays editable below. */}
-      <AnchorSummary anchorLabel={room.anchorLabel} />
+      <AnchorSummary />
       <FiltersFieldset
         openNow={openNow}
         onOpenNowChange={setOpenNow}

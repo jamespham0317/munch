@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import {
   createRoomRequestSchema,
   type CuisineId,
@@ -24,14 +23,13 @@ import { useCreateRoom } from "./use-create-room";
  * @munch/core schema (docs/06 §3, validate on both ends); the server re-validates
  * authoritatively. Explicit handlers only — no form semantics that conflict with RN
  * (docs/06 §6). The anchor (anchor_lat/anchor_lng) is set on the AnchorMap by dragging
- * the map under the fixed center pin (Phase 4.6, docs/07 §6.6); the "Where are we
- * eating?" field stays an optional free-text label (no geocoding fills it).
+ * the map under the fixed center pin (Phase 4.6, docs/07 §6.6); "Where are we eating?"
+ * heads the map + radius group (no free-text label — Phase 4.8, docs/07 §6.8).
  */
 export function CreateRoomForm() {
   const createRoom = useCreateRoom();
 
   const [hostDisplayName, setHostDisplayName] = useState("");
-  const [anchorLabel, setAnchorLabel] = useState("");
   const [anchorLat, setAnchorLat] = useState<number | null>(null);
   const [anchorLng, setAnchorLng] = useState<number | null>(null);
   const [openNow, setOpenNow] = useState(false);
@@ -43,7 +41,6 @@ export function CreateRoomForm() {
   function handleSubmit() {
     const parsed = createRoomRequestSchema.safeParse({
       host_display_name: hostDisplayName,
-      anchor_label: anchorLabel,
       // The map emits a center on mount, so these are set before submit; the NaN
       // fallback only guards the brief pre-emit window and lets Zod reject it.
       anchor_lat: anchorLat ?? Number.NaN,
@@ -78,26 +75,24 @@ export function CreateRoomForm() {
           placeholder="Your name"
         />
       </Field>
+      {/* "Where are we eating?" heads the map + radius group (Phase 4.8). RN's Field is a
+          plain label+View (no nesting concern), so it wraps the inner "Search radius" Field. */}
       <Field label="Where are we eating?">
-        <View>
-          <Input
-            style={styles.anchorInput}
-            value={anchorLabel}
-            onChangeText={setAnchorLabel}
-            placeholder="Search neighborhood or city…"
+        <AnchorMap
+          radiusM={radius}
+          onAnchorChange={(lat, lng) => {
+            setAnchorLat(lat);
+            setAnchorLng(lng);
+          }}
+        />
+        <Field label="Search radius">
+          <RadiusSlider
+            valueM={radius}
+            maxM={RADIUS_MAX_M}
+            onChange={setRadius}
           />
-          <View style={styles.anchorIcon} pointerEvents="none">
-            <Feather name="map-pin" size={18} color={colors.textFaint} />
-          </View>
-        </View>
+        </Field>
       </Field>
-      <AnchorMap
-        radiusM={radius}
-        onAnchorChange={(lat, lng) => {
-          setAnchorLat(lat);
-          setAnchorLng(lng);
-        }}
-      />
       <FiltersFieldset
         openNow={openNow}
         onOpenNowChange={setOpenNow}
@@ -106,13 +101,6 @@ export function CreateRoomForm() {
         priceLevels={priceLevels}
         onPriceLevelsChange={setPriceLevels}
       />
-      <Field label="Search radius">
-        <RadiusSlider
-          valueM={radius}
-          maxM={RADIUS_MAX_M}
-          onChange={setRadius}
-        />
-      </Field>
       {errorMessage ? (
         <Text style={styles.error} accessibilityRole="alert">
           {errorMessage}
@@ -129,13 +117,5 @@ export function CreateRoomForm() {
 
 const styles = StyleSheet.create({
   form: { gap: spacing.md },
-  anchorInput: { paddingRight: 44 },
-  anchorIcon: {
-    position: "absolute",
-    right: spacing.gutter,
-    top: 0,
-    bottom: 0,
-    justifyContent: "center",
-  },
   error: { ...typography.bodyMd, color: colors.error },
 });
