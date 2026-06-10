@@ -47,28 +47,35 @@ export type RoomMemberChange = RealtimePostgresChangesPayload<{
  * `onSubscribed` fires once the channel reaches `SUBSCRIBED`. Cosmetic presence rides this SAME
  * channel (trackPresence / onPresenceSync), and `channel.track()` is only valid after the join
  * completes — so the caller layers presence by tracking from this callback (Phase 4.7).
+ *
+ * `onPresence`, if supplied, registers the cosmetic presence-sync listener. It is wired here —
+ * not by the caller after this returns — because Supabase forbids adding `presence` (and any
+ * other) `.on()` callbacks once `subscribe()` has been called; this function owns the channel's
+ * join, so all listeners must be registered before it subscribes.
  */
 export function subscribeRoom(
   client: SupabaseClient,
   roomId: string,
   onChange: (payload: RoomMemberChange) => void,
   onSubscribed?: () => void,
+  onPresence?: (presence: Map<string, { focused: boolean }>) => void,
 ): RealtimeChannel {
-  return client
-    .channel(`room:${roomId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "room_members",
-        filter: `room_id=eq.${roomId}`,
-      },
-      onChange,
-    )
-    .subscribe((status) => {
-      if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) onSubscribed?.();
-    });
+  const channel = client.channel(`room:${roomId}`).on(
+    "postgres_changes",
+    {
+      event: "*",
+      schema: "public",
+      table: "room_members",
+      filter: `room_id=eq.${roomId}`,
+    },
+    onChange,
+  );
+  // Presence listeners must be registered BEFORE subscribe() (Supabase throws otherwise).
+  if (onPresence) onPresenceSync(channel, onPresence);
+  channel.subscribe((status) => {
+    if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) onSubscribed?.();
+  });
+  return channel;
 }
 
 /**
@@ -101,6 +108,10 @@ export async function trackPresence(
  * Presence change (join/leave/update) with a `Map<memberId, { focused }>` built from
  * `channel.presenceState()` — the cosmetic source for the member list's Here/Away dots. Returns
  * the channel for chaining; presence state is purely client-side and never read by matchmaking.
+ *
+ * MUST be called before `channel.subscribe()` — Supabase rejects `presence` `.on()` registrations
+ * once a channel has subscribed. For the `room:{room_id}` channel, prefer passing `onPresence` to
+ * subscribeRoom, which guarantees this ordering.
  */
 export function onPresenceSync(
   channel: RealtimeChannel,

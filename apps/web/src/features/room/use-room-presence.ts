@@ -1,9 +1,4 @@
-import {
-  heartbeat,
-  onPresenceSync,
-  subscribeRoom,
-  trackPresence,
-} from "@munch/api-client";
+import { heartbeat, subscribeRoom, trackPresence } from "@munch/api-client";
 import { HEARTBEAT_INTERVAL_S } from "@munch/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -60,8 +55,9 @@ export function useRoomPresence(
           focused: focusedRef.current,
         });
       },
+      // Presence sync must be registered before subscribe(), so subscribeRoom wires it.
+      setPresenceMap,
     );
-    onPresenceSync(channel, setPresenceMap);
 
     const onVisibility = () => {
       focusedRef.current = document.visibilityState === "visible";
