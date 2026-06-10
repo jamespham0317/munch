@@ -7,7 +7,6 @@ import {
   type PriceLevel,
   RADIUS_MAX_M,
 } from "@munch/core";
-import { MapPin } from "lucide-react";
 import { type FormEvent, useState } from "react";
 
 import { AnchorMap } from "@/components/anchor-map";
@@ -24,14 +23,13 @@ import { useCreateRoom } from "./use-create-room";
  * FiltersFieldset (no free text). Input is validated client-side against the @munch/core
  * schema (docs/06 §3, validate on both ends); the server re-validates authoritatively.
  * The anchor (anchor_lat/anchor_lng) is set on the AnchorMap by dragging the map under
- * the fixed center pin (Phase 4.6, docs/07 §6.6); the "Where are we eating?" field stays
- * an optional free-text label (no geocoding fills it).
+ * the fixed center pin (Phase 4.6, docs/07 §6.6); "Where are we eating?" heads the map +
+ * radius group (no free-text label — Phase 4.8, docs/07 §6.8).
  */
 export function CreateRoomForm() {
   const createRoom = useCreateRoom();
 
   const [hostDisplayName, setHostDisplayName] = useState("");
-  const [anchorLabel, setAnchorLabel] = useState("");
   const [anchorLat, setAnchorLat] = useState<number | null>(null);
   const [anchorLng, setAnchorLng] = useState<number | null>(null);
   const [openNow, setOpenNow] = useState(false);
@@ -44,7 +42,6 @@ export function CreateRoomForm() {
     event.preventDefault();
     const parsed = createRoomRequestSchema.safeParse({
       host_display_name: hostDisplayName,
-      anchor_label: anchorLabel,
       // The map emits a center on mount, so these are set before submit; the NaN
       // fallback only guards the brief pre-emit window and lets Zod reject it.
       anchor_lat: anchorLat ?? Number.NaN,
@@ -81,34 +78,27 @@ export function CreateRoomForm() {
           autoComplete="name"
         />
       </Field>
-      <Field label="Where are we eating?" htmlFor="anchor-label">
-        <div className="relative">
-          <Input
-            id="anchor-label"
-            className="pr-11"
-            value={anchorLabel}
-            onChange={(event) => setAnchorLabel(event.target.value)}
-            placeholder="Search neighborhood or city…"
-          />
-          <span className="pointer-events-none absolute inset-y-0 right-gutter flex items-center">
-            <MapPin size={18} className="text-text-faint" aria-hidden />
-          </span>
-        </div>
-      </Field>
-      <AnchorMap
-        radiusM={radius}
-        onAnchorChange={(lat, lng) => {
-          setAnchorLat(lat);
-          setAnchorLng(lng);
-        }}
-      />
-      <Field label="Search radius">
-        <RadiusSlider
-          valueM={radius}
-          maxM={RADIUS_MAX_M}
-          onChange={setRadius}
+      {/* "Where are we eating?" heads the map + radius group (Phase 4.8). A plain heading,
+          not a <Field> label, so the inner "Search radius" Field's <label> isn't nested. */}
+      <div className="flex flex-col gap-base">
+        <span className="text-label-md uppercase text-text-muted">
+          Where are we eating?
+        </span>
+        <AnchorMap
+          radiusM={radius}
+          onAnchorChange={(lat, lng) => {
+            setAnchorLat(lat);
+            setAnchorLng(lng);
+          }}
         />
-      </Field>
+        <Field label="Search radius">
+          <RadiusSlider
+            valueM={radius}
+            maxM={RADIUS_MAX_M}
+            onChange={setRadius}
+          />
+        </Field>
+      </div>
       <FiltersFieldset
         openNow={openNow}
         onOpenNowChange={setOpenNow}
