@@ -104,7 +104,6 @@ function at<T>(arr: readonly T[], i: number): T {
 function makeCreateReq(name: string): CreateRoomRequest {
   return {
     host_display_name: name,
-    anchor_label: "Test Anchor",
     anchor_lat: 37.7749,
     anchor_lng: -122.4194,
     // Unfiltered baseline: the edge FakeProvider now HONORS filters (Phase 4), so an

@@ -43,7 +43,7 @@ export interface CreateRoomResult {
 }
 
 export interface JoinRoomResult {
-  room: Pick<Room, "id" | "code" | "anchorLabel">;
+  room: Pick<Room, "id" | "code">;
   member: Pick<RoomMember, "id" | "role" | "displayName">;
   members: Pick<RoomMember, "id" | "displayName" | "role">[];
 }
@@ -52,7 +52,6 @@ export interface UpdateRoomFiltersResult {
   room: Pick<
     Room,
     | "id"
-    | "anchorLabel"
     | "anchorLat"
     | "anchorLng"
     | "filterOpenNow"
@@ -84,7 +83,7 @@ interface RawCreateRoomResponse {
 }
 
 interface RawJoinRoomResponse {
-  room: { id: string; code: string; anchor_label: string | null };
+  room: { id: string; code: string };
   member: { id: string; role: MemberRole; display_name: string };
   members: {
     id: string;
@@ -96,7 +95,6 @@ interface RawJoinRoomResponse {
 interface RawUpdateRoomFiltersResponse {
   room: {
     id: string;
-    anchor_label: string | null;
     anchor_lat: number;
     anchor_lng: number;
     filters: {
@@ -117,7 +115,6 @@ export async function createRoom(
 ): Promise<ClientResult<CreateRoomResult>> {
   const { data: raw, error } = (await client.rpc("create_room", {
     p_host_display_name: req.host_display_name,
-    p_anchor_label: req.anchor_label,
     p_anchor_lat: req.anchor_lat,
     p_anchor_lng: req.anchor_lng,
     p_filter_open_now: req.filters.open_now,
@@ -158,7 +155,6 @@ export async function joinRoom(
       room: {
         id: raw.room.id,
         code: raw.room.code,
-        anchorLabel: raw.room.anchor_label,
       },
       member: {
         id: raw.member.id,
@@ -187,7 +183,6 @@ export async function updateRoomFilters(
 ): Promise<ClientResult<UpdateRoomFiltersResult>> {
   const { data: raw, error } = (await client.rpc("update_room_filters", {
     p_room_id: roomId,
-    p_anchor_label: req.anchor_label ?? null,
     p_anchor_lat: req.anchor_lat ?? null,
     p_anchor_lng: req.anchor_lng ?? null,
     p_filter_open_now: req.filters?.open_now ?? null,
@@ -202,7 +197,6 @@ export async function updateRoomFilters(
     data: {
       room: {
         id: raw.room.id,
-        anchorLabel: raw.room.anchor_label,
         anchorLat: raw.room.anchor_lat,
         anchorLng: raw.room.anchor_lng,
         filterOpenNow: raw.room.filters.open_now,
@@ -326,7 +320,7 @@ async function cancelActiveSession(
 // --- lobby read helpers (RLS-scoped; no business logic) ---------------------
 
 const ROOM_COLUMNS =
-  "id, code, host_member_id, anchor_label, anchor_lat, anchor_lng, " +
+  "id, code, host_member_id, anchor_lat, anchor_lng, " +
   "filter_open_now, filter_cuisines, filter_price_levels, default_radius_m, " +
   "is_active, created_at, updated_at";
 
@@ -334,7 +328,6 @@ interface RoomRow {
   id: string;
   code: string;
   host_member_id: string | null;
-  anchor_label: string | null;
   anchor_lat: number;
   anchor_lng: number;
   filter_open_now: boolean;
@@ -351,7 +344,6 @@ function mapRoomRow(row: RoomRow): Room {
     id: row.id,
     code: row.code,
     hostMemberId: row.host_member_id,
-    anchorLabel: row.anchor_label,
     anchorLat: row.anchor_lat,
     anchorLng: row.anchor_lng,
     filterOpenNow: row.filter_open_now,

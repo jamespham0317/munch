@@ -69,7 +69,6 @@ function expectErrorCode<T>(result: ClientResult<T>, code: ErrorCode): void {
 function makeCreateReq(name: string): CreateRoomRequest {
   return {
     host_display_name: name,
-    anchor_label: "Test Anchor",
     anchor_lat: 37.7749,
     anchor_lng: -122.4194,
     filters: { open_now: true, cuisines: [], price_levels: [] },
