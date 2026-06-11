@@ -14,6 +14,8 @@ import { AnchorMap } from "@/components/anchor-map";
 import { FiltersFieldset } from "@/components/filters-fieldset";
 import { RadiusSlider } from "@/components/radius-slider";
 import { Button, Field, Input } from "@/components/ui";
+import { useCurrentUser } from "@/features/auth/use-current-user";
+import { useOwnProfile } from "@/features/auth/use-own-profile";
 
 import { useCancelCreateRoom, useCreateRoom } from "./use-create-room";
 
@@ -26,10 +28,22 @@ import { useCancelCreateRoom, useCreateRoom } from "./use-create-room";
  * The anchor (anchor_lat/anchor_lng) is set on the AnchorMap by dragging the map under
  * the fixed center pin (Phase 4.6, docs/07 §6.6); "Where are we eating?" heads the map +
  * radius group (no free-text label — Phase 4.8, docs/07 §6.8).
+ *
+ * A SIGNED-IN host (resolved `profiles` display name) skips the name field — they create with
+ * their profile name, shown read-only as "Creating as {name}" (mirrors JoinRoomForm's "Joining
+ * as {name}", docs/10 §3.3/§3.4). The gate is the resolved NAME, so a guest, and the rare
+ * signed-in-but-no-profile state, both fall back to name entry and are never stuck. This only
+ * chooses how the name is supplied; there is no mid-room sign-in here (docs/04 §2).
  */
 export function CreateRoomForm() {
   const createRoom = useCreateRoom();
   const cancelCreateRoom = useCancelCreateRoom();
+  const userQuery = useCurrentUser();
+  const profileQuery = useOwnProfile();
+
+  const isSignedIn = userQuery.data ? !userQuery.data.isAnonymous : false;
+  const resolvingName = isSignedIn && profileQuery.isLoading;
+  const signedInName = isSignedIn ? (profileQuery.data ?? null) : null;
 
   const [hostDisplayName, setHostDisplayName] = useState("");
   const [anchorLat, setAnchorLat] = useState<number | null>(null);
@@ -48,14 +62,16 @@ export function CreateRoomForm() {
     // Name first, with its own friendly inline message — it is the only
     // realistically-reachable failure (the map auto-emits an anchor and the radius
     // slider defaults), so it gets a field-specific error rather than the catch-all.
-    if (hostDisplayName.trim().length === 0) {
+    // Only guards the typed-name path: a signed-in host's profile name is read-only and
+    // guaranteed non-empty (profiles.display_name is NOT NULL), so the check is skipped.
+    if (!signedInName && hostDisplayName.trim().length === 0) {
       setNameError(
         "What should we call you? Add your name to create the room.",
       );
       return;
     }
     const parsed = createRoomRequestSchema.safeParse({
-      host_display_name: hostDisplayName,
+      host_display_name: signedInName ?? hostDisplayName,
       // The map emits a center on mount, so these are set before submit; the NaN
       // fallback only guards the brief pre-emit window and lets Zod reject it.
       anchor_lat: anchorLat ?? Number.NaN,
@@ -81,22 +97,30 @@ export function CreateRoomForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-md">
-      <Field
-        label="Your name"
-        htmlFor="host-name"
-        error={nameError ?? undefined}
-      >
-        <Input
-          id="host-name"
-          value={hostDisplayName}
-          onChange={(event) => setHostDisplayName(event.target.value)}
-          maxLength={50}
-          placeholder="Your name"
-          autoComplete="name"
-          aria-invalid={nameError ? true : undefined}
-          aria-describedby={nameError ? "host-name-error" : undefined}
-        />
-      </Field>
+      {signedInName ? (
+        <p className="text-body-md text-text-muted">
+          Creating as <span className="text-text">{signedInName}</span>
+        </p>
+      ) : resolvingName ? (
+        <p className="text-body-md text-text-muted">Loading your profile…</p>
+      ) : (
+        <Field
+          label="Your name"
+          htmlFor="host-name"
+          error={nameError ?? undefined}
+        >
+          <Input
+            id="host-name"
+            value={hostDisplayName}
+            onChange={(event) => setHostDisplayName(event.target.value)}
+            maxLength={50}
+            placeholder="Your name"
+            autoComplete="name"
+            aria-invalid={nameError ? true : undefined}
+            aria-describedby={nameError ? "host-name-error" : undefined}
+          />
+        </Field>
+      )}
       {/* "Where are we eating?" heads the map + radius group (Phase 4.8). A plain heading,
           not a <Field> label, so the inner "Search radius" Field's <label> isn't nested. */}
       <div className="flex flex-col gap-base">
@@ -135,6 +159,7 @@ export function CreateRoomForm() {
         type="submit"
         label={createRoom.isPending ? "Creating…" : "Start Room"}
         loading={createRoom.isPending}
+        disabled={resolvingName}
       />
       <p className="text-center text-caption text-text-muted">
         Inviting friends will be the next step.
