@@ -41,6 +41,18 @@ export function useRoomPresence(
   useEffect(() => {
     if (!memberId) return;
     const client = getSupabaseClient();
+
+    // supabase-js dedupes realtime channels by topic and THROWS if `.on(...)` is called on
+    // an already-subscribed channel. On mobile, expo-router keeps the lobby mounted *under*
+    // the pushed session screen, so both surfaces run useRoomPresence for the same room. If a
+    // `room:{room_id}` channel already exists (the lobby owns it), reuse it instead of
+    // re-subscribing: it already invalidates the shared members query and tracks this member's
+    // presence, and the heartbeat effect below is independent. We don't tear it down here —
+    // its owning surface does. A surface that opens with no lobby beneath it (e.g. a deep link
+    // straight into the session) finds no channel and sets one up normally.
+    const realtimeTopic = `realtime:room:${roomId}`;
+    if (client.getChannels().some((c) => c.topic === realtimeTopic)) return;
+
     focusedRef.current = AppState.currentState === "active";
 
     const channel = subscribeRoom(
