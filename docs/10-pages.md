@@ -84,6 +84,11 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   contributors" attribution is shown.
 - **Wiring:** `create_room` (then lobby). Filters snapshot into the room. The map only populates
   `anchor_lat`/`anchor_lng`; the `create_room` contract is unchanged.
+- **Validation:** on **Start Room**, an empty (or whitespace-only) name shows a friendly inline
+  message under the "Your name" Field ("What should we call you? …") and blocks the call — the
+  name is the only realistically-reachable failure (the map auto-emits an anchor, the slider
+  defaults). Any residual anchor/radius failure falls back to a single catch-all alert above the
+  button. On-submit only; no live validation.
 - **Cancel:** a low-emphasis `text`-variant Button below **Start Room** abandons creation and
   routes to the Discover tab (`useCancelCreateRoom`). No room exists until **Start Room**, so it
   is a pure client-side discard — no RPC, no cleanup, no invariant impact — and it is disabled

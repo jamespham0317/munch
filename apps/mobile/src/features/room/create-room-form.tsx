@@ -38,9 +38,21 @@ export function CreateRoomForm() {
   const [cuisines, setCuisines] = useState<CuisineId[]>([]);
   const [priceLevels, setPriceLevels] = useState<PriceLevel[]>([]);
   const [radius, setRadius] = useState(DEFAULT_RADIUS_M);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   function handleSubmit() {
+    setNameError(null);
+    setValidationError(null);
+    // Name first, with its own friendly inline message — it is the only
+    // realistically-reachable failure (the map auto-emits an anchor and the radius
+    // slider defaults), so it gets a field-specific error rather than the catch-all.
+    if (hostDisplayName.trim().length === 0) {
+      setNameError(
+        "What should we call you? Add your name to create the room.",
+      );
+      return;
+    }
     const parsed = createRoomRequestSchema.safeParse({
       host_display_name: hostDisplayName,
       // The map emits a center on mount, so these are set before submit; the NaN
@@ -56,11 +68,10 @@ export function CreateRoomForm() {
     });
     if (!parsed.success) {
       setValidationError(
-        "Check the form: a name plus valid anchor coordinates and radius are required.",
+        "Check the form: a valid location and radius are required.",
       );
       return;
     }
-    setValidationError(null);
     createRoom.mutate(parsed.data);
   }
 
@@ -69,7 +80,7 @@ export function CreateRoomForm() {
 
   return (
     <View style={styles.form}>
-      <Field label="Your name">
+      <Field label="Your name" error={nameError ?? undefined}>
         <Input
           value={hostDisplayName}
           onChangeText={setHostDisplayName}
