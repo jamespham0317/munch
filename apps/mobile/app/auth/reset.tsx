@@ -1,8 +1,9 @@
 import { useLocalSearchParams } from "expo-router";
-import { ScrollView, StyleSheet, Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
+import { Screen } from "../../src/components/ui";
 import { PasswordResetView } from "../../src/features/auth/password-reset-view";
-import { colors, spacing, typography } from "../../src/theme";
+import { colors, typography } from "../../src/theme";
 
 /**
  * Password-reset screen (docs/05 §3), OUTSIDE any room. Thin wrapper: the recovery deep link
@@ -12,25 +13,18 @@ import { colors, spacing, typography } from "../../src/theme";
 export default function ResetScreen() {
   const { code } = useLocalSearchParams<{ code?: string }>();
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
+    <Screen contentStyle={styles.content}>
       <Text style={styles.title} accessibilityRole="header">
         Reset password
       </Text>
       <PasswordResetView code={code} />
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: colors.background },
-  content: {
-    flexGrow: 1,
-    padding: spacing.screenMarginMobile,
-    gap: spacing.md,
-  },
+  // `flexGrow` lets the reset view fill the screen and pin any footer to the bottom;
+  // the screen margin + gap come from the Screen scaffold.
+  content: { flexGrow: 1 },
   title: { ...typography.displayLgMobile, color: colors.text },
 });

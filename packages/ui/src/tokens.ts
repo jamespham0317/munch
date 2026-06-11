@@ -25,6 +25,9 @@ export const colors = {
   brandPressed: "#fbbc00",
   /** Text/icons on amber (charcoal, never white). */
   onBrand: "#1c1b1b",
+  /** Deep-amber ink for text/icons on a tonal (translucent-amber) surface — e.g. the
+   *  "It's a Match!" badge, where charcoal would be too heavy on the faint amber fill. */
+  brandDeep: "#795900",
   /** Secondary interactive, highlights, selected chips. */
   heat: "#fc7c31",
   /** Burnt-orange emphasis (e.g. small solid buttons). */

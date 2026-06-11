@@ -1,9 +1,10 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
-import { ScrollView, StyleSheet, Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
+import { Screen } from "../../../src/components/ui";
 import { SessionView } from "../../../src/features/session/session-view";
-import { colors, spacing, typography } from "../../../src/theme";
+import { colors, typography } from "../../../src/theme";
 
 /**
  * Swipe screen route. `sessionId` arrives as a search param from the lobby's
@@ -25,18 +26,16 @@ export default function SessionScreen() {
   }, [roomId, sessionId, router]);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <Screen>
       {roomId && sessionId ? (
         <SessionView roomId={roomId} sessionId={sessionId} />
       ) : (
         <Text style={styles.muted}>Missing session.</Text>
       )}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: colors.background },
-  content: { padding: spacing.screenMarginMobile, gap: spacing.md },
   muted: { ...typography.bodyMd, color: colors.textMuted },
 });

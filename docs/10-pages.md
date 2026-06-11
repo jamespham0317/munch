@@ -162,9 +162,13 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 
 ### 3.7 Match  ("It's a Match!")
 - **Routes:** mobile `app/room/[roomId]/result.tsx` · web `app/room/[roomId]/result/page.tsx`.
-- **Purpose:** "Everyone agreed!" confetti reveal — full photo card, name, distance • price,
-  rating; **Get Directions** (external maps deep link), **Share Match** (OS share sheet).
-- **Primitives:** Card, Chip, Button (primary/outline), confetti (reduced-motion aware).
+- **Purpose:** "Everyone agreed!" confetti reveal — a **centered** header block (an amber
+  "It's a Match!" badge with a party-popper glyph, headline, subcopy), then a full photo card
+  with name, distance • price, rating, and **Get Directions** (external maps deep link) as the
+  primary action **inside** the card; **Share Match** (OS share sheet) is a secondary button
+  below the card.
+- **Primitives:** Card, Chip, Button (primary/ghost), ProgressPill (`tone="match"`),
+  confetti (reduced-motion aware).
 - **Wiring:** the match payload from `submit_swipe` / realtime `match` event; signed-in users
   get a `match_history` row (written server-side, docs/03 §3.9).
 - **Invariant:** Get Directions/Share use data we already hold — **no provider API call**.

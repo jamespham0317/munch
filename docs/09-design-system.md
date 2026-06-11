@@ -69,6 +69,7 @@ what components reference — never raw hex.
 | `brand` (amber) | `#ffbf00` | Primary actions, brand moments, active fills |
 | `brand-pressed` | `#fbbc00` | Amber pressed/hover state |
 | `on-brand` | `#1c1b1b` | Text/icons on amber (charcoal, not white) |
+| `brand-deep` | `#795900` | Deep-amber ink for text/icons on a tonal (translucent-amber) surface, e.g. the "It's a Match!" badge |
 | `heat` (burnt orange) | `#fc7c31` | Secondary interactive, highlights, selected chips |
 | `heat-strong` | `#9f4200` | Burnt-orange emphasis (e.g. small solid buttons) |
 | `on-heat` | `#ffffff` | Text/icons on burnt orange |
@@ -173,12 +174,21 @@ tokens. They hold **no business logic and read no data** (CLAUDE.md §4).
   `Modal`; web = `createPortal` to `body` with `role="dialog"` + focus trap. Used by the lobby
   **"Filters" toggle** (the `tune`/sliders pill on the Squad heading row) to host the host-only
   filter editor (anchor summary + filters + RadiusSlider) with an "Apply filters" footer.
+- **Screen** — the cream page scaffold every route wrapper shares: `background` fill, the 20px
+  screen margin + `md` inter-block gap, and the **safe-area top inset** so content clears the iOS
+  status bar / Dynamic Island (and notched Android). `scroll` (default) renders a ScrollView;
+  `scroll={false}` a centered/static `flex` View; `padded={false}` opts out of the margin for
+  screens with bespoke padding (e.g. the Discover placeholder). Top-only by default — the
+  bottom-tab bar owns its own `insets.bottom` (mobile only; the web equivalent is the page
+  container). Presentational only — no data, no domain logic (CLAUDE.md §4).
 - **PriceTile / SegmentedTile** — `$`–`$$$$` selectable tiles; selected = amber fill.
 - **Field / Input** — pill or `radius-md`; 2px amber border + soft amber outer glow on focus;
   faint placeholder.
 - **Avatar** — circular; optional `online` presence dot; "+" variant for "Invite more".
 - **ProgressPill / Badge** — small caption pills ("Waiting…", "1.2 km", rating "4.8 ★",
-  "(4/8)"). Rating star uses amber.
+  "(4/8)"). Rating star uses amber. `tone="onImage"` adds a shadow to read over a photo;
+  `tone="match"` is the celebratory eyebrow badge — a faint `brand`-amber fill (20%) with
+  deep-amber `brandDeep` ink — used for "It's a Match!" on the match reveal (§3.7 of docs/10).
 - **RadiusSlider** — amber thumb + amber value pill; bounded to the host's anchor (see §9).
 - **AnchorMap** — the Create Room anchor picker (Phase 4.6): a MapLibre map over keyless
   OpenStreetMap raster tiles with a **fixed center pin** (anchor = map center) and a translucent

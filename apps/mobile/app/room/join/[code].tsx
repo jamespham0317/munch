@@ -1,8 +1,9 @@
 import { useLocalSearchParams } from "expo-router";
-import { ScrollView, StyleSheet, Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
+import { Screen } from "../../../src/components/ui";
 import { JoinRoomForm } from "../../../src/features/room/join-room-form";
-import { colors, spacing, typography } from "../../../src/theme";
+import { colors, typography } from "../../../src/theme";
 
 /**
  * Link/QR deep-link target: /room/join/{code} (path-parity with apps/web). The code from the
@@ -15,11 +16,7 @@ export default function JoinRoomByCodeScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
+    <Screen>
       <Text style={styles.title} accessibilityRole="header">
         Join with Code
       </Text>
@@ -27,13 +24,11 @@ export default function JoinRoomByCodeScreen() {
         You&apos;re invited! Confirm the details below to join the room.
       </Text>
       <JoinRoomForm initialCode={code ?? ""} lockCode />
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: colors.background },
-  content: { padding: spacing.screenMarginMobile, gap: spacing.md },
   title: { ...typography.displayLgMobile, color: colors.text },
   subtitle: { ...typography.bodyMd, color: colors.textMuted },
 });

@@ -13,6 +13,7 @@ export { Input } from "./input";
 export { PriceTile, SegmentedTile } from "./price-tile";
 export { Badge, ProgressPill } from "./progress-pill";
 export { RadiusSlider } from "./radius-slider";
+export { Screen } from "./screen";
 export { Sheet } from "./sheet";
 export { TabBar, type TabBarItem } from "./tab-bar";
 export { Toggle } from "./toggle";

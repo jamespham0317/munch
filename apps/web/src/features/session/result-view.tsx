@@ -1,7 +1,7 @@
 "use client";
 
 import { cuisineLabel, type DeckRestaurant } from "@munch/core";
-import { MapPin, Navigation, Share2, Star, X } from "lucide-react";
+import { MapPin, Navigation, PartyPopper, Share2, Star, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button, Card, FoodChip, ProgressPill } from "@/components/ui";
@@ -79,11 +79,20 @@ export function ResultView({ sessionId }: { sessionId: string }) {
         </button>
       </div>
 
-      <ProgressPill label="It's a Match!" />
-      <h2 className="text-display-lg-mobile text-text md:text-display-lg">
-        {headline}
-      </h2>
-      <p className="text-body-md text-text-muted">{subcopy}</p>
+      <div className="flex flex-col items-center gap-base text-center">
+        <ProgressPill
+          label="It's a Match!"
+          tone="match"
+          className="self-center"
+          leadingIcon={
+            <PartyPopper size={14} className="text-brand-deep" aria-hidden />
+          }
+        />
+        <h2 className="text-display-lg-mobile text-text md:text-display-lg">
+          {headline}
+        </h2>
+        <p className="max-w-md text-body-md text-text-muted">{subcopy}</p>
+      </div>
 
       <Card
         image={restaurant.photo_url ?? undefined}
@@ -116,13 +125,18 @@ export function ResultView({ sessionId }: { sessionId: string }) {
             />
           ) : null}
         </div>
+        {/* Primary action lives inside the Decision card, under the meta row
+            (10-pages.md §3.7). The flex wrapper stretches the inline-flex Button
+            to the card's full interior width. */}
+        <div className="mt-md flex flex-col">
+          <Button
+            label="Get Directions"
+            onClick={handleDirections}
+            leadingIcon={<Navigation size={18} aria-hidden />}
+          />
+        </div>
       </Card>
 
-      <Button
-        label="Get Directions"
-        onClick={handleDirections}
-        leadingIcon={<Navigation size={18} aria-hidden />}
-      />
       <Button
         label="Share Match"
         variant="ghost"

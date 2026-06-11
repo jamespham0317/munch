@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { cuisineLabel, type DeckRestaurant } from "@munch/core";
 import { useRouter } from "expo-router";
 import {
@@ -97,14 +97,24 @@ export function ResultView({ sessionId }: { sessionId: string }) {
         </Pressable>
       </View>
 
-      <ProgressPill
-        label="It's a Match!"
-        leadingIcon={<Feather name="award" size={12} color={colors.heat} />}
-      />
-      <Text style={styles.headline} accessibilityRole="header">
-        {headline}
-      </Text>
-      <Text style={styles.subcopy}>{subcopy}</Text>
+      <View style={styles.header}>
+        <ProgressPill
+          label="It's a Match!"
+          tone="match"
+          style={styles.matchBadge}
+          leadingIcon={
+            <MaterialCommunityIcons
+              name="party-popper"
+              size={14}
+              color={colors.brandDeep}
+            />
+          }
+        />
+        <Text style={styles.headline} accessibilityRole="header">
+          {headline}
+        </Text>
+        <Text style={styles.subcopy}>{subcopy}</Text>
+      </View>
 
       <Card
         padding="md"
@@ -135,15 +145,19 @@ export function ResultView({ sessionId }: { sessionId: string }) {
             />
           ) : null}
         </View>
+        {/* Primary action lives inside the Decision card, under the meta row
+            (10-pages.md §3.7). The Button stretches to the card's interior width. */}
+        <View style={styles.cardAction}>
+          <Button
+            label="Get Directions"
+            onPress={handleDirections}
+            leadingIcon={
+              <Feather name="navigation" size={18} color={colors.onBrand} />
+            }
+          />
+        </View>
       </Card>
 
-      <Button
-        label="Get Directions"
-        onPress={handleDirections}
-        leadingIcon={
-          <Feather name="navigation" size={18} color={colors.onBrand} />
-        }
-      />
       <Button
         label="Share Match"
         variant="ghost"
@@ -181,8 +195,19 @@ function shareMessage(restaurant: DeckRestaurant): string {
 const styles = StyleSheet.create({
   container: { gap: spacing.gutter, alignItems: "stretch" },
   topBar: { flexDirection: "row", justifyContent: "flex-end" },
-  headline: { ...typography.displayLgMobile, color: colors.text },
-  subcopy: { ...typography.bodyMd, color: colors.textMuted },
+  header: { alignItems: "center", gap: spacing.base },
+  matchBadge: { alignSelf: "center" },
+  headline: {
+    ...typography.displayLgMobile,
+    color: colors.text,
+    textAlign: "center",
+  },
+  subcopy: {
+    ...typography.bodyMd,
+    color: colors.textMuted,
+    textAlign: "center",
+  },
+  cardAction: { marginTop: spacing.md },
   tagOverlay: { flex: 1, justifyContent: "flex-end" },
   tagRow: { flexDirection: "row", gap: spacing.base },
   name: { ...typography.headlineMd, color: colors.text },

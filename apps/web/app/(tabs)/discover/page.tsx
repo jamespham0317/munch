@@ -1,9 +1,11 @@
+import { Construction } from "lucide-react";
+
 /**
  * Discover tab placeholder (10-pages.md §3.9). A browse/discovery feed is post-v1 (docs/07 §8);
  * v1 is room-based, so this ships as a styled "coming soon" state so the tab isn't empty.
  * Presentation only — no data, no hooks (CLAUDE.md §4). The web twin of the mobile Discover
  * screen and the "Discover - Under Construction" Stitch mockup: a soft amber/heat glow behind
- * a large neutral circle flanked by a heat and a brand dot.
+ * a large neutral circle holding a `construction` glyph, flanked by a heat and a brand dot.
  */
 export default function DiscoverPage() {
   return (
@@ -19,7 +21,9 @@ export default function DiscoverPage() {
       />
 
       <div aria-hidden className="relative mb-md h-46 w-46">
-        <div className="absolute inset-0 rounded-full bg-surface-raised" />
+        <div className="absolute inset-0 flex items-center justify-center rounded-full bg-surface-raised">
+          <Construction size={92} className="text-brand-deep" />
+        </div>
         <span className="absolute right-0 top-1 h-12 w-12 rounded-full bg-heat" />
         <span className="absolute bottom-2 left-2 h-10 w-10 rounded-full bg-brand" />
       </div>

@@ -2,9 +2,9 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { joinRoomRequestSchema } from "@munch/core";
 import { useRouter } from "expo-router";
 import { type ComponentProps, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Button, Card, Input } from "../../src/components/ui";
+import { Button, Card, Input, Screen } from "../../src/components/ui";
 import { useCurrentUser } from "../../src/features/auth/use-current-user";
 import { useOwnProfile } from "../../src/features/auth/use-own-profile";
 import { useJoinRoom } from "../../src/features/room/use-join-room";
@@ -61,11 +61,7 @@ export default function HomeScreen() {
     codeError ?? (joinRoom.isError ? joinRoom.error.message : null);
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-    >
+    <Screen>
       <View style={styles.brandRow}>
         <MaterialCommunityIcons
           name="silverware-fork-knife"
@@ -176,7 +172,7 @@ export default function HomeScreen() {
           body="Stop arguing, start eating."
         />
       </View>
-    </ScrollView>
+    </Screen>
   );
 }
 
@@ -210,8 +206,6 @@ function Step({
 const STEP_ICON = 44;
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: colors.background },
-  container: { padding: spacing.screenMarginMobile, gap: spacing.md },
   brandRow: { flexDirection: "row", alignItems: "center", gap: spacing.base },
   brand: { ...typography.titleLg, color: colors.text },
   title: { ...typography.displayLgMobile, color: colors.text },

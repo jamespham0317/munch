@@ -1,7 +1,5 @@
-import { ScrollView, StyleSheet } from "react-native";
-
+import { Screen } from "../../src/components/ui";
 import { HistoryView } from "../../src/features/history/history-view";
-import { colors, spacing } from "../../src/theme";
 
 /**
  * Profile tab root (10-pages.md §2/§3.2). Thin wrapper around HistoryView, which gates on the
@@ -9,17 +7,8 @@ import { colors, spacing } from "../../src/theme";
  */
 export default function HistoryScreen() {
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
+    <Screen>
       <HistoryView />
-    </ScrollView>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { backgroundColor: colors.background },
-  content: { padding: spacing.screenMarginMobile, gap: spacing.md },
-});

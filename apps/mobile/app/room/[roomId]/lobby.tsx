@@ -1,8 +1,9 @@
 import { useLocalSearchParams } from "expo-router";
-import { ScrollView, StyleSheet, Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
+import { Screen } from "../../../src/components/ui";
 import { LobbyView } from "../../../src/features/room/lobby-view";
-import { colors, spacing, typography } from "../../../src/theme";
+import { colors, typography } from "../../../src/theme";
 
 /**
  * Lobby screen. Thin wrapper around the LobbyView feature (CLAUDE.md §4). LobbyView owns
@@ -13,18 +14,16 @@ export default function LobbyScreen() {
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <Screen>
       {roomId ? (
         <LobbyView roomId={roomId} />
       ) : (
         <Text style={styles.muted}>Missing room.</Text>
       )}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: colors.background },
-  content: { padding: spacing.screenMarginMobile, gap: spacing.md },
   muted: { ...typography.bodyMd, color: colors.textMuted },
 });

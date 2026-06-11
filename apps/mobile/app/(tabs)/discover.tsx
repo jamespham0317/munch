@@ -1,5 +1,7 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
+import { Screen } from "../../src/components/ui";
 import { colors, radii, spacing, typography } from "../../src/theme";
 
 /**
@@ -7,17 +9,24 @@ import { colors, radii, spacing, typography } from "../../src/theme";
  * (docs/07 §8); v1 is room-based, so this ships as a styled "coming soon" state so
  * the tab isn't empty. Presentation only — no data wiring, no hooks (CLAUDE.md §4).
  * Mirrors the "Discover - Under Construction" Stitch mockup: a soft amber/heat glow
- * behind a large neutral circle flanked by a heat and a brand dot.
+ * behind a large neutral circle holding a `construction` glyph, flanked by a heat and
+ * a brand dot.
  */
 export default function DiscoverScreen() {
   return (
-    <View style={styles.screen}>
+    <Screen scroll={false} padded={false} contentStyle={styles.content}>
       {/* Decorative warm glow behind the circle cluster (09-design-system.md §4). */}
       <View style={[styles.glow, styles.glowHeat]} />
       <View style={[styles.glow, styles.glowBrand]} />
 
       <View style={styles.cluster}>
-        <View style={styles.mainCircle} />
+        <View style={styles.mainCircle}>
+          <MaterialIcons
+            name="construction"
+            size={ICON}
+            color={colors.brandDeep}
+          />
+        </View>
         <View style={[styles.dot, styles.dotHeat]} />
         <View style={[styles.dot, styles.dotBrand]} />
       </View>
@@ -27,15 +36,16 @@ export default function DiscoverScreen() {
         We&apos;re cooking up something special. Check back soon for more ways
         to find great food!
       </Text>
-    </View>
+    </Screen>
   );
 }
 
 const CIRCLE = 184;
+// ~half the circle, mirroring Stitch's 96px glyph in its 192px circle.
+const ICON = 92;
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
+  content: {
+    flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.lg,
@@ -69,6 +79,8 @@ const styles = StyleSheet.create({
     height: CIRCLE,
     borderRadius: radii.full,
     backgroundColor: colors.surfaceRaised,
+    alignItems: "center",
+    justifyContent: "center",
   },
   dot: {
     position: "absolute",
