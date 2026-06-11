@@ -3,7 +3,6 @@
 import { joinRoomRequestSchema } from "@munch/core";
 import { ChevronsRight, Coffee, Heart, Plus, Users } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
 
 import { Button, Card, Input } from "@/components/ui";
@@ -18,42 +17,43 @@ import { useJoinRoom } from "@/features/room/use-join-room";
  * flow. Auth lives on the Profile tab now (10-pages.md §2/§3.2), so there is no sign-in panel
  * on this screen. The (tabs) layout supplies the <main> + centered container.
  *
- * The Join card branches on auth (docs/10 §3.1): a GUEST (or unresolved name) is routed to the
- * /room/join/{code} screen, which owns the name field; a SIGNED-IN user joins inline with their
- * profile name (join_room here), so they skip the name prompt. The gate is the resolved NAME
- * (not the signed-in flag), so a profile still loading or missing safely takes the guest route.
+ * The Join card joins INLINE here (docs/10 §3.1) — manual code entry no longer redirects to the
+ * /room/join screen (that is now the invite-link-only target). A GUEST types a name + code; a
+ * SIGNED-IN user (resolved `profiles` name) skips the name field and joins with their profile
+ * name. Both call join_room, which routes to the lobby on success and surfaces a friendly inline
+ * error otherwise. The gate is the resolved NAME (not the signed-in flag), so a profile still
+ * loading or missing safely falls back to name entry.
  */
 export default function HomePage() {
-  const router = useRouter();
   const userQuery = useCurrentUser();
   const profileQuery = useOwnProfile();
   const joinRoom = useJoinRoom();
   const [code, setCode] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [codeError, setCodeError] = useState<string | null>(null);
 
   const isSignedIn = userQuery.data ? !userQuery.data.isAnonymous : false;
   const resolvingName = isSignedIn && profileQuery.isLoading;
   const signedInName = isSignedIn ? (profileQuery.data ?? null) : null;
 
-  // Signed-in (resolved name) → join inline with the profile name (join_room routes to the
-  // lobby on success). Guest / unresolved name → route the typed code into the join screen,
-  // which owns the name field; a blank code opens the bare join screen for manual entry.
+  // Validate { code, name } against the @munch/core schema, then join inline via join_room
+  // (routes to the lobby on success; a bad/closed/in-session code surfaces a friendly inline
+  // error). Guests supply the name from the field; signed-in users use their profile name.
   function goToJoin() {
-    const trimmed = code.trim();
-    if (signedInName) {
-      const parsed = joinRoomRequestSchema.safeParse({
-        code: trimmed,
-        display_name: signedInName,
-      });
-      if (!parsed.success) {
-        setCodeError("Enter the 6-digit code.");
-        return;
-      }
-      setCodeError(null);
-      joinRoom.mutate(parsed.data);
+    const parsed = joinRoomRequestSchema.safeParse({
+      code: code.trim(),
+      display_name: signedInName ?? displayName,
+    });
+    if (!parsed.success) {
+      setCodeError(
+        signedInName
+          ? "Enter the 6-digit code."
+          : "Enter the 6-digit code and your name.",
+      );
       return;
     }
-    router.push(trimmed ? `/room/join/${trimmed}` : "/room/join");
+    setCodeError(null);
+    joinRoom.mutate(parsed.data);
   }
 
   const joinError =
@@ -93,8 +93,29 @@ export default function HomePage() {
           <span className="text-title-lg text-text">Join with Code</span>
         </div>
         <p className="text-caption text-text-muted">
-          Got an invite? Enter the code below.
+          Got an invite? Enter your name and the code below.
         </p>
+        {/* Name: guests type it; a signed-in user joins with their profile name and skips the
+            field. The gate is the resolved name, so an unresolved profile falls back to entry. */}
+        {signedInName ? (
+          <p className="text-body-md text-text-muted">
+            Joining as <span className="text-text">{signedInName}</span>
+          </p>
+        ) : resolvingName ? (
+          <p className="text-body-md text-text-muted">Loading your profile…</p>
+        ) : (
+          <Input
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") goToJoin();
+            }}
+            maxLength={50}
+            placeholder="Your name"
+            autoComplete="name"
+            aria-label="Your name"
+          />
+        )}
         <div className="flex items-center gap-sm">
           <Input
             value={code}

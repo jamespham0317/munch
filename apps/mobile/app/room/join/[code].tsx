@@ -5,10 +5,11 @@ import { JoinRoomForm } from "../../../src/features/room/join-room-form";
 import { colors, spacing, typography } from "../../../src/theme";
 
 /**
- * Link/QR deep-link target: /room/join/{code} (path-parity with apps/web). The code
- * from the route pre-fills the join form; a bare /room/join renders the same form
- * blank. expo-router resolves both the `munch://` scheme and (once a domain is
- * configured) the https universal link to this route.
+ * Link/QR deep-link target: /room/join/{code} (path-parity with apps/web). The code from the
+ * route pre-fills the join form and is LOCKED (lockCode) — a host shared this exact code, so the
+ * invitee confirms a name and joins but can't edit the code (docs/10 §3.4). Manual code entry
+ * lives on the Match home now. expo-router resolves both the `munch://` scheme and (once a domain
+ * is configured) the https universal link to this route.
  */
 export default function JoinRoomByCodeScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -25,7 +26,7 @@ export default function JoinRoomByCodeScreen() {
       <Text style={styles.subtitle}>
         You&apos;re invited! Confirm the details below to join the room.
       </Text>
-      <JoinRoomForm initialCode={code ?? ""} />
+      <JoinRoomForm initialCode={code ?? ""} lockCode />
     </ScrollView>
   );
 }
