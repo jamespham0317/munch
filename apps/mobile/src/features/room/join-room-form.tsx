@@ -4,6 +4,8 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { Button, Field, Input } from "../../components/ui";
 import { colors, spacing, typography } from "../../theme";
+import { useCurrentUser } from "../auth/use-current-user";
+import { useOwnProfile } from "../auth/use-own-profile";
 import { useJoinRoom } from "./use-join-room";
 
 /**
@@ -14,9 +16,20 @@ import { useJoinRoom } from "./use-join-room";
  * (docs/06 §6). join_room failures surface the api-client's friendly, code-mapped
  * message (errors.ts: ROOM_NOT_FOUND/ROOM_CLOSED/ALREADY_JOINED/RATE_LIMITED — docs/04
  * §3.2), never raw provider/DB text.
+ *
+ * A SIGNED-IN user (resolved `profiles` display name) skips the name field — they join by
+ * code with their profile name (docs/10 §3.4). The gate is the resolved NAME, so a guest, and
+ * the rare signed-in-but-no-profile state, both fall back to name entry and are never stuck.
+ * This only chooses how the name is supplied; there is no mid-room sign-in here (docs/04 §2).
  */
 export function JoinRoomForm({ initialCode = "" }: { initialCode?: string }) {
   const joinRoom = useJoinRoom();
+  const userQuery = useCurrentUser();
+  const profileQuery = useOwnProfile();
+
+  const isSignedIn = userQuery.data ? !userQuery.data.isAnonymous : false;
+  const resolvingName = isSignedIn && profileQuery.isLoading;
+  const signedInName = isSignedIn ? (profileQuery.data ?? null) : null;
 
   const [code, setCode] = useState(initialCode);
   const [displayName, setDisplayName] = useState("");
@@ -34,10 +47,14 @@ export function JoinRoomForm({ initialCode = "" }: { initialCode?: string }) {
   function handleSubmit() {
     const parsed = joinRoomRequestSchema.safeParse({
       code: code.trim(),
-      display_name: displayName,
+      display_name: signedInName ?? displayName,
     });
     if (!parsed.success) {
-      setValidationError("Enter the 6-digit code and your name.");
+      setValidationError(
+        signedInName
+          ? "Enter the 6-digit code."
+          : "Enter the 6-digit code and your name.",
+      );
       return;
     }
     setValidationError(null);
@@ -49,14 +66,22 @@ export function JoinRoomForm({ initialCode = "" }: { initialCode?: string }) {
 
   return (
     <View style={styles.form}>
-      <Field label="Your name">
-        <Input
-          value={displayName}
-          onChangeText={setDisplayName}
-          maxLength={50}
-          placeholder="e.g. Alex"
-        />
-      </Field>
+      {signedInName ? (
+        <Text style={styles.joiningAs}>
+          Joining as <Text style={styles.joiningAsName}>{signedInName}</Text>
+        </Text>
+      ) : resolvingName ? (
+        <Text style={styles.joiningAs}>Loading your profile…</Text>
+      ) : (
+        <Field label="Your name">
+          <Input
+            value={displayName}
+            onChangeText={setDisplayName}
+            maxLength={50}
+            placeholder="e.g. Alex"
+          />
+        </Field>
+      )}
       <Field label="Room code">
         <Input
           value={code}
@@ -75,6 +100,7 @@ export function JoinRoomForm({ initialCode = "" }: { initialCode?: string }) {
         label={joinRoom.isPending ? "Joining…" : "Join room"}
         onPress={handleSubmit}
         loading={joinRoom.isPending}
+        disabled={resolvingName}
       />
     </View>
   );
@@ -82,5 +108,7 @@ export function JoinRoomForm({ initialCode = "" }: { initialCode?: string }) {
 
 const styles = StyleSheet.create({
   form: { gap: spacing.gutter },
+  joiningAs: { ...typography.bodyMd, color: colors.textMuted },
+  joiningAsName: { color: colors.text },
   error: { ...typography.bodyMd, color: colors.error },
 });

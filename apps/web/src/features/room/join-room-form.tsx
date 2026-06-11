@@ -4,6 +4,8 @@ import { joinRoomRequestSchema } from "@munch/core";
 import { type FormEvent, useState } from "react";
 
 import { Button, Field, Input } from "@/components/ui";
+import { useCurrentUser } from "@/features/auth/use-current-user";
+import { useOwnProfile } from "@/features/auth/use-own-profile";
 
 import { useJoinRoom } from "./use-join-room";
 
@@ -16,9 +18,20 @@ import { useJoinRoom } from "./use-join-room";
  * RATE_LIMITED, and ROOM_IN_SESSION → "This room's session has already started." once a session
  * has started — joining is lobby-only, Phase 4.7 — docs/04 §3.2), never raw provider/DB text and
  * with no auto-retry.
+ *
+ * A SIGNED-IN user (resolved `profiles` display name) skips the name field — they join by code
+ * with their profile name (docs/10 §3.4). The gate is the resolved NAME, so a guest, and the
+ * rare signed-in-but-no-profile state, both fall back to name entry and are never stuck. This
+ * only chooses how the name is supplied; there is no mid-room sign-in here (docs/04 §2).
  */
 export function JoinRoomForm({ initialCode = "" }: { initialCode?: string }) {
   const joinRoom = useJoinRoom();
+  const userQuery = useCurrentUser();
+  const profileQuery = useOwnProfile();
+
+  const isSignedIn = userQuery.data ? !userQuery.data.isAnonymous : false;
+  const resolvingName = isSignedIn && profileQuery.isLoading;
+  const signedInName = isSignedIn ? (profileQuery.data ?? null) : null;
 
   const [code, setCode] = useState(initialCode);
   const [displayName, setDisplayName] = useState("");
@@ -28,10 +41,14 @@ export function JoinRoomForm({ initialCode = "" }: { initialCode?: string }) {
     event.preventDefault();
     const parsed = joinRoomRequestSchema.safeParse({
       code: code.trim(),
-      display_name: displayName,
+      display_name: signedInName ?? displayName,
     });
     if (!parsed.success) {
-      setValidationError("Enter the 6-digit code and your name.");
+      setValidationError(
+        signedInName
+          ? "Enter the 6-digit code."
+          : "Enter the 6-digit code and your name.",
+      );
       return;
     }
     setValidationError(null);
@@ -43,16 +60,24 @@ export function JoinRoomForm({ initialCode = "" }: { initialCode?: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-md">
-      <Field label="Your name" htmlFor="join-name">
-        <Input
-          id="join-name"
-          value={displayName}
-          onChange={(event) => setDisplayName(event.target.value)}
-          maxLength={50}
-          placeholder="e.g. Alex"
-          autoComplete="name"
-        />
-      </Field>
+      {signedInName ? (
+        <p className="text-body-md text-text-muted">
+          Joining as <span className="text-text">{signedInName}</span>
+        </p>
+      ) : resolvingName ? (
+        <p className="text-body-md text-text-muted">Loading your profile…</p>
+      ) : (
+        <Field label="Your name" htmlFor="join-name">
+          <Input
+            id="join-name"
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            maxLength={50}
+            placeholder="e.g. Alex"
+            autoComplete="name"
+          />
+        </Field>
+      )}
       <Field label="Room code" htmlFor="join-code">
         <Input
           id="join-code"
@@ -72,6 +97,7 @@ export function JoinRoomForm({ initialCode = "" }: { initialCode?: string }) {
         type="submit"
         label={joinRoom.isPending ? "Joining…" : "Join room"}
         loading={joinRoom.isPending}
+        disabled={resolvingName}
       />
     </form>
   );

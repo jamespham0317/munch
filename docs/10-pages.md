@@ -47,9 +47,15 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 - **Purpose:** entry. "Ready to eat?" → **Create a Room** (large amber card) or **Join with
   Code** (code field + Join). "How Munch Works" 3-step explainer.
 - **Primitives:** Card, Button (primary/secondary), Field, list rows with colored icons.
-- **Wiring:** Create → create-room flow; Join → hands the typed code to the join flow
-  (`room/join/{code}`), which owns the `join_room` call + name field. No auth required
-  (guests welcome); the sign-in surface lives on the Profile tab (§2/§3.2), not here.
+- **Wiring:** Create → create-room flow. Join **branches on auth**: a **guest** (or a
+  signed-in user whose profile name hasn't resolved yet) hands the typed code to the join flow
+  (`room/join/{code}`), which owns the `join_room` call + name field; a **signed-in** user
+  joins **inline** here — `join_room` with their `profiles` display name (no name prompt,
+  `useOwnProfile`) — and routes straight to the lobby. The join button shows the pending state
+  and inline code-mapped errors on this card. The gate is the **resolved name**, not the
+  signed-in flag, so an unresolved/missing profile name safely falls back to the guest route.
+  No auth required (guests welcome); the sign-in surface lives on the Profile tab (§2/§3.2),
+  not here. There is no mid-room sign-in — this only chooses how the name is supplied (docs/04 §2).
 
 ### 3.2 Auth / Profile  ("Profile & Sign In Updated")
 - **Routes:** mobile `app/auth/*` + `app/history.tsx` (Profile tab) · web `app/auth/*` +
@@ -89,10 +95,16 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 ### 3.4 Join  ("Join with Name and Code")
 - **Routes:** mobile `app/room/join/index.tsx` + `[code].tsx` (deep link) · web
   `app/room/join/page.tsx` + `[code]/page.tsx`.
-- **Purpose:** enter display name + 6-digit code (code may be prefilled from a link/QR).
+- **Purpose:** enter a 6-digit code (prefilled from a link/QR) plus a display name. The
+  `JoinRoomForm` is **auth-aware**: a **guest** sees the name field; a **signed-in** user sees
+  a "Joining as {name}" readout instead (name field hidden) and joins with their `profiles`
+  display name (`useOwnProfile`). This is what makes the deep-link entry consistent with the
+  Match-page direct join (§3.1) — a signed-in user is never asked to re-type their name. The
+  gate is the resolved name, so a guest and the rare signed-in-but-no-profile state both fall
+  back to name entry. No mid-room sign-in: the form only chooses how the name is supplied (docs/04 §2).
 - **Primitives:** Field, Button.
 - **Wiring:** `join_room`. Errors: `ROOM_NOT_FOUND`, `ROOM_CLOSED`, `ALREADY_JOINED`,
-  `RATE_LIMITED` (docs/04 §3.2) → friendly inline messages.
+  `ROOM_IN_SESSION`, `RATE_LIMITED` (docs/04 §3.2) → friendly inline messages.
 
 ### 3.5 Lobby  ("Lobby with QR Code")
 - **Routes:** mobile `app/room/[roomId]/lobby.tsx` · web `app/room/[roomId]/lobby/page.tsx`.

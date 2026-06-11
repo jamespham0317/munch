@@ -1,30 +1,63 @@
 "use client";
 
+import { joinRoomRequestSchema } from "@munch/core";
 import { ChevronsRight, Coffee, Heart, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
 
 import { Button, Card, Input } from "@/components/ui";
+import { useCurrentUser } from "@/features/auth/use-current-user";
+import { useOwnProfile } from "@/features/auth/use-own-profile";
+import { useJoinRoom } from "@/features/room/use-join-room";
 
 /**
  * Welcome / Home screen (10-pages.md §3.1, "Welcome to Munch"). The Match-tab root and the
  * room-flow entry point: a guest-by-default surface offering the two ways in — host a room
  * or join one by code. Thin by design (CLAUDE.md §4): the Create card routes into the create
- * flow and the Join card hands the typed code to the existing join flow; neither calls a data
- * endpoint here. Auth lives on the Profile tab now (10-pages.md §2/§3.2), so there is no sign-in
- * panel on this screen. The (tabs) layout supplies the <main> + centered container.
+ * flow. Auth lives on the Profile tab now (10-pages.md §2/§3.2), so there is no sign-in panel
+ * on this screen. The (tabs) layout supplies the <main> + centered container.
+ *
+ * The Join card branches on auth (docs/10 §3.1): a GUEST (or unresolved name) is routed to the
+ * /room/join/{code} screen, which owns the name field; a SIGNED-IN user joins inline with their
+ * profile name (join_room here), so they skip the name prompt. The gate is the resolved NAME
+ * (not the signed-in flag), so a profile still loading or missing safely takes the guest route.
  */
 export default function HomePage() {
   const router = useRouter();
+  const userQuery = useCurrentUser();
+  const profileQuery = useOwnProfile();
+  const joinRoom = useJoinRoom();
   const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState<string | null>(null);
 
-  // Route the typed code into the existing join flow (which owns the join_room call + name
-  // field). A blank code opens the bare join screen for manual entry. No wiring added here.
+  const isSignedIn = userQuery.data ? !userQuery.data.isAnonymous : false;
+  const resolvingName = isSignedIn && profileQuery.isLoading;
+  const signedInName = isSignedIn ? (profileQuery.data ?? null) : null;
+
+  // Signed-in (resolved name) → join inline with the profile name (join_room routes to the
+  // lobby on success). Guest / unresolved name → route the typed code into the join screen,
+  // which owns the name field; a blank code opens the bare join screen for manual entry.
   function goToJoin() {
     const trimmed = code.trim();
+    if (signedInName) {
+      const parsed = joinRoomRequestSchema.safeParse({
+        code: trimmed,
+        display_name: signedInName,
+      });
+      if (!parsed.success) {
+        setCodeError("Enter the 6-digit code.");
+        return;
+      }
+      setCodeError(null);
+      joinRoom.mutate(parsed.data);
+      return;
+    }
     router.push(trimmed ? `/room/join/${trimmed}` : "/room/join");
   }
+
+  const joinError =
+    codeError ?? (joinRoom.isError ? joinRoom.error.message : null);
 
   return (
     <section className="flex flex-col gap-md">
@@ -74,8 +107,19 @@ export default function HomePage() {
             placeholder="e.g. 582901"
             aria-label="Room code"
           />
-          <Button label="Join" variant="secondary" onClick={goToJoin} />
+          <Button
+            label={joinRoom.isPending ? "Joining…" : "Join"}
+            variant="secondary"
+            onClick={goToJoin}
+            loading={joinRoom.isPending}
+            disabled={resolvingName}
+          />
         </div>
+        {joinError ? (
+          <p role="alert" className="text-body-md text-error">
+            {joinError}
+          </p>
+        ) : null}
       </Card>
 
       <h2 className="text-headline-md text-text">How Munch Works</h2>

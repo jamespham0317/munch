@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   ensureProfile,
+  fetchOwnProfile,
   registerWithEmailPassword,
   requestPasswordReset,
   signInWithEmailPassword,
@@ -193,5 +194,49 @@ describe("ensureProfile", () => {
       id: "u1",
       display_name: "Grace Hopper",
     });
+  });
+});
+
+describe("fetchOwnProfile", () => {
+  /** Build a client whose `from("profiles").select(...).maybeSingle().returns()` resolves. */
+  function profileClient(row: unknown, error: unknown = null): SupabaseClient {
+    const returns = vi.fn().mockResolvedValue({ data: row, error });
+    const maybeSingle = vi.fn().mockReturnValue({ returns });
+    const select = vi.fn().mockReturnValue({ maybeSingle });
+    return {
+      from: vi.fn().mockReturnValue({ select }),
+    } as unknown as SupabaseClient;
+  }
+
+  it("maps the caller's own profile row to camelCase", async () => {
+    const result = await fetchOwnProfile(
+      profileClient({
+        id: "u1",
+        display_name: "Ada Lovelace",
+        created_at: "2026-06-02T00:00:00Z",
+        updated_at: "2026-06-02T00:00:00Z",
+      }),
+    );
+    expect(result.error).toBeNull();
+    expect(result.data?.displayName).toBe("Ada Lovelace");
+  });
+
+  it("returns null data (no error) when there is no profile row — a guest", async () => {
+    const result = await fetchOwnProfile(profileClient(null));
+    expect(result.error).toBeNull();
+    expect(result.data).toBeNull();
+  });
+
+  it("maps a read failure to a safe ApiError, never raw DB text", async () => {
+    const result = await fetchOwnProfile(
+      profileClient(null, {
+        code: "42501",
+        details: "",
+        hint: "",
+        message: "rls",
+      }),
+    );
+    expect(result.data).toBeNull();
+    expect(result.error?.error.code).toBe("FORBIDDEN");
   });
 });

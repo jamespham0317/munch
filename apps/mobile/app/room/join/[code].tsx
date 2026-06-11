@@ -23,7 +23,7 @@ export default function JoinRoomByCodeScreen() {
         Join with Code
       </Text>
       <Text style={styles.subtitle}>
-        You&apos;re invited! Add your name to join the room.
+        You&apos;re invited! Confirm the details below to join the room.
       </Text>
       <JoinRoomForm initialCode={code ?? ""} />
     </ScrollView>

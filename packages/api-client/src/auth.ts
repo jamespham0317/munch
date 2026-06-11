@@ -220,6 +220,29 @@ export async function ensureProfile(
   return { data: mapProfileRow(data), error: null };
 }
 
+/**
+ * Read the caller's OWN profiles row (docs/03 §3.1). A direct RLS-scoped read — the
+ * `profiles_select_own` policy (0008) scopes it to `id = auth.uid()`, so no privileged RPC is
+ * needed (cf. getMatchHistory in endpoints/history.ts). Returns `null` data (no error) when
+ * there is no row: an anonymous guest has no profile (CLAUDE.md §3), so callers branch
+ * guest-vs-signed-in off this `null`, not an error. Used to resolve a signed-in member's display
+ * name for the direct-join flow, where signed-in users skip the name prompt (docs/10 §3.1/§3.4).
+ * Maps snake_case → camelCase at this boundary (docs/06 §5); raw DB text is never surfaced.
+ */
+export async function fetchOwnProfile(
+  client: SupabaseClient,
+): Promise<ClientResult<Profile | null>> {
+  const { data, error } = await client
+    .from("profiles")
+    .select("id, display_name, created_at, updated_at")
+    .maybeSingle()
+    .returns<ProfileRow | null>();
+  if (error) {
+    return { data: null, error: toApiError(error) };
+  }
+  return { data: data ? mapProfileRow(data) : null, error: null };
+}
+
 /** Narrow an unknown user_metadata field to a non-empty trimmed string, else undefined. */
 function asNonEmptyString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0

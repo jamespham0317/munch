@@ -14,7 +14,7 @@ export default async function JoinRoomByCodePage({
   return (
     <FullScreenView
       title="Join with Code"
-      subtitle="You're invited! Add your name to join the room."
+      subtitle="You're invited! Confirm the details below to join the room."
     >
       <JoinRoomForm initialCode={code} />
     </FullScreenView>
