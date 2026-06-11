@@ -140,7 +140,7 @@ export function CreateRoomForm() {
         Inviting friends will be the next step.
       </p>
       {/* Low-emphasis Cancel below the primary action (Stitch "Create a Room"): abandons
-          creation and returns to Discover. No room exists yet, so it's a pure client-side
+          creation and returns to Match. No room exists yet, so it's a pure client-side
           discard. Disabled while a create is in flight (the create_room RPC may already be
           committing — see useCancelCreateRoom). */}
       <Button

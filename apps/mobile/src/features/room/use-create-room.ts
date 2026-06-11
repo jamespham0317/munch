@@ -51,12 +51,12 @@ export function useCreateRoom() {
 /**
  * Cancel an in-progress room creation. No room exists yet (create_room only fires on
  * submit — Start Room), so this is a pure client-side discard: no RPC, no cleanup, no
- * invariant impact. Routes to the Discover tab, following the app's explicit-destination
+ * invariant impact. Routes to the Match tab ("/"), matching the app's explicit-destination
  * exit convention (useRoomExit's router.replace home — the app never pops the back stack).
  */
 export function useCancelCreateRoom() {
   const router = useRouter();
   return () => {
-    router.replace("/discover");
+    router.replace("/");
   };
 }
