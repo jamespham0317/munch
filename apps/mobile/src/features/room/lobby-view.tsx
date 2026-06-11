@@ -10,7 +10,7 @@ import { ProgressPill } from "../../components/ui/progress-pill";
 import { colors, spacing, typography } from "../../theme";
 import { useStartSession } from "../session/use-start-session";
 import { LeaveRoomControl } from "./leave-room-control";
-import { LobbyFiltersPanel } from "./lobby-filters-panel";
+import { LobbyFiltersButton, LobbyFiltersSummary } from "./lobby-filters-panel";
 import { useRemovedRedirect } from "./use-removed-redirect";
 import { useRoomExit } from "./use-room-exit";
 import { useRoomLobby } from "./use-room-lobby";
@@ -145,12 +145,15 @@ export function LobbyView({ roomId }: { roomId: string }) {
 
       <View style={styles.squadHeader}>
         <Text style={styles.squadTitle}>The Squad ({members.length})</Text>
-        <ProgressPill
-          label="Waiting…"
-          leadingIcon={
-            <Feather name="clock" size={12} color={colors.textMuted} />
-          }
-        />
+        <View style={styles.squadHeaderRight}>
+          {isHost ? <LobbyFiltersButton room={room} /> : null}
+          <ProgressPill
+            label="Waiting…"
+            leadingIcon={
+              <Feather name="clock" size={12} color={colors.textMuted} />
+            }
+          />
+        </View>
       </View>
       <MemberList
         members={members}
@@ -158,7 +161,7 @@ export function LobbyView({ roomId }: { roomId: string }) {
         onInvite={() => void handleInvite()}
       />
 
-      <LobbyFiltersPanel room={room} isHost={isHost} />
+      {!isHost ? <LobbyFiltersSummary room={room} /> : null}
 
       {isHost ? (
         <>
@@ -197,6 +200,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  squadHeaderRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.base,
   },
   squadTitle: { ...typography.headlineMd, color: colors.text },
   endedContainer: {

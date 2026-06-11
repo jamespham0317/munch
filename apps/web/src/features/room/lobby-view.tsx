@@ -9,7 +9,7 @@ import { useStartSession } from "@/features/session/use-start-session";
 
 import { buildJoinUrl, InvitePanel } from "./invite-panel";
 import { LeaveRoomControl } from "./leave-room-control";
-import { LobbyFiltersPanel } from "./lobby-filters-panel";
+import { LobbyFiltersButton, LobbyFiltersSummary } from "./lobby-filters-panel";
 import { MemberList } from "./member-list";
 import { useRemovedRedirect } from "./use-removed-redirect";
 import { useRoomExit } from "./use-room-exit";
@@ -147,12 +147,15 @@ export function LobbyView({ roomId }: { roomId: string }) {
         <h2 className="text-headline-md text-text">
           The Squad ({members.length})
         </h2>
-        <ProgressPill
-          label="Waiting…"
-          leadingIcon={
-            <Clock size={12} className="text-text-muted" aria-hidden />
-          }
-        />
+        <div className="flex items-center gap-base">
+          {isHost ? <LobbyFiltersButton room={room} /> : null}
+          <ProgressPill
+            label="Waiting…"
+            leadingIcon={
+              <Clock size={12} className="text-text-muted" aria-hidden />
+            }
+          />
+        </div>
       </div>
       <MemberList
         members={members}
@@ -160,7 +163,7 @@ export function LobbyView({ roomId }: { roomId: string }) {
         onInvite={() => void handleInvite()}
       />
 
-      <LobbyFiltersPanel room={room} isHost={isHost} />
+      {!isHost ? <LobbyFiltersSummary room={room} /> : null}
 
       {isHost ? (
         <>

@@ -113,15 +113,20 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   **Start Session**. The squad count is the number of members joined (no per-member status text
   in v1).
 - **Primitives:** Card (amber code panel), QR, MemberList (Avatar + `online` dot),
-  ProgressPill, Button, LeaveRoomControl (ConfirmModal).
+  ProgressPill, Button, LobbyFiltersButton/LobbyFiltersSummary, Sheet, RadiusSlider,
+  LeaveRoomControl (ConfirmModal).
 - **Wiring:** realtime `room:{room_id}` presence; host `start_session`; `set_presence`.
 - **Leave/End:** non-host "Leave room" / host "End room" (`useRoomExit`) confirm via the
   branded **ConfirmModal** (docs/09 §7) — not an OS alert. In the lobby the leave copy notes the
   member can still rejoin (the roster freezes only once a session starts — docs/04 §3.2).
 - **Anchor/filters:** the host-set anchor ("Pinned location" + radius) and filters show
-  **read-only** to all members; the host keeps an **editable radius** (and filters) here that
-  snapshots into
-  `start_session`. No editable map in the lobby — the anchor is set on Create Room (§3.3, Phase 4.6).
+  **read-only** to all members (a `LobbyFiltersSummary` card in the column). The host instead gets
+  a **"Filters" toggle** (`tune`/sliders pill, on the Squad heading row — Stitch "Lobby") that
+  opens the editable anchor-summary + filters + **radius slider** (the same `RadiusSlider` as
+  Create Room, not a text field) in a bottom **Sheet** (docs/09 §7). **"Apply filters"** saves via
+  `update_room_filters` and closes the sheet on success; an error keeps it open; dismissing
+  (X/backdrop/back) discards unsaved edits. The snapshot still flows into `start_session`. No
+  editable map in the lobby — the anchor is set on Create Room (§3.3, Phase 4.6).
 - **Invariant:** only the host can start; aggregate presence only.
 
 ### 3.6 Swiping Session  ("Swiping Session")

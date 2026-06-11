@@ -15,5 +15,6 @@ export { Field } from "./field";
 export { Input } from "./input";
 export { PriceTile, SegmentedTile } from "./price-tile";
 export { Badge, ProgressPill } from "./progress-pill";
+export { Sheet } from "./sheet";
 export { TabBar, type TabBarItem } from "./tab-bar";
 export { Toggle } from "./toggle";

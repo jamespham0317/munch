@@ -165,6 +165,14 @@ tokens. They hold **no business logic and read no data** (CLAUDE.md §4).
   Android back dismiss; `confirmLoading` holds the sheet open with a spinner while the mutation
   runs. Presentational only — owns no mutation, declares no match (CLAUDE.md §4). Mobile = RN
   `Modal`; web = `createPortal` to `body` with `role="alertdialog"` + focus trap.
+- **Sheet** — generic bottom sheet (a generalization of ConfirmModal's scrim/dismiss machinery):
+  a drag handle, a header (title + `close`), a **scrollable** body, and an optional pinned/sticky
+  footer, on a `radius-lg`-topped `surface` panel over the dimmed charcoal scrim. Scrim tap /
+  Escape (web) / Android back / close button dismiss unless `dismissDisabled` (e.g. while a save
+  runs). Presentational only — caller owns open state + mutation (CLAUDE.md §4). Mobile = RN
+  `Modal`; web = `createPortal` to `body` with `role="dialog"` + focus trap. Used by the lobby
+  **"Filters" toggle** (the `tune`/sliders pill on the Squad heading row) to host the host-only
+  filter editor (anchor summary + filters + RadiusSlider) with an "Apply filters" footer.
 - **PriceTile / SegmentedTile** — `$`–`$$$$` selectable tiles; selected = amber fill.
 - **Field / Input** — pill or `radius-md`; 2px amber border + soft amber outer glow on focus;
   faint placeholder.
