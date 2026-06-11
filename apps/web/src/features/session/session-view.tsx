@@ -1,13 +1,11 @@
 "use client";
 
 import type { DeckRestaurant, SessionStatus } from "@munch/core";
-import { SlidersHorizontal, UtensilsCrossed } from "lucide-react";
+import { UtensilsCrossed } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
-import { RadiusSlider } from "@/components/radius-slider";
 import { SwipeCard } from "@/components/swipe-card";
-import { cx } from "@/components/ui/cx";
 import { LeaveRoomControl } from "@/features/room/leave-room-control";
 import { useRemovedRedirect } from "@/features/room/use-removed-redirect";
 import { useRoomExit } from "@/features/room/use-room-exit";
@@ -144,18 +142,7 @@ function SwipeRunner({
   isHost: boolean;
   exit: ReturnType<typeof useRoomExit>;
 }) {
-  const swipe = useSwipeSession(
-    roomId,
-    sessionId,
-    deck,
-    sessionRadiusM,
-    initialStatus,
-  );
-
-  // The radius "narrow" control lives behind an "Adjust" affordance (10-pages.md §3.6) instead
-  // of being permanently open; toggling it only shows/hides the existing local slider — the
-  // setRadiusM wiring is unchanged and never refetches the provider (CLAUDE.md §2.1).
-  const [adjustOpen, setAdjustOpen] = useState(false);
+  const swipe = useSwipeSession(roomId, sessionId, deck, initialStatus);
 
   // Deck exhausted with no unanimous match → the server flipped the session to
   // awaiting_host_resolution; show the host the closest-to-unanimous ranking and everyone
@@ -179,35 +166,10 @@ function SwipeRunner({
 
   return (
     <section className="flex flex-col gap-md">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-base">
-          <UtensilsCrossed size={24} className="text-heat" aria-hidden />
-          <span className="text-title-lg text-text">Munch</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => setAdjustOpen((open) => !open)}
-          aria-label="Adjust distance"
-          aria-expanded={adjustOpen}
-          className={cx(
-            "inline-flex min-h-11 items-center gap-xs rounded-full px-gutter text-label-md uppercase text-text transition-transform active:translate-y-[var(--munch-press-translate-y)] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/40",
-            adjustOpen ? "bg-surface-highest" : "bg-surface-raised",
-          )}
-        >
-          <SlidersHorizontal size={14} aria-hidden />
-          Adjust
-        </button>
+      <div className="flex items-center gap-base">
+        <UtensilsCrossed size={24} className="text-heat" aria-hidden />
+        <span className="text-title-lg text-text">Munch</span>
       </div>
-
-      {adjustOpen ? (
-        <div className="rounded-md bg-surface p-gutter shadow-low">
-          <RadiusSlider
-            valueM={swipe.radiusM}
-            maxM={sessionRadiusM}
-            onChange={swipe.setRadiusM}
-          />
-        </div>
-      ) : null}
 
       {swipe.error ? (
         <p role="alert" className="text-body-md text-error">
@@ -225,11 +187,7 @@ function SwipeRunner({
         <p className="text-body-md text-text-muted">
           No match yet — keep this screen open while others finish swiping.
         </p>
-      ) : (
-        <p className="text-body-md text-text-muted">
-          No restaurants in this radius. Tap Adjust to widen the distance.
-        </p>
-      )}
+      ) : null}
 
       <LeaveRoomControl isHost={isHost} exit={exit} context="session" />
     </section>

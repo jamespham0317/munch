@@ -229,8 +229,10 @@ The reskin is visual; it must not move domain logic or weaken the §2/§3 invari
   Presence and must **never** be read by matching, ranking, or the cohort — the cohort is active
   membership (`left_at IS NULL`), and an Away member's like is still required (docs/04 §3.4,
   CLAUDE.md §2.3). Components must not infer "out of the room" from a missing dot.
-- The **radius slider** narrows within the host's anchor; filters are **host-controlled** for
-  the room (docs/01 §8, invariant §2.2).
+- The **radius slider** is **host-controlled** — it appears only on Create Room (driving the
+  map zoom, Phase 4.6), the lobby radius edit, and the host **widen** control; it is **not** on
+  the swipe screen, so members never narrow their own deck. Filters are likewise host-controlled
+  for the room (docs/01 §8, invariant §2.2).
 - Cuisine selection uses the closed `CUISINES` taxonomy from `@munch/core` — a fixed picker,
   not free text (docs/01 §8).
 

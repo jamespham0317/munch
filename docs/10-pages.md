@@ -127,7 +127,8 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 ### 3.6 Swiping Session  ("Swiping Session")
 - **Routes:** mobile `app/room/[roomId]/session.tsx` · web `app/room/[roomId]/session/page.tsx`.
 - **Purpose:** the core loop. The Decision Card (photo, distance pill, name, rating, price •
-  cuisine, food chips) + pass/like action row. Header has a filter/adjust affordance.
+  cuisine, food chips) + pass/like action row. Header shows the Munch brand only — radius is
+  host-controlled (set on Create Room, editable in the lobby), not adjustable while swiping.
 - **Primitives:** Decision Card (existing `swipe-card`), swipe action row, ProgressPill,
   LeaveRoomControl (ConfirmModal — the session leave copy warns the roster is frozen, so
   leaving can't be undone with a rejoin).

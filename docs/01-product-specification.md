@@ -76,8 +76,8 @@ playful, low-friction group game with a clear stopping condition.
    or as a signed-in user. They land in a room lobby showing who's present.
 4. **Start session.** When the group is ready, the host starts the session. The deck is
    fetched once and cached.
-5. **Swipe.** Each member swipes their own shuffled order through the shared deck. A radius
-   slider lets members adjust how far out the search reaches (within the host's anchor).
+5. **Swipe.** Each member swipes their own shuffled order through the shared deck — the same
+   full pool for everyone, fetched once at the host's anchor and radius.
 6. **Match.** The instant a restaurant has a like from every member, the session ends and
    the match is announced live to the whole room with the restaurant's details.
 7. **Resolve (fallback).** If the deck is exhausted before a unanimous match, the host is
@@ -184,7 +184,10 @@ getting stuck host-less, consistent with §13's "never an ambiguous or stuck sta
 - **Cuisine is a closed taxonomy** (`CUISINES` in `@munch/core`) — the picker offers a fixed
   v1 list, not free-text entry, so the ids stay stable map keys shared by the client picker and
   the server's cuisine→provider-type mapping.
-- **Radius:** a user-adjustable slider, operating within the host's chosen anchor.
+- **Radius:** host-controlled like the other filters — set on Create Room (the map-zoom slider,
+  Phase 4.6) and editable in the lobby, then snapshotted for the session and only loosened by the
+  host's **widen** control. Members do not adjust radius while swiping; everyone draws from the
+  same host-set pool.
 - **Future (post-v1):** a "hybrid" mode where individual members may *narrow within* the
   host's set but never *expand beyond* it — preserving deck overlap. Dietary filters
   (vegetarian/vegan/halal/gluten-free) are a natural early addition.

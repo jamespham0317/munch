@@ -63,20 +63,15 @@ async function fetchSessionUser(): Promise<SessionUser | null> {
 }
 
 export interface SwipeSession {
-  /** Cards in this member's shuffled, radius-filtered order. */
-  visibleDeck: DeckRestaurant[];
-  /** The card currently shown, or null when the visible deck is exhausted. */
+  /** The card currently shown, or null when the deck is exhausted. */
   currentCard: DeckRestaurant | null;
-  /** Local radius slider value in metres; defaults to the deck-wide max distance. */
-  radiusM: number;
-  setRadiusM: (value: number) => void;
   /** Submit a swipe for `currentCard`. */
   swipe: (decision: "like" | "pass") => void;
   /** True while the submit_swipe RPC is in flight. */
   isSubmitting: boolean;
   /** Last RPC error, if any (safe message — never raw DB text). */
   error: Error | null;
-  /** True once every card in the radius-filtered deck has been swiped this session. */
+  /** True once every card in the deck has been swiped this session. */
   isExhausted: boolean;
   /** Live, server-authoritative session status (seeded from the initial read, then realtime). */
   status: SessionStatus;
@@ -88,7 +83,6 @@ export function useSwipeSession(
   roomId: string,
   sessionId: string,
   deck: DeckRestaurant[],
-  sessionRadiusM: number,
   initialStatus: SessionStatus,
 ): SwipeSession {
   const router = useRouter();
@@ -123,28 +117,16 @@ export function useSwipeSession(
     return shuffleDeck(deck, { memberId, sessionId });
   }, [deck, memberId, sessionId]);
 
-  // Local radius slider state. Per CLAUDE.md §2.1 changing this NEVER refetches the
-  // provider — it just filters the already-cached deck locally. The slider starts at
-  // the session's snapshotted radius (= the radius the deck was fetched at) so every
-  // card is visible by default; sliding it down narrows the visible deck. A widen-style
-  // refetch is Phase 3 (resolveSession action='widen').
-  const [radiusM, setRadiusM] = useState<number>(sessionRadiusM);
-
-  const visibleDeck = useMemo(
-    () => shuffled.filter((r) => r.distance_m <= radiusM),
-    [shuffled, radiusM],
-  );
-
   // Track which cards the caller has already swiped this session — keyed by restaurant id
-  // so a radius change can't "un-swipe" a card. Sliding the radius narrower hides
-  // unswiped cards beyond the value; sliding it wider re-exposes them in order.
+  // so a widen's deck refetch keeps already-swiped cards hidden, surfacing only the newly
+  // appended cards and never re-dealing one the member has already seen.
   const [swipedIds, setSwipedIds] = useState<Set<string>>(() => new Set());
   const remaining = useMemo(
-    () => visibleDeck.filter((r) => !swipedIds.has(r.id)),
-    [visibleDeck, swipedIds],
+    () => shuffled.filter((r) => !swipedIds.has(r.id)),
+    [shuffled, swipedIds],
   );
   const currentCard = remaining[0] ?? null;
-  const isExhausted = visibleDeck.length > 0 && remaining.length === 0;
+  const isExhausted = shuffled.length > 0 && remaining.length === 0;
 
   const mutation = useMutation<
     SubmitSwipeResponse,
@@ -244,10 +226,7 @@ export function useSwipeSession(
   }, [roomId, sessionId, router, queryClient]);
 
   return {
-    visibleDeck,
     currentCard,
-    radiusM,
-    setRadiusM,
     swipe,
     isSubmitting: mutation.isPending,
     error: mutation.error,
