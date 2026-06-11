@@ -147,8 +147,10 @@ tokens. They hold **no business logic and read no data** (CLAUDE.md §4).
 
 - **Button** — pill (`radius-full`). Variants: `primary` (amber fill, charcoal text),
   `secondary` (burnt-orange fill, white text), `ghost`/`outline` (border, transparent),
-  `social` (white, provider logo + label). States: default / pressed (2px translate +
-  `brand-pressed`) / disabled / loading. Min 44px touch target.
+  `social` (white, provider logo + label), `text` (borderless amber label, transparent
+  fill with a faint amber hover wash — the low-emphasis secondary action, e.g. Cancel).
+  States: default / pressed (2px translate + `brand-pressed`) / disabled / loading. Min
+  44px touch target.
 - **Chip / FoodChip** — cuisine + tag pills. Unselected: cream fill / `border` outline /
   muted text. Selected: solid `heat` (burnt orange) / `on-heat` text. Used for the closed
   `CUISINES` taxonomy (docs/01 §8) and decorative card tags.

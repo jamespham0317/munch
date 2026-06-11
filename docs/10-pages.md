@@ -78,6 +78,10 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   contributors" attribution is shown.
 - **Wiring:** `create_room` (then lobby). Filters snapshot into the room. The map only populates
   `anchor_lat`/`anchor_lng`; the `create_room` contract is unchanged.
+- **Cancel:** a low-emphasis `text`-variant Button below **Start Room** abandons creation and
+  routes to the Discover tab (`useCancelCreateRoom`). No room exists until **Start Room**, so it
+  is a pure client-side discard — no RPC, no cleanup, no invariant impact — and it is disabled
+  while a create is in flight.
 - **Invariant:** filters are **host-controlled** for the whole room; cuisines from the closed
   `CUISINES` taxonomy (docs/01 §8, invariant §2.2). No provider call fires on any map pan,
   geolocation, or radius-slider change (invariant §2.1).

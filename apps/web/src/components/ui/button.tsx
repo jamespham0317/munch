@@ -10,16 +10,19 @@ import { cx } from "./cx";
  * implemented as a real <button> (so the handler is the DOM-native `onClick`). Variants
  * map to the semantic roles: `primary` (amber fill, charcoal text), `secondary`
  * (burnt-orange fill, white text), `ghost` (2px outline, transparent), `social` (white
- * with a leading provider-logo slot). Pressed applies the 2px press translate; the
- * primary fill darkens to brand-pressed on hover. focus-visible ring; min 44px target.
+ * with a leading provider-logo slot), `text` (borderless amber label, transparent fill
+ * with a faint amber hover wash — the low-emphasis secondary action, e.g. Cancel).
+ * Pressed applies the 2px press translate; the primary fill darkens to brand-pressed on
+ * hover. focus-visible ring; min 44px target.
  */
-type ButtonVariant = "primary" | "secondary" | "ghost" | "social";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "social" | "text";
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary: "bg-brand text-on-brand hover:bg-brand-pressed",
   secondary: "bg-heat text-on-heat",
   ghost: "border-2 border-border bg-transparent text-text",
   social: "bg-surface text-text shadow-low",
+  text: "bg-transparent text-brand hover:bg-brand/5",
 };
 
 export function Button({

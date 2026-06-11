@@ -7,6 +7,7 @@ import {
   type PriceLevel,
   RADIUS_MAX_M,
 } from "@munch/core";
+import { X } from "lucide-react";
 import { type FormEvent, useState } from "react";
 
 import { AnchorMap } from "@/components/anchor-map";
@@ -14,7 +15,7 @@ import { FiltersFieldset } from "@/components/filters-fieldset";
 import { RadiusSlider } from "@/components/radius-slider";
 import { Button, Field, Input } from "@/components/ui";
 
-import { useCreateRoom } from "./use-create-room";
+import { useCancelCreateRoom, useCreateRoom } from "./use-create-room";
 
 /**
  * Host create-room form. Sets the host's name, the search anchor, the room-wide
@@ -28,6 +29,7 @@ import { useCreateRoom } from "./use-create-room";
  */
 export function CreateRoomForm() {
   const createRoom = useCreateRoom();
+  const cancelCreateRoom = useCancelCreateRoom();
 
   const [hostDisplayName, setHostDisplayName] = useState("");
   const [anchorLat, setAnchorLat] = useState<number | null>(null);
@@ -120,6 +122,17 @@ export function CreateRoomForm() {
       <p className="text-center text-caption text-text-muted">
         Inviting friends will be the next step.
       </p>
+      {/* Low-emphasis Cancel below the primary action (Stitch "Create a Room"): abandons
+          creation and returns to Discover. No room exists yet, so it's a pure client-side
+          discard. Disabled while a create is in flight (the create_room RPC may already be
+          committing — see useCancelCreateRoom). */}
+      <Button
+        variant="text"
+        label="Cancel"
+        leadingIcon={<X size={20} aria-hidden />}
+        onClick={cancelCreateRoom}
+        disabled={createRoom.isPending}
+      />
     </form>
   );
 }

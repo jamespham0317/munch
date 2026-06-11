@@ -20,18 +20,20 @@ import {
  * Pill button primitive (09-design-system.md §7). Presentational only — no data, no
  * hooks (CLAUDE.md §4). Variants map to the semantic roles: `primary` (amber fill,
  * charcoal text), `secondary` (burnt-orange fill, white text), `ghost` (2px outline,
- * transparent), `social` (white with a logo slot for provider sign-in). Pressed
- * applies the 2px press translate (+ brand-pressed on the primary fill); the throw
- * is an instant transform, so there is no time-based motion to reduce (§10).
+ * transparent), `social` (white with a logo slot for provider sign-in), `text`
+ * (borderless amber label on a transparent fill — the low-emphasis secondary action,
+ * e.g. Cancel). Pressed applies the 2px press translate (+ brand-pressed on the primary
+ * fill); the throw is an instant transform, so there is no time-based motion to reduce (§10).
  */
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "social";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "social" | "text";
 
 const VARIANT_BG: Record<ButtonVariant, string> = {
   primary: colors.brand,
   secondary: colors.heat,
   ghost: "transparent",
   social: colors.surface,
+  text: "transparent",
 };
 
 const VARIANT_TEXT: Record<ButtonVariant, string> = {
@@ -39,6 +41,7 @@ const VARIANT_TEXT: Record<ButtonVariant, string> = {
   secondary: colors.onHeat,
   ghost: colors.text,
   social: colors.text,
+  text: colors.brand,
 };
 
 export function Button({

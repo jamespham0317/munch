@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import {
   createRoomRequestSchema,
   type CuisineId,
@@ -12,7 +13,7 @@ import { AnchorMap } from "../../components/anchor-map";
 import { FiltersFieldset } from "../../components/filters-fieldset";
 import { Button, Field, Input, RadiusSlider } from "../../components/ui";
 import { colors, spacing, typography } from "../../theme";
-import { useCreateRoom } from "./use-create-room";
+import { useCancelCreateRoom, useCreateRoom } from "./use-create-room";
 
 /**
  * Host create-room form (RN parity with apps/web's CreateRoomForm). Sets the host's
@@ -28,6 +29,7 @@ import { useCreateRoom } from "./use-create-room";
  */
 export function CreateRoomForm() {
   const createRoom = useCreateRoom();
+  const cancelCreateRoom = useCancelCreateRoom();
 
   const [hostDisplayName, setHostDisplayName] = useState("");
   const [anchorLat, setAnchorLat] = useState<number | null>(null);
@@ -110,6 +112,17 @@ export function CreateRoomForm() {
         label={createRoom.isPending ? "Creating…" : "Start Room"}
         onPress={handleSubmit}
         loading={createRoom.isPending}
+      />
+      {/* Low-emphasis Cancel below the primary action (Stitch "Create a Room"): abandons
+          creation and returns to Discover. No room exists yet, so it's a pure client-side
+          discard. Disabled while a create is in flight (the create_room RPC may already be
+          committing — see useCancelCreateRoom). */}
+      <Button
+        variant="text"
+        label="Cancel"
+        leadingIcon={<Feather name="x" size={20} color={colors.brand} />}
+        onPress={cancelCreateRoom}
+        disabled={createRoom.isPending}
       />
     </View>
   );
