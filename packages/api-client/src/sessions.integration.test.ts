@@ -1168,6 +1168,90 @@ describe.skipIf(!ENABLED)("Phase 3 host resolution (integration)", () => {
     });
     expect(badState.error?.error.code).toBe("SESSION_INVALID_STATE");
   });
+
+  // --- Widen-only guard (feature spec §5) ----------------------------------
+  // A widen may only BROADEN the pool, never narrow it. The Edge Function rejects a
+  // narrowing body with VALIDATION_ERROR before any provider fetch, leaving the session in
+  // awaiting_host_resolution (no state change, host can retry). The shared rule is unit-tested
+  // in @munch/core/domain/widen.test.ts; here we assert the authoritative server enforcement.
+
+  it("rejects a narrowing widen (smaller radius, or restricting an unrestricted filter) with VALIDATION_ERROR", async () => {
+    if (!EDGE_ENABLED) return;
+    const { roomId, host } = await newRoomWithHost("P3 Host K");
+    const code = await roomCode(roomId);
+    await addGuest(code, "Guest 1");
+    // Default seed: radius_m 3000, filter_cuisines [] and filter_price_levels [] (= "any").
+    const { sessionId } = await seedSessionWithSpecs(roomId, [
+      { rating: 4.0, lat: 37.775, lng: -122.42 },
+    ]);
+    await setAwaiting(sessionId);
+
+    // Smaller radius than the session snapshot → narrows.
+    const smallerRadius = await resolveSession(host.client, {
+      session_id: sessionId,
+      action: "widen",
+      radius_m: 2000,
+    });
+    expect(smallerRadius.error?.error.code).toBe("VALIDATION_ERROR");
+    expect(await sessionStatus(sessionId)).toBe("awaiting_host_resolution");
+
+    // Restricting an unrestricted (empty = all) cuisine set → narrows.
+    const restrictCuisine = await resolveSession(host.client, {
+      session_id: sessionId,
+      action: "widen",
+      filters: { cuisines: ["italian"] },
+    });
+    expect(restrictCuisine.error?.error.code).toBe("VALIDATION_ERROR");
+    expect(await sessionStatus(sessionId)).toBe("awaiting_host_resolution");
+
+    // Restricting an unrestricted (empty = all) price set → narrows.
+    const restrictPrice = await resolveSession(host.client, {
+      session_id: sessionId,
+      action: "widen",
+      filters: { price_levels: ["1"] },
+    });
+    expect(restrictPrice.error?.error.code).toBe("VALIDATION_ERROR");
+    expect(await sessionStatus(sessionId)).toBe("awaiting_host_resolution");
+  });
+
+  it("rejects dropping a cuisine from a restricted session, but allows adding one", async () => {
+    if (!EDGE_ENABLED) return;
+    const { roomId, host } = await newRoomWithHost("P3 Host L");
+    const code = await roomCode(roomId);
+    await addGuest(code, "Guest 1");
+    const { sessionId } = await seedSessionWithSpecs(roomId, [
+      { rating: 4.0, lat: 37.775, lng: -122.42 },
+    ]);
+    // Restrict this session's snapshot to a two-cuisine set so we can test both directions.
+    const { error: snapErr } = await admin
+      .from("sessions")
+      .update({ filter_cuisines: ["italian", "thai"] })
+      .eq("id", sessionId);
+    expect(snapErr).toBeNull();
+    await setAwaiting(sessionId);
+
+    // Dropping "thai" (a subset of the snapshot) → narrows → rejected.
+    const drop = await resolveSession(host.client, {
+      session_id: sessionId,
+      action: "widen",
+      radius_m: 5000,
+      filters: { cuisines: ["italian"] },
+    });
+    expect(drop.error?.error.code).toBe("VALIDATION_ERROR");
+    expect(await sessionStatus(sessionId)).toBe("awaiting_host_resolution");
+
+    // Adding "mexican" (a superset of the snapshot) → broadens → accepted, back to active.
+    const add = unwrap(
+      await resolveSession(host.client, {
+        session_id: sessionId,
+        action: "widen",
+        radius_m: 5000,
+        filters: { cuisines: ["italian", "thai", "mexican"] },
+      }),
+    );
+    expect(add.session.status).toBe("active");
+    expect(await sessionStatus(sessionId)).toBe("active");
+  });
 });
 
 /**

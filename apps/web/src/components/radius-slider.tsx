@@ -5,15 +5,19 @@ import { RADIUS_MIN_M } from "@munch/core";
  * pill, "Distance" label). Bound to UI state and the deck's local distance filter —
  * adjusting it NEVER refetches the provider (CLAUDE.md §2.1; widen is a separate flow).
  * The upper bound is the session's snapshotted radius (the radius the deck was fetched
- * at); the lower bound is the shared RADIUS_MIN_M constant. Presentational only.
+ * at); the lower bound defaults to the shared RADIUS_MIN_M constant, but the host-resolution
+ * widen control passes `minM={sessionRadiusM}` so widen can only ever INCREASE the radius
+ * (feature spec §5/§6.1). Presentational only.
  */
 export function RadiusSlider({
   valueM,
   maxM,
+  minM = RADIUS_MIN_M,
   onChange,
 }: {
   valueM: number;
   maxM: number;
+  minM?: number;
   onChange: (value: number) => void;
 }) {
   return (
@@ -26,7 +30,7 @@ export function RadiusSlider({
       </div>
       <input
         type="range"
-        min={RADIUS_MIN_M}
+        min={minM}
         max={maxM}
         step={100}
         value={valueM}

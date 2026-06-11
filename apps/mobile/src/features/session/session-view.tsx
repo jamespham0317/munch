@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import type { DeckRestaurant, SessionStatus } from "@munch/core";
+import type { DeckRestaurant, PriceLevel, SessionStatus } from "@munch/core";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -110,6 +110,11 @@ export function SessionView({
       sessionId={sessionId}
       deck={deckQuery.data}
       sessionRadiusM={activeSession.radiusM}
+      sessionFilters={{
+        openNow: activeSession.filterOpenNow,
+        cuisines: activeSession.filterCuisines,
+        priceLevels: activeSession.filterPriceLevels,
+      }}
       initialStatus={activeSession.status}
       isHost={isHost}
       exit={exit}
@@ -129,6 +134,7 @@ function SwipeRunner({
   sessionId,
   deck,
   sessionRadiusM,
+  sessionFilters,
   initialStatus,
   isHost,
   exit,
@@ -137,6 +143,11 @@ function SwipeRunner({
   sessionId: string;
   deck: DeckRestaurant[];
   sessionRadiusM: number;
+  sessionFilters: {
+    openNow: boolean;
+    cuisines: string[];
+    priceLevels: PriceLevel[];
+  };
   initialStatus: SessionStatus;
   isHost: boolean;
   exit: ReturnType<typeof useRoomExit>;
@@ -153,6 +164,7 @@ function SwipeRunner({
         sessionId={sessionId}
         isHost={swipe.isHost}
         sessionRadiusM={sessionRadiusM}
+        sessionFilters={sessionFilters}
         deck={deck}
       />
     );

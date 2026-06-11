@@ -180,6 +180,10 @@ a durable copy of provider content.
   one additional provider fetch for unseen restaurants and appends them to `cached_decks` with
   `added_round = n+1`. Earlier swipes/likes are never deleted — they still count toward a later
   unanimous match (a like recorded before the widen can complete a unanimous match after it).
+  A widen is **broaden-only** (feature spec §5): radius can only increase, cuisines/prices can
+  only be added or cleared to "any", and open-now is locked — so the candidate pool is
+  monotonically non-decreasing across rounds. A narrowing request is rejected server-side
+  (`VALIDATION_ERROR`) before the fetch, leaving the session in `awaiting_host_resolution`.
 - `cancelled` — terminal state with no decision; entered when the **host leaves** mid-session
   (or ends the room, or disconnects past the grace), **or when the last active member leaves**
   (an emptied cohort). The room is soft-closed and ephemeral session data is purged. Host role

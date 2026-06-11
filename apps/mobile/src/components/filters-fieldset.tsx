@@ -1,4 +1,9 @@
-import { type CuisineId, CUISINES, type PriceLevel } from "@munch/core";
+import {
+  type CuisineId,
+  CUISINES,
+  PRICE_LEVELS,
+  type PriceLevel,
+} from "@munch/core";
 import { StyleSheet, View } from "react-native";
 
 import { spacing } from "../theme";
@@ -10,17 +15,10 @@ import { Field } from "./ui/field";
  * RN parity with apps/web's FiltersFieldset — reused by the create-room form and the lobby
  * filter-edit panel so the two stay in sync (restyling here updates both, 09-design-system.md §8).
  * Presentational only; it owns no data access and holds the selections as controlled props
- * (CLAUDE.md §4). Cuisines come from the @munch/core CUISINES constant (no free text); the picker
- * only ever emits taxonomy ids. Filters are host-only and whole-room (CLAUDE.md §2.2); there is no
- * per-member narrowing here.
+ * (CLAUDE.md §4). Cuisines + price levels come from the @munch/core CUISINES / PRICE_LEVELS
+ * constants (no free text); the picker only ever emits taxonomy ids. Filters are host-only and
+ * whole-room (CLAUDE.md §2.2); there is no per-member narrowing here.
  */
-
-const PRICE_LEVELS: readonly { level: PriceLevel; caption: string }[] = [
-  { level: "1", caption: "Cheap" },
-  { level: "2", caption: "Fair" },
-  { level: "3", caption: "Posh" },
-  { level: "4", caption: "Splurge" },
-];
 
 export function FiltersFieldset({
   openNow,

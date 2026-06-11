@@ -157,13 +157,18 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   `awaiting_host_resolution`.
 - **Purpose:** "No Unanimous Match Yet." **Group's Top Pick** Decision Card + "N/M friends
   liked this"; **Settle for this**; **Widen the Search** (radius slider + cuisine chips +
-  **Fetch New Deck**).
-- **Primitives:** Card, ProgressPill, RadiusSlider, FoodChip, Button.
+  price tiles + **Fetch New Deck**).
+- **Primitives:** Card, ProgressPill, RadiusSlider, FoodChip, PriceTile, Button.
 - **Wiring:** `get_resolution_ranking` (host); `resolve_session` accept_top / widen
   (docs/04 §3.8–§3.9). Non-host members see a passive **"waiting on host"** state.
 - **Invariants:** ranking is **closest-to-unanimous** (fewest passes → rating → distance,
   §2.4); the pill is an **aggregate count, never per-member identity** (§3); widen makes
-  **exactly one** extra provider fetch for unseen places (§2.1).
+  **exactly one** extra provider fetch for unseen places (§2.1). Widen is **broaden-only**
+  (feature spec §5): the radius slider is floored at the session radius (only increases);
+  the session's cuisines/prices are **locked-on** and the host may only **add** more or tap
+  **Any** to clear a restriction; a filter that is already "all" shows disabled ("already
+  included"); open-now is not adjustable here. The shared `@munch/core` `isNonNarrowingWiden`
+  rule disables a narrowing submit, and the server rejects one (`VALIDATION_ERROR`).
 
 ### 3.9 Discover  ("Discover - Under Construction")
 - **Routes:** new placeholder under the Discover tab (both platforms).

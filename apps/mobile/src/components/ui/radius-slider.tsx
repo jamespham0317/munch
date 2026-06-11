@@ -8,15 +8,19 @@ import { colors, radii, spacing, typography } from "../../theme";
  * Local-only radius slider (09-design-system.md §7: amber thumb + amber value pill). Bound
  * to UI state and the deck's local distance filter — adjusting it NEVER refetches the
  * provider (CLAUDE.md §2.1). The upper bound is the session's snapshotted radius; the
- * lower bound is the shared RADIUS_MIN_M constant. Presentational only (CLAUDE.md §4).
+ * lower bound defaults to the shared RADIUS_MIN_M constant, but the host-resolution widen
+ * control passes `minM={sessionRadiusM}` so widen can only ever INCREASE the radius
+ * (feature spec §5/§6.1). Presentational only (CLAUDE.md §4).
  */
 export function RadiusSlider({
   valueM,
   maxM,
+  minM = RADIUS_MIN_M,
   onChange,
 }: {
   valueM: number;
   maxM: number;
+  minM?: number;
   onChange: (value: number) => void;
 }) {
   return (
@@ -28,7 +32,7 @@ export function RadiusSlider({
         </View>
       </View>
       <Slider
-        minimumValue={RADIUS_MIN_M}
+        minimumValue={minM}
         maximumValue={maxM}
         step={100}
         value={valueM}

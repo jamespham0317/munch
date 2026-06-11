@@ -238,13 +238,28 @@ async function handleWiden(
   const excludeProviderRefs = await deckProviderRefs(admin, session.id);
 
   // Effective widen params: body overrides, falling back to the session snapshot for any
-  // field omitted (so a second widen round builds on the first). The host can only NARROW
-  // or WIDEN within their own set — the client never expands past the host's filters
-  // (CLAUDE.md §2.2); the anchor is unchanged so distances are unaffected.
+  // field omitted (so a second widen round builds on the first). A widen may only BROADEN
+  // the candidate pool — raise the radius, add cuisines/prices, or clear a restriction to
+  // "any" — never narrow it (feature spec §5); the anchor is unchanged so distances are
+  // unaffected. The non-narrowing rule is enforced just below.
   const radiusM = body.radiusM ?? session.radius_m;
   const openNow = body.filters?.open_now ?? session.filter_open_now;
   const cuisines = body.filters?.cuisines ?? session.filter_cuisines;
   const priceLevels = body.filters?.price_levels ?? session.filter_price_levels;
+
+  // Authoritative widen-only guard (feature spec §5). Inline mirror of @munch/core
+  // isNonNarrowingWiden — Deno can't import the workspace package, so keep these in lockstep
+  // (same pattern as the RADIUS bounds above). A non-narrowing UI never trips this; it is
+  // defense-in-depth against a crafted request. open_now is locked (an omitted field falls
+  // back to the snapshot, so it only narrows if a body explicitly flips it).
+  if (
+    radiusM < session.radius_m ||
+    openNow !== session.filter_open_now ||
+    !setFilterIsBroaderOrEqual(session.filter_cuisines, cuisines) ||
+    !setFilterIsBroaderOrEqual(session.filter_price_levels, priceLevels)
+  ) {
+    throw new EdgeError("VALIDATION_ERROR", "widen must not narrow the pool");
+  }
 
   // ----- Provider fetch — EXACTLY ONCE, before any DB write ----------------
   const callsBefore = getProviderCallCount();
@@ -318,6 +333,23 @@ async function handleWiden(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Inline mirror of @munch/core `setFilterIsBroaderOrEqual` (feature spec §5; the workspace
+ * package can't be imported into Deno — keep in lockstep). An EMPTY set means "no
+ * restriction = all values = widest". Returns true iff the requested set does not narrow the
+ * result vs the session set: requested empty is always broadest; restricting an empty
+ * session set narrows; otherwise the request must be a superset of the session set.
+ */
+function setFilterIsBroaderOrEqual(
+  sessionSet: string[],
+  requestedSet: string[],
+): boolean {
+  if (requestedSet.length === 0) return true;
+  if (sessionSet.length === 0) return false;
+  const requested = new Set(requestedSet);
+  return sessionSet.every((value) => requested.has(value));
+}
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {

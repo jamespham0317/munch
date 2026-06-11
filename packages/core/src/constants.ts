@@ -3,6 +3,8 @@
  * `src/validation` so client and server agree on the same limits.
  */
 
+import type { PriceLevel } from "./types/enums";
+
 /** Restaurant-pool search radius bounds, in metres. */
 export const RADIUS_MIN_M = 500;
 export const RADIUS_MAX_M = 20_000;
@@ -70,3 +72,17 @@ export type CuisineId = (typeof CUISINES)[number]["id"];
 export function cuisineLabel(id: string): string {
   return CUISINES.find((c) => c.id === id)?.label ?? id;
 }
+
+/**
+ * Closed v1 price-level taxonomy ($–$$$$). The single source of truth for the host's
+ * price picker (web + mobile FiltersFieldset and the host-resolution widen control) so
+ * the captions stay identical across surfaces. `level` is the `price_level` enum value
+ * (docs/03 §2); the "$"-glyph label is derived at the call site as
+ * `"$".repeat(Number(level))`. CLOSED, like {@link CUISINES} — do not add levels here.
+ */
+export const PRICE_LEVELS = [
+  { level: "1", caption: "Cheap" },
+  { level: "2", caption: "Fair" },
+  { level: "3", caption: "Posh" },
+  { level: "4", caption: "Splurge" },
+] as const satisfies readonly { level: PriceLevel; caption: string }[];

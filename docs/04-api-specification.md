@@ -363,6 +363,17 @@ Host accepts the top pick or widens criteria.
   `cached_decks` with `added_round = n+1`; persists the widened `radius_m`/`filters` onto the
   session snapshot (omitted fields keep their current value); returns the session to `active`.
   Earlier swipes/likes are never deleted — they still count toward a later unanimous match.
+- **Widen is broaden-only (feature spec §5).** A widen may only enlarge the pool relative to the
+  session's filter snapshot; a narrowing body is rejected with `VALIDATION_ERROR` **before** any
+  provider fetch (so the session stays in `awaiting_host_resolution` and the host can retry).
+  Per dimension: `radius_m` must be `>=` the session radius; `filters.cuisines` and
+  `filters.price_levels` must not shrink the result — an **empty** array means "no restriction =
+  all values" (the widest), so a request is valid iff it is empty or a **superset** of the
+  session set (restricting an already-empty set narrows and is rejected); `filters.open_now` is
+  **locked** to the session value (a widen may not change it). This relational rule is not in the
+  static request schema (which can't see session state) — it is enforced in the Edge Function via
+  the inline mirror of `@munch/core`'s `isNonNarrowingWiden`/`setFilterIsBroaderOrEqual`, the same
+  rule the resolution UI uses to lock/disable its controls.
 - **Implementation:** a single **Edge Function** (`resolve-session/`) handling **both** actions.
   It lives server-side because `widen` requires the server-only provider key (CLAUDE.md §2.1/§3);
   `accept_top` rides along in the same function (service-role writes to `matches` + `sessions`)

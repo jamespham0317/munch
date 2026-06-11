@@ -127,6 +127,12 @@ The host is shown the ranked results and chooses one of two actions:
 - **Accept the top pick** — ends the session on the highest-ranked restaurant.
 - **Widen the criteria** — loosens filters and/or increases the radius, fetches a fresh
   deck of restaurants *not already seen*, and resumes swiping. Earlier likes still count.
+  Widen is **broaden-only**: it may only make the candidate pool larger — increase the
+  radius, add cuisines, add price ranges, or clear a restriction to "any". It can never
+  *narrow* the pool (no smaller radius, no dropping a cuisine/price the session already
+  allowed), since narrowing would drop options the group has already seen and make a
+  unanimous match harder. "Open now" is fixed for the session and is not changed by widen.
+  The pool is therefore monotonically non-decreasing across widen rounds.
 
 ### Ranking rule: "closest to unanimous"
 

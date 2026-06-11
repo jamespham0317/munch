@@ -3,6 +3,9 @@ import {
   type CuisineId,
   CUISINES,
   type DeckRestaurant,
+  isNonNarrowingWiden,
+  PRICE_LEVELS,
+  type PriceLevel,
   RADIUS_MAX_M,
 } from "@munch/core";
 import { useState } from "react";
@@ -11,11 +14,19 @@ import { StyleSheet, Text, View } from "react-native";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { FoodChip } from "../../components/ui/chip";
+import { PriceTile } from "../../components/ui/price-tile";
 import { ProgressPill } from "../../components/ui/progress-pill";
 import { RadiusSlider } from "../../components/ui/radius-slider";
 import { colors, spacing, typography } from "../../theme";
 import { useResolutionRanking } from "./use-resolution-ranking";
 import { useResolveSession } from "./use-resolve-session";
+
+/** The session's snapshotted filters — the widen-only baseline (feature spec §5). */
+export interface SessionFilters {
+  openNow: boolean;
+  cuisines: string[];
+  priceLevels: PriceLevel[];
+}
 
 /**
  * Host-resolution screen (RN parity with apps/web's ResolutionView; 10-pages.md §3.8), shown
@@ -29,20 +40,23 @@ import { useResolveSession } from "./use-resolve-session";
  *     navigate on widen; the status channel drives the resume.
  *
  * The "N/M friends liked this" pill is an AGGREGATE count (like_count of member_count), never
- * per-member identity (CLAUDE.md §3). The widen block's radius + cuisine criteria are
- * HOST-CONTROLLED room filters (CLAUDE.md §2.2), not a per-member narrow.
+ * per-member identity (CLAUDE.md §3). The widen controls are HOST-CONTROLLED room filters
+ * (CLAUDE.md §2.2) and may only BROADEN the pool, never narrow it (feature spec §5): radius
+ * only increases, cuisines/prices can only be added or cleared to "any", open-now is locked.
  */
 export function ResolutionView({
   roomId,
   sessionId,
   isHost,
   sessionRadiusM,
+  sessionFilters,
   deck,
 }: {
   roomId: string;
   sessionId: string;
   isHost: boolean;
   sessionRadiusM: number;
+  sessionFilters: SessionFilters;
   deck: DeckRestaurant[];
 }) {
   if (!isHost) {
@@ -60,6 +74,7 @@ export function ResolutionView({
       roomId={roomId}
       sessionId={sessionId}
       sessionRadiusM={sessionRadiusM}
+      sessionFilters={sessionFilters}
       deck={deck}
     />
   );
@@ -69,21 +84,31 @@ function HostResolution({
   roomId,
   sessionId,
   sessionRadiusM,
+  sessionFilters,
   deck,
 }: {
   roomId: string;
   sessionId: string;
   sessionRadiusM: number;
+  sessionFilters: SessionFilters;
   deck: DeckRestaurant[];
 }) {
   const rankingQuery = useResolutionRanking(sessionId, true);
   const resolve = useResolveSession(roomId, sessionId);
 
-  // Widen criteria: start at the session's current radius and let the host raise it up to the
-  // global cap, plus optional host-controlled cuisine narrowing for the next fetch (the widen
-  // request accepts a partial filters set — CLAUDE.md §2.2). Empty cuisines = radius-only.
+  // Widen criteria are WIDEN-ONLY (feature spec §5): the deck can only grow.
+  //   * radius — slider floored at the session radius, so it can only increase;
+  //   * cuisine/price — the session's current selections are locked-on; the host may ADD more
+  //     or clear the restriction to "any" ([]), but never drop a locked value. An empty session
+  //     filter is already "all" (the widest), so that control is shown but disabled.
+  const cuisineRestricted = sessionFilters.cuisines.length > 0;
+  const priceRestricted = sessionFilters.priceLevels.length > 0;
+
   const [widenRadiusM, setWidenRadiusM] = useState<number>(sessionRadiusM);
-  const [widenCuisines, setWidenCuisines] = useState<CuisineId[]>([]);
+  const [anyCuisine, setAnyCuisine] = useState<boolean>(!cuisineRestricted);
+  const [addedCuisines, setAddedCuisines] = useState<CuisineId[]>([]);
+  const [anyPrice, setAnyPrice] = useState<boolean>(!priceRestricted);
+  const [addedPrices, setAddedPrices] = useState<PriceLevel[]>([]);
 
   if (rankingQuery.isPending) {
     return <Text style={styles.muted}>Loading ranking…</Text>;
@@ -126,11 +151,49 @@ function HostResolution({
       null)
     : null;
 
-  function toggleCuisine(id: CuisineId) {
-    setWidenCuisines((current) =>
+  // Effective filters the widen will request. "Any" → [] (broadest); otherwise the locked
+  // session set plus the host's additions (deduped).
+  const effectiveCuisines: string[] = anyCuisine
+    ? []
+    : Array.from(
+        new Set<string>([...sessionFilters.cuisines, ...addedCuisines]),
+      );
+  const effectivePriceLevels: PriceLevel[] = anyPrice
+    ? []
+    : Array.from(
+        new Set<PriceLevel>([...sessionFilters.priceLevels, ...addedPrices]),
+      );
+
+  // Defensive guard mirroring the server (feature spec §5): the controls already construct a
+  // non-narrowing request, so this should always hold — it just blocks a malformed submit.
+  const canWiden = isNonNarrowingWiden(
+    {
+      radiusM: sessionRadiusM,
+      openNow: sessionFilters.openNow,
+      cuisines: sessionFilters.cuisines,
+      priceLevels: sessionFilters.priceLevels,
+    },
+    {
+      radiusM: widenRadiusM,
+      openNow: sessionFilters.openNow,
+      cuisines: effectiveCuisines,
+      priceLevels: effectivePriceLevels,
+    },
+  );
+
+  function toggleAddedCuisine(id: CuisineId) {
+    setAddedCuisines((current) =>
       current.includes(id)
         ? current.filter((value) => value !== id)
         : [...current, id],
+    );
+  }
+
+  function toggleAddedPrice(level: PriceLevel) {
+    setAddedPrices((current) =>
+      current.includes(level)
+        ? current.filter((value) => value !== level)
+        : [...current, level],
     );
   }
 
@@ -144,15 +207,16 @@ function HostResolution({
   }
 
   function handleWiden() {
-    if (busy) return;
+    if (busy || !canWiden) return;
     resolve.mutate({
       action: "widen",
       session_id: sessionId,
       radius_m: widenRadiusM,
-      // Only send filters when the host narrows by cuisine; otherwise widen stays radius-only.
-      ...(widenCuisines.length > 0
-        ? { filters: { cuisines: widenCuisines } }
-        : {}),
+      // open_now is omitted on purpose (locked — the server keeps the session value).
+      filters: {
+        cuisines: effectiveCuisines,
+        price_levels: effectivePriceLevels,
+      },
     });
   }
 
@@ -222,31 +286,83 @@ function HostResolution({
           <Text style={styles.widenTitle}>Widen the Search</Text>
         </View>
         <Text style={styles.muted}>
-          Adjust your search to pull in more restaurants and keep the swiping
-          going.
+          Broaden your search to pull in more restaurants and keep the swiping
+          going — you can reach farther, add cuisines, or add price ranges.
         </Text>
+
         <RadiusSlider
           valueM={widenRadiusM}
+          minM={sessionRadiusM}
           maxM={RADIUS_MAX_M}
           onChange={setWidenRadiusM}
         />
+
         <Text style={styles.label}>Cuisine</Text>
-        <View style={styles.chipWrap}>
-          {CUISINES.map(({ id, label }) => (
+        {cuisineRestricted ? (
+          <View style={styles.chipWrap}>
             <FoodChip
-              key={id}
-              label={label}
-              selected={widenCuisines.includes(id)}
-              onPress={() => toggleCuisine(id)}
+              label="Any cuisine"
+              selected={anyCuisine}
+              onPress={() => setAnyCuisine((value) => !value)}
               disabled={busy}
             />
-          ))}
-        </View>
+            {CUISINES.map(({ id, label }) => {
+              const locked = sessionFilters.cuisines.includes(id);
+              return (
+                <FoodChip
+                  key={id}
+                  label={label}
+                  selected={
+                    !anyCuisine && (locked || addedCuisines.includes(id))
+                  }
+                  onPress={() => toggleAddedCuisine(id)}
+                  disabled={busy || anyCuisine || locked}
+                />
+              );
+            })}
+          </View>
+        ) : (
+          <Text style={styles.muted}>All cuisines already included.</Text>
+        )}
+
+        <Text style={styles.label}>Price range</Text>
+        {priceRestricted ? (
+          <View style={styles.priceGroup}>
+            <View style={styles.chipWrap}>
+              <FoodChip
+                label="Any price"
+                selected={anyPrice}
+                onPress={() => setAnyPrice((value) => !value)}
+                disabled={busy}
+              />
+            </View>
+            <View style={styles.tileRow}>
+              {PRICE_LEVELS.map(({ level, caption }) => {
+                const locked = sessionFilters.priceLevels.includes(level);
+                return (
+                  <PriceTile
+                    key={level}
+                    label={"$".repeat(Number(level))}
+                    caption={caption}
+                    selected={
+                      !anyPrice && (locked || addedPrices.includes(level))
+                    }
+                    onPress={() => toggleAddedPrice(level)}
+                    disabled={busy || anyPrice || locked}
+                  />
+                );
+              })}
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.muted}>All price ranges already included.</Text>
+        )}
+
         <Button
           label={busy ? "Working…" : "Fetch New Deck"}
           variant="secondary"
           onPress={handleWiden}
-          disabled={busy}
+          disabled={busy || !canWiden}
           loading={busy}
           leadingIcon={
             <Feather name="refresh-cw" size={18} color={colors.onHeat} />
@@ -285,4 +401,6 @@ const styles = StyleSheet.create({
   widen: { gap: spacing.sm },
   widenTitle: { ...typography.titleLg, color: colors.text },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.base },
+  priceGroup: { gap: spacing.base },
+  tileRow: { flexDirection: "row", gap: spacing.base },
 });

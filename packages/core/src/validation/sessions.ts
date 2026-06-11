@@ -84,6 +84,11 @@ export const resolveSessionAcceptRequestSchema = z.object({
   restaurant_id: z.uuid(),
 });
 
+// Shape validation only. A widen may only BROADEN the pool, never narrow it (feature spec
+// §5) — but that rule is RELATIONAL (it compares the request against the session's filter
+// snapshot), which a static schema can't see. It is enforced authoritatively in the
+// resolve-session Edge Function via the inline mirror of @munch/core `isNonNarrowingWiden`;
+// a narrowing body is rejected there as VALIDATION_ERROR.
 export const resolveSessionWidenRequestSchema = z.object({
   session_id: z.uuid(),
   action: z.literal("widen"),
