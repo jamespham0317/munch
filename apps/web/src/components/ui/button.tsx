@@ -11,11 +11,18 @@ import { cx } from "./cx";
  * map to the semantic roles: `primary` (amber fill, charcoal text), `secondary`
  * (burnt-orange fill, white text), `ghost` (2px outline, transparent), `social` (white
  * with a leading provider-logo slot), `text` (borderless amber label, transparent fill
- * with a faint amber hover wash — the low-emphasis secondary action, e.g. Cancel).
- * Pressed applies the 2px press translate; the primary fill darkens to brand-pressed on
- * hover. focus-visible ring; min 44px target.
+ * with a faint amber hover wash — the low-emphasis secondary action, e.g. Cancel),
+ * `neutral` (filled grey surface with muted text — the modal "Stay"/"Cancel" dismiss
+ * action). Pressed applies the 2px press translate; the primary fill darkens to
+ * brand-pressed on hover. focus-visible ring; min 44px target.
  */
-type ButtonVariant = "primary" | "secondary" | "ghost" | "social" | "text";
+type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "social"
+  | "text"
+  | "neutral";
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary: "bg-brand text-on-brand hover:bg-brand-pressed",
@@ -23,6 +30,7 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   ghost: "border-2 border-border bg-transparent text-text",
   social: "bg-surface text-text shadow-low",
   text: "bg-transparent text-brand hover:bg-brand/5",
+  neutral: "bg-surface-highest text-text-muted hover:bg-surface-sunken",
 };
 
 export function Button({

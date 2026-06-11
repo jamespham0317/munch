@@ -182,7 +182,7 @@ export function LobbyView({ roomId }: { roomId: string }) {
       {/* No auth surface in a room (CLAUDE.md §3, Phase 4.5): a guest who joined a room stays a
           guest for that room. Sign-in/registration lives only on home and /history. */}
 
-      <LeaveRoomControl isHost={isHost} exit={exit} />
+      <LeaveRoomControl isHost={isHost} exit={exit} context="lobby" />
     </View>
   );
 }

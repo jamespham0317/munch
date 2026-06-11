@@ -184,7 +184,7 @@ export function LobbyView({ roomId }: { roomId: string }) {
       {/* No mid-room sign-in (CLAUDE.md §3): a guest who joined this room stays a guest for it.
           Auth lives only outside a room (Profile tab + /history) — no auth control belongs here. */}
 
-      <LeaveRoomControl isHost={isHost} exit={exit} />
+      <LeaveRoomControl isHost={isHost} exit={exit} context="lobby" />
     </section>
   );
 }

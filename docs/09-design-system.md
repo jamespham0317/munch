@@ -148,14 +148,23 @@ tokens. They hold **no business logic and read no data** (CLAUDE.md §4).
 - **Button** — pill (`radius-full`). Variants: `primary` (amber fill, charcoal text),
   `secondary` (burnt-orange fill, white text), `ghost`/`outline` (border, transparent),
   `social` (white, provider logo + label), `text` (borderless amber label, transparent
-  fill with a faint amber hover wash — the low-emphasis secondary action, e.g. Cancel).
-  States: default / pressed (2px translate + `brand-pressed`) / disabled / loading. Min
-  44px touch target.
+  fill with a faint amber hover wash — the low-emphasis secondary action, e.g. Cancel),
+  `neutral` (filled `surface-highest` grey, `text-muted` label — the modal "Stay"/"Cancel"
+  dismiss action). States: default / pressed (2px translate + `brand-pressed`) / disabled /
+  loading. Min 44px touch target.
 - **Chip / FoodChip** — cuisine + tag pills. Unselected: cream fill / `border` outline /
   muted text. Selected: solid `heat` (burnt orange) / `on-heat` text. Used for the closed
   `CUISINES` taxonomy (docs/01 §8) and decorative card tags.
 - **Card** — `radius-xl`, `shadow-low`, white surface, 24px padding (32px for the Decision
   card). Optional image header with bottom-inner-shadow.
+- **ConfirmModal** — destructive-action confirmation sheet (the in-app replacement for the OS
+  alert/`window.confirm` on the room leave/end flow). A bottom-anchored `radius-lg` `surface`
+  card over a dimmed charcoal scrim (`backdrop-blur` on web): an `error-container` icon badge
+  (logout glyph in `error`), a centered `headline-md` title + `body-md`/`text-muted` body, and
+  stacked `primary` (confirm) + `neutral` (dismiss) pill buttons. Scrim tap / Escape (web) /
+  Android back dismiss; `confirmLoading` holds the sheet open with a spinner while the mutation
+  runs. Presentational only — owns no mutation, declares no match (CLAUDE.md §4). Mobile = RN
+  `Modal`; web = `createPortal` to `body` with `role="alertdialog"` + focus trap.
 - **PriceTile / SegmentedTile** — `$`–`$$$$` selectable tiles; selected = amber fill.
 - **Field / Input** — pill or `radius-md`; 2px amber border + soft amber outer glow on focus;
   faint placeholder.

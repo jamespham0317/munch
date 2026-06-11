@@ -10,6 +10,7 @@ export { Avatar } from "./avatar";
 export { Button } from "./button";
 export { Card } from "./card";
 export { Chip, FoodChip } from "./chip";
+export { ConfirmModal } from "./confirm-modal";
 export { Field } from "./field";
 export { Input } from "./input";
 export { PriceTile, SegmentedTile } from "./price-tile";

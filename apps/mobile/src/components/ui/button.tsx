@@ -22,11 +22,18 @@ import {
  * charcoal text), `secondary` (burnt-orange fill, white text), `ghost` (2px outline,
  * transparent), `social` (white with a logo slot for provider sign-in), `text`
  * (borderless amber label on a transparent fill — the low-emphasis secondary action,
- * e.g. Cancel). Pressed applies the 2px press translate (+ brand-pressed on the primary
+ * e.g. Cancel), `neutral` (filled grey surface with muted text — the modal "Stay"/"Cancel"
+ * dismiss action). Pressed applies the 2px press translate (+ brand-pressed on the primary
  * fill); the throw is an instant transform, so there is no time-based motion to reduce (§10).
  */
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "social" | "text";
+type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "social"
+  | "text"
+  | "neutral";
 
 const VARIANT_BG: Record<ButtonVariant, string> = {
   primary: colors.brand,
@@ -34,6 +41,7 @@ const VARIANT_BG: Record<ButtonVariant, string> = {
   ghost: "transparent",
   social: colors.surface,
   text: "transparent",
+  neutral: colors.surfaceHighest,
 };
 
 const VARIANT_TEXT: Record<ButtonVariant, string> = {
@@ -42,6 +50,7 @@ const VARIANT_TEXT: Record<ButtonVariant, string> = {
   ghost: colors.text,
   social: colors.text,
   text: colors.brand,
+  neutral: colors.textMuted,
 };
 
 export function Button({

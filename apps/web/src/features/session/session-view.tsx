@@ -231,7 +231,7 @@ function SwipeRunner({
         </p>
       )}
 
-      <LeaveRoomControl isHost={isHost} exit={exit} />
+      <LeaveRoomControl isHost={isHost} exit={exit} context="session" />
     </section>
   );
 }

@@ -101,8 +101,11 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   **Start Session**. The squad count is the number of members joined (no per-member status text
   in v1).
 - **Primitives:** Card (amber code panel), QR, MemberList (Avatar + `online` dot),
-  ProgressPill, Button.
+  ProgressPill, Button, LeaveRoomControl (ConfirmModal).
 - **Wiring:** realtime `room:{room_id}` presence; host `start_session`; `set_presence`.
+- **Leave/End:** non-host "Leave room" / host "End room" (`useRoomExit`) confirm via the
+  branded **ConfirmModal** (docs/09 §7) — not an OS alert. In the lobby the leave copy notes the
+  member can still rejoin (the roster freezes only once a session starts — docs/04 §3.2).
 - **Anchor/filters:** the host-set anchor ("Pinned location" + radius) and filters show
   **read-only** to all members; the host keeps an **editable radius** (and filters) here that
   snapshots into
@@ -113,7 +116,9 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 - **Routes:** mobile `app/room/[roomId]/session.tsx` · web `app/room/[roomId]/session/page.tsx`.
 - **Purpose:** the core loop. The Decision Card (photo, distance pill, name, rating, price •
   cuisine, food chips) + pass/like action row. Header has a filter/adjust affordance.
-- **Primitives:** Decision Card (existing `swipe-card`), swipe action row, ProgressPill.
+- **Primitives:** Decision Card (existing `swipe-card`), swipe action row, ProgressPill,
+  LeaveRoomControl (ConfirmModal — the session leave copy warns the roster is frozen, so
+  leaving can't be undone with a rejoin).
 - **Wiring:** `get_deck` + client `shuffle` (`@munch/core`); each swipe → `submit_swipe`;
   realtime `session:{id}` status + aggregate progress; match event → result.
 - **Invariants:** **no provider call on swipe** (§2.1); the card **never declares a match**

@@ -234,7 +234,7 @@ function SwipeRunner({
         </Text>
       )}
 
-      <LeaveRoomControl isHost={isHost} exit={exit} />
+      <LeaveRoomControl isHost={isHost} exit={exit} context="session" />
     </View>
   );
 }
