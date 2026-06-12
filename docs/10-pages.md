@@ -50,7 +50,8 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 - **Primitives:** Card, Button (primary/secondary), Field, list rows with colored icons.
 - **Wiring:** Create → create-room flow. Join joins **inline here for everyone** — no redirect
   to the join screen. A **guest** types a name + code; a **signed-in** user (resolved `profiles`
-  name via `useOwnProfile`) skips the name field ("Joining as {name}"). Both call `join_room` and
+  name via `useOwnProfile`) skips the name field, seeing their name in a locked, lock-iconed
+  read-only field instead. Both call `join_room` and
   route straight to the lobby on success, with the pending state and inline code-mapped errors on
   this card. The gate is the **resolved name**, not the signed-in flag, so an unresolved/missing
   profile name safely falls back to name entry. Manual code entry no longer hands off to
@@ -91,8 +92,8 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   map + radius group (no free-text label field — removed in Phase 4.8). OSM "© OpenStreetMap
   contributors" attribution is shown.
 - **Name:** a **guest** types it in the "Your name" Field. A **signed-in** host (resolved
-  `profiles` name via `useOwnProfile`) skips the field and sees a read-only "Creating as {name}"
-  readout instead — they cannot change their name (mirrors §3.4's "Joining as {name}"). The gate
+  `profiles` name via `useOwnProfile`) skips the field and sees their name in a locked, lock-iconed
+  read-only "Your name" field instead — they cannot change it (identical to §3.4's locked code field). The gate
   is the resolved NAME, so a guest and the rare signed-in-but-no-profile state both fall back to
   the editable field; while the profile resolves, a "Loading your profile…" readout shows and
   **Start Room** is disabled. There is no mid-room sign-in (docs/04 §2).
@@ -124,8 +125,8 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   raw 6 digits — no grouping dash — so the value submitted to `join_room` matches what's displayed
   and validation is
   unchanged): a host shared this exact code, so the invitee can't edit it. The `JoinRoomForm` is
-  **auth-aware**: a **guest** sees the name field; a **signed-in** user sees a "Joining as {name}"
-  readout instead (name field hidden) and joins with their `profiles` display name (`useOwnProfile`)
+  **auth-aware**: a **guest** sees the name field; a **signed-in** user sees their name in a locked,
+  lock-iconed read-only "Your name" field instead and joins with their `profiles` display name (`useOwnProfile`)
   — never asked to re-type their name. The gate is the resolved name, so a guest and the rare
   signed-in-but-no-profile state both fall back to name entry. No mid-room sign-in: the form only
   chooses how the name is supplied (docs/04 §2).
@@ -154,7 +155,7 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 - **Routes:** mobile `app/room/[roomId]/lobby.tsx` · web `app/room/[roomId]/lobby/page.tsx`.
 - **Purpose:** "Waiting for the crew." Shareable code + QR + tap-to-copy link; **The Squad**
   member grid with presence dots and a presence label (Here/Away); "Invite more"; host sees
-  **Start Session**. The squad count is the number of members joined (no per-member status text
+  **Start Swiping**. The squad count is the number of members joined (no per-member status text
   in v1).
 - **Primitives:** Card (amber code panel), QR, MemberList (Avatar + `online` dot),
   ProgressPill, Button, LobbyFiltersButton/LobbyFiltersSummary, Sheet, RadiusSlider,

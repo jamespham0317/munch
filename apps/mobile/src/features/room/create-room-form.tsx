@@ -30,8 +30,8 @@ import { useCancelCreateRoom, useCreateRoom } from "./use-create-room";
  * heads the map + radius group (no free-text label — Phase 4.8, docs/07 §6.8).
  *
  * A SIGNED-IN host (resolved `profiles` display name) skips the name field — they create with
- * their profile name, shown read-only as "Creating as {name}" (mirrors JoinRoomForm's "Joining
- * as {name}", docs/10 §3.3/§3.4). The gate is the resolved NAME, so a guest, and the rare
+ * their profile name, shown read-only as a locked name field (lock icon, non-editable, mirroring
+ * the locked Room-code field, docs/10 §3.3/§3.4). The gate is the resolved NAME, so a guest, and the rare
  * signed-in-but-no-profile state, both fall back to name entry and are never stuck. This only
  * chooses how the name is supplied; there is no mid-room sign-in here (docs/04 §2).
  */
@@ -97,9 +97,16 @@ export function CreateRoomForm() {
   return (
     <View style={styles.form}>
       {signedInName ? (
-        <Text style={styles.creatingAs}>
-          Creating as <Text style={styles.creatingAsName}>{signedInName}</Text>
-        </Text>
+        <Field label="Your name">
+          <Input
+            value={signedInName}
+            editable={false}
+            leadingIcon={
+              <Feather name="lock" size={20} color={colors.textFaint} />
+            }
+            style={styles.lockedInput}
+          />
+        </Field>
       ) : resolvingName ? (
         <Text style={styles.creatingAs}>Loading your profile…</Text>
       ) : (
@@ -149,14 +156,13 @@ export function CreateRoomForm() {
         loading={createRoom.isPending}
         disabled={resolvingName}
       />
-      {/* Low-emphasis Cancel below the primary action (Stitch "Create a Room"): abandons
-          creation and returns to Match. No room exists yet, so it's a pure client-side
+      {/* Ghost-outline Cancel below the primary action, matching the lobby "End room" control:
+          abandons creation and returns to Match. No room exists yet, so it's a pure client-side
           discard. Disabled while a create is in flight (the create_room RPC may already be
           committing — see useCancelCreateRoom). */}
       <Button
-        variant="text"
+        variant="ghost"
         label="Cancel"
-        leadingIcon={<Feather name="x" size={20} color={colors.brand} />}
         onPress={cancelCreateRoom}
         disabled={createRoom.isPending}
       />
@@ -166,8 +172,17 @@ export function CreateRoomForm() {
 
 const styles = StyleSheet.create({
   form: { gap: spacing.md },
-  // Read-only signed-in name (parity with JoinRoomForm's "Joining as {name}").
+  // Profile-loading placeholder shown while the signed-in name resolves.
   creatingAs: { ...typography.bodyMd, color: colors.textMuted },
-  creatingAsName: { color: colors.text },
+  // Locked signed-in name: read-only, dimmed, lock-iconed — identical treatment to the locked
+  // Room-code field on the invite-link Join screen (join-room-form.tsx, docs/10 §3.3/§3.4).
+  lockedInput: {
+    ...typography.headlineMd,
+    fontSize: typography.bodyMd.fontSize,
+    lineHeight: undefined,
+    backgroundColor: colors.surfaceHighest,
+    color: colors.textMuted,
+    opacity: 0.8,
+  },
   error: { ...typography.bodyMd, color: colors.error },
 });

@@ -72,9 +72,15 @@ const styles = StyleSheet.create({
   // Reserve room for the overlaid leading glyph (icon sits at spacing.gutter).
   inputWithIcon: { paddingLeft: 48 },
   iconWrap: { position: "relative", justifyContent: "center" },
+  // Span the input's full height (top/bottom: 0) and center the glyph, so the icon stays
+  // vertically centered regardless of the input's line height (e.g. the taller bold locked
+  // field) — the RN parity of the web Input's `top-1/2 -translate-y-1/2`.
   leadingIcon: {
     position: "absolute",
     left: spacing.gutter,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
     zIndex: 1,
   },
   focused: {

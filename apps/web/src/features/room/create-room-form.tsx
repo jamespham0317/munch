@@ -7,7 +7,7 @@ import {
   type PriceLevel,
   RADIUS_MAX_M,
 } from "@munch/core";
-import { X } from "lucide-react";
+import { Lock } from "lucide-react";
 import { type FormEvent, useState } from "react";
 
 import { AnchorMap } from "@/components/anchor-map";
@@ -30,8 +30,8 @@ import { useCancelCreateRoom, useCreateRoom } from "./use-create-room";
  * radius group (no free-text label — Phase 4.8, docs/07 §6.8).
  *
  * A SIGNED-IN host (resolved `profiles` display name) skips the name field — they create with
- * their profile name, shown read-only as "Creating as {name}" (mirrors JoinRoomForm's "Joining
- * as {name}", docs/10 §3.3/§3.4). The gate is the resolved NAME, so a guest, and the rare
+ * their profile name, shown read-only as a locked name field (lock icon, non-editable, mirroring
+ * the locked Room-code field, docs/10 §3.3/§3.4). The gate is the resolved NAME, so a guest, and the rare
  * signed-in-but-no-profile state, both fall back to name entry and are never stuck. This only
  * chooses how the name is supplied; there is no mid-room sign-in here (docs/04 §2).
  */
@@ -98,9 +98,16 @@ export function CreateRoomForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-md">
       {signedInName ? (
-        <p className="text-body-md text-text-muted">
-          Creating as <span className="text-text">{signedInName}</span>
-        </p>
+        <Field label="Your name" htmlFor="host-name">
+          <Input
+            id="host-name"
+            value={signedInName}
+            readOnly
+            aria-readonly
+            leadingIcon={<Lock size={20} aria-hidden />}
+            className="cursor-not-allowed bg-surface-highest text-body-md font-bold text-text-muted"
+          />
+        </Field>
       ) : resolvingName ? (
         <p className="text-body-md text-text-muted">Loading your profile…</p>
       ) : (
@@ -164,14 +171,13 @@ export function CreateRoomForm() {
       <p className="text-center text-caption text-text-muted">
         Inviting friends will be the next step.
       </p>
-      {/* Low-emphasis Cancel below the primary action (Stitch "Create a Room"): abandons
-          creation and returns to Match. No room exists yet, so it's a pure client-side
+      {/* Ghost-outline Cancel below the primary action, matching the lobby "End room" control:
+          abandons creation and returns to Match. No room exists yet, so it's a pure client-side
           discard. Disabled while a create is in flight (the create_room RPC may already be
           committing — see useCancelCreateRoom). */}
       <Button
-        variant="text"
+        variant="ghost"
         label="Cancel"
-        leadingIcon={<X size={20} aria-hidden />}
         onClick={cancelCreateRoom}
         disabled={createRoom.isPending}
       />

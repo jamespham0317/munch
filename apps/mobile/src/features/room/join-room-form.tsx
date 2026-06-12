@@ -103,10 +103,16 @@ export function JoinRoomForm({
       <Card>
         <View style={styles.form}>
           {signedInName ? (
-            <Text style={styles.joiningAs}>
-              Joining as{" "}
-              <Text style={styles.joiningAsName}>{signedInName}</Text>
-            </Text>
+            <Field label="Your name">
+              <Input
+                value={signedInName}
+                editable={false}
+                leadingIcon={
+                  <Feather name="lock" size={20} color={colors.textFaint} />
+                }
+                style={styles.lockedInput}
+              />
+            </Field>
           ) : resolvingName ? (
             <Text style={styles.joiningAs}>Loading your profile…</Text>
           ) : (
@@ -198,9 +204,9 @@ const styles = StyleSheet.create({
   },
   form: { gap: spacing.gutter },
   joiningAs: { ...typography.bodyMd, color: colors.textMuted },
-  joiningAsName: { color: colors.text },
   error: { ...typography.bodyMd, color: colors.error },
-  // Locked (invite-link) code: read-only, dimmed to signal it can't be edited. Bold (keep
+  // Locked (invite-link) code AND the signed-in name field: read-only, dimmed to signal it
+  // can't be edited. Bold (keep
   // headlineMd's 700 Quicksand-Bold face/weight) but sized to match the name field (bodyMd).
   // No explicit lineHeight: an iOS TextInput sits the bold glyphs high in a fixed line box, so
   // we let the single line center naturally. Plain radii.md base, like the Sign In inputs.

@@ -18,7 +18,7 @@ import { useRoomLobby } from "./use-room-lobby";
 /**
  * Room lobby (10-pages.md §3.5, "Lobby with QR Code"): an initial getRoom + getRoomMembers read
  * kept live by subscribeRoom, the amber invite card + the "Squad" grid, and the host-only
- * "Start Session" control. Once any member sees an active session for the room (via the
+ * "Start Swiping" control. Once any member sees an active session for the room (via the
  * lobby's session subscription), they auto-route to the swipe screen. Screens stay thin — all
  * data access is in @munch/api-client (CLAUDE.md §4); only aggregate presence is shown, never
  * per-member swipes (CLAUDE.md §3). Web twin of the Phase B mobile LobbyView.
@@ -168,7 +168,7 @@ export function LobbyView({ roomId }: { roomId: string }) {
       {isHost ? (
         <>
           <Button
-            label={startSession.isPending ? "Starting…" : "Start Session"}
+            label={startSession.isPending ? "Starting…" : "Start Swiping"}
             onClick={handleStart}
             disabled={startDisabled}
             loading={startSession.isPending}

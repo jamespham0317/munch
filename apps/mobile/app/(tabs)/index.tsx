@@ -97,9 +97,19 @@ export default function HomeScreen() {
         {/* Name: guests type it; a signed-in user joins with their profile name and skips the
             field. The gate is the resolved name, so an unresolved profile falls back to entry. */}
         {signedInName ? (
-          <Text style={styles.joiningAs}>
-            Joining as <Text style={styles.joiningAsName}>{signedInName}</Text>
-          </Text>
+          // Margin on a wrapper View, not the Input itself: a margin on the TextInput would
+          // grow the leading-icon wrapper's height and push the centered lock icon down.
+          <View style={styles.joinNameInput}>
+            <Input
+              style={styles.lockedInput}
+              value={signedInName}
+              editable={false}
+              leadingIcon={
+                <Feather name="lock" size={20} color={colors.textFaint} />
+              }
+              accessibilityLabel="Your name"
+            />
+          </View>
         ) : resolvingName ? (
           <Text style={styles.joiningAs}>Loading your profile…</Text>
         ) : (
@@ -226,7 +236,16 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: spacing.sm,
   },
-  joiningAsName: { color: colors.text },
+  // Locked signed-in name: read-only, dimmed, lock-iconed — matches the locked Room-code field
+  // on the invite-link Join screen (join-room-form.tsx). Label-less here, like the card's inputs.
+  lockedInput: {
+    ...typography.headlineMd,
+    fontSize: typography.bodyMd.fontSize,
+    lineHeight: undefined,
+    backgroundColor: colors.surfaceHighest,
+    color: colors.textMuted,
+    opacity: 0.8,
+  },
   joinNameInput: { marginBottom: spacing.sm },
   joinRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   joinInput: { flex: 1 },

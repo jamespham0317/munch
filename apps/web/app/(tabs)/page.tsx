@@ -1,7 +1,7 @@
 "use client";
 
 import { joinRoomRequestSchema } from "@munch/core";
-import { ChevronsRight, Coffee, Heart, Plus, Users } from "lucide-react";
+import { ChevronsRight, Coffee, Heart, Lock, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 
@@ -98,9 +98,14 @@ export default function HomePage() {
         {/* Name: guests type it; a signed-in user joins with their profile name and skips the
             field. The gate is the resolved name, so an unresolved profile falls back to entry. */}
         {signedInName ? (
-          <p className="text-body-md text-text-muted">
-            Joining as <span className="text-text">{signedInName}</span>
-          </p>
+          <Input
+            value={signedInName}
+            readOnly
+            aria-readonly
+            aria-label="Your name"
+            leadingIcon={<Lock size={20} aria-hidden />}
+            className="cursor-not-allowed bg-surface-highest text-body-md font-bold text-text-muted"
+          />
         ) : resolvingName ? (
           <p className="text-body-md text-text-muted">Loading your profile…</p>
         ) : (

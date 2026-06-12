@@ -96,9 +96,16 @@ export function JoinRoomForm({
       <Card className="w-full">
         <form onSubmit={handleSubmit} className="flex flex-col gap-md">
           {signedInName ? (
-            <p className="text-body-md text-text-muted">
-              Joining as <span className="text-text">{signedInName}</span>
-            </p>
+            <Field label="Your name" htmlFor="join-name">
+              <Input
+                id="join-name"
+                value={signedInName}
+                readOnly
+                aria-readonly
+                leadingIcon={<Lock size={20} aria-hidden />}
+                className="cursor-not-allowed bg-surface-highest text-body-md font-bold text-text-muted"
+              />
+            </Field>
           ) : resolvingName ? (
             <p className="text-body-md text-text-muted">
               Loading your profile…
