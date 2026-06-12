@@ -18,10 +18,10 @@ export default function JoinRoomByCodeScreen() {
   return (
     <Screen>
       <Text style={styles.title} accessibilityRole="header">
-        Join with Code
+        Join the Squad
       </Text>
       <Text style={styles.subtitle}>
-        You&apos;re invited! Confirm the details below to join the room.
+        You&apos;ve been invited! Ready to settle the food debate?
       </Text>
       <JoinRoomForm initialCode={code ?? ""} lockCode />
     </Screen>

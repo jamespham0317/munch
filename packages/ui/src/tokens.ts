@@ -149,6 +149,14 @@ export const shadows = {
   shadowLow: { yOffset: 2, blur: 4, color: "#1c1b1b", opacity: 0.1 },
   /** Hover / dragged card. */
   shadowActive: { yOffset: 6, blur: 12, color: "#1c1b1b", opacity: 0.15 },
+  /**
+   * Hard-offset amber "lip" under a raised pressable — the squishy primary button on
+   * the auth/join screens (docs/09-design-system.md §6). Unlike the ambient soft
+   * shadows above this is a solid, blur-free 4px offset in deep amber (`brandDeep`),
+   * so the button reads as a physical 3D key; it collapses on press (paired with the
+   * 2px press translate). The web utility is `shadow-pressable`.
+   */
+  shadowPressable: { yOffset: 4, blur: 0, color: "#795900", opacity: 1 },
 } as const;
 
 /**

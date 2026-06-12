@@ -6,14 +6,49 @@ import {
   updatePasswordRequestSchema,
 } from "@munch/core";
 import { useMutation } from "@tanstack/react-query";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Info,
+  Lock,
+  Mail,
+  MailCheck,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 
-import { Button, Card, Field, Input } from "@/components/ui";
+import { Button, Card, Field, IconBadge, Input } from "@/components/ui";
 import { getSupabaseClient } from "@/lib/supabase";
 
 import { useEmailSignIn } from "./use-email-sign-in";
+
+/** "Back to Login" → the Profile tab, where the sign-in panel lives (docs/10 §3.2). */
+function BackToLogin() {
+  return (
+    <Link
+      href="/history"
+      className="inline-flex items-center gap-base text-label-md uppercase text-heat-strong focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/40"
+    >
+      <ArrowLeft size={18} aria-hidden />
+      Back to Login
+    </Link>
+  );
+}
+
+/** The centered reset card + legal footer shared by every state (09-design-system.md §7). */
+function ResetCard({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex flex-col items-center gap-xl">
+      <Card className="flex w-full flex-col items-center gap-md text-center">
+        {children}
+      </Card>
+      <p className="text-caption text-text-faint/60">
+        © {new Date().getFullYear()} Munch Social. All rights reserved.
+      </p>
+    </div>
+  );
+}
 
 /**
  * Password reset (docs/04 §2), OUTSIDE any room. Two steps in one screen:
@@ -86,9 +121,16 @@ export function PasswordResetView() {
     const errorMessage =
       validationError ?? (update.isError ? update.error.message : null);
     return (
-      <Card>
-        <form onSubmit={handleUpdate} className="flex flex-col gap-gutter">
-          <h2 className="text-headline-md text-text">Set a new password</h2>
+      <ResetCard>
+        <IconBadge
+          variant="tonalCircle"
+          icon={<Lock size={36} aria-hidden />}
+        />
+        <h2 className="text-headline-md text-text">Set a new password</h2>
+        <form
+          onSubmit={handleUpdate}
+          className="flex w-full flex-col gap-md text-left"
+        >
           <Field label="New password" htmlFor="reset-new-password">
             <Input
               id="reset-new-password"
@@ -97,6 +139,8 @@ export function PasswordResetView() {
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="new-password"
               placeholder="At least 8 characters"
+              leadingIcon={<Lock size={20} aria-hidden />}
+              className="rounded-full bg-surface-highest"
             />
           </Field>
           {errorMessage ? (
@@ -108,25 +152,26 @@ export function PasswordResetView() {
             type="submit"
             label={update.isPending ? "Saving…" : "Save password"}
             loading={update.isPending}
+            elevated
+            trailingIcon={<ArrowRight size={20} aria-hidden />}
           />
         </form>
-      </Card>
+      </ResetCard>
     );
   }
 
   if (requested) {
     return (
-      <Card className="flex flex-col gap-gutter">
+      <ResetCard>
+        <IconBadge
+          variant="tonalCircle"
+          icon={<MailCheck size={36} aria-hidden />}
+        />
         <p className="text-body-md text-text-muted">
           Check your email for a link to reset your password.
         </p>
-        <Link
-          href="/"
-          className="text-body-md text-heat-strong focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/40"
-        >
-          Back home
-        </Link>
-      </Card>
+        <BackToLogin />
+      </ResetCard>
     );
   }
 
@@ -134,8 +179,19 @@ export function PasswordResetView() {
     validationError ??
     (requestReset.isError ? requestReset.error.message : null);
   return (
-    <Card>
-      <form onSubmit={handleRequest} className="flex flex-col gap-gutter">
+    <ResetCard>
+      <IconBadge variant="tonalCircle" icon={<Info size={36} aria-hidden />} />
+      <div className="flex flex-col gap-sm">
+        <h2 className="text-headline-md text-text">Lost your way?</h2>
+        <p className="mx-auto max-w-[280px] text-body-md text-text-muted">
+          Enter your email address and we&apos;ll send you a link to reset your
+          password.
+        </p>
+      </div>
+      <form
+        onSubmit={handleRequest}
+        className="flex w-full flex-col gap-md text-left"
+      >
         <Field label="Email address" htmlFor="reset-email">
           <Input
             id="reset-email"
@@ -144,7 +200,9 @@ export function PasswordResetView() {
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
             autoCapitalize="none"
-            placeholder="you@example.com"
+            placeholder="Email Address"
+            leadingIcon={<Mail size={20} aria-hidden />}
+            className="rounded-full bg-surface-highest"
           />
         </Field>
         {errorMessage ? (
@@ -154,10 +212,13 @@ export function PasswordResetView() {
         ) : null}
         <Button
           type="submit"
-          label={requestReset.isPending ? "Sending…" : "Send reset link"}
+          label={requestReset.isPending ? "Sending…" : "Send Reset Link"}
           loading={requestReset.isPending}
+          elevated
+          trailingIcon={<ArrowRight size={20} aria-hidden />}
         />
       </form>
-    </Card>
+      <BackToLogin />
+    </ResetCard>
   );
 }

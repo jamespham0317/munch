@@ -1,6 +1,6 @@
 "use client";
 
-import type { InputHTMLAttributes } from "react";
+import type { InputHTMLAttributes, ReactNode } from "react";
 
 import { cx } from "./cx";
 
@@ -11,20 +11,38 @@ import { cx } from "./cx";
  * so callers keep their own value/handlers/validation. The 2px transparent resting
  * border reserves the space the focus border occupies, so focusing never shifts layout.
  * The web twin of the Phase B mobile Input (the amber glow is a brand-coloured ring).
+ *
+ * `leadingIcon` insets a glyph at the left of the control (the auth/join screens — person,
+ * lock, mail). It sits over the input's left padding (so the focus border still wraps the
+ * whole pill) and tints `text-faint`, shifting to `brand` while the field is focused.
  */
 export function Input({
   className,
+  leadingIcon,
   ...props
-}: InputHTMLAttributes<HTMLInputElement>) {
-  return (
+}: InputHTMLAttributes<HTMLInputElement> & { leadingIcon?: ReactNode }) {
+  const input = (
     <input
       {...props}
       className={cx(
-        "min-h-11 w-full rounded-md border-2 border-transparent bg-surface-raised px-gutter py-sm text-body-md text-text",
+        "min-h-11 w-full rounded-md border-2 border-transparent bg-surface-raised py-sm text-body-md text-text",
         "placeholder:text-text-faint",
         "focus:border-brand focus:outline-none focus-visible:ring-4 focus-visible:ring-brand/30",
+        leadingIcon ? "pl-12 pr-gutter" : "px-gutter",
         className,
       )}
     />
+  );
+  if (!leadingIcon) return input;
+  return (
+    <div className="group relative">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-gutter top-1/2 -translate-y-1/2 text-text-faint group-focus-within:text-brand"
+      >
+        {leadingIcon}
+      </span>
+      {input}
+    </div>
   );
 }

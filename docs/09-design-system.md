@@ -137,6 +137,9 @@ scale, which the seeded named `--spacing-*` tokens shadow.
 
 - `shadow-low` — 4px blur, 10% charcoal, 2px y-offset (resting cards/buttons).
 - `shadow-active` — 12px blur, 15% charcoal, 6px y-offset (hover / dragged card).
+- `shadow-pressable` — a hard-offset amber "lip": 0 blur, 4px y-offset, solid deep-amber
+  (`brand-deep`). Unlike the ambient soft shadows it reads as a physical 3D key; used on the
+  squishy primary button (`Button elevated`) on the auth/join screens, and collapses on press.
 - **Press affordance** — 2px downward translate on press to simulate a physical click.
 
 ---
@@ -152,7 +155,10 @@ tokens. They hold **no business logic and read no data** (CLAUDE.md §4).
   fill with a faint amber hover wash — the low-emphasis secondary action, e.g. Cancel),
   `neutral` (filled `surface-highest` grey, `text-muted` label — the modal "Stay"/"Cancel"
   dismiss action). States: default / pressed (2px translate + `brand-pressed`) / disabled /
-  loading. Min 44px touch target.
+  loading. Min 44px touch target. Optional `leadingIcon`/`trailingIcon` slots (e.g. the
+  "Join the Squad" / "Send Reset Link" arrows). `elevated` raises a filled button on the
+  hard-offset `shadow-pressable` amber lip (collapses on press) — the squishy primary key on
+  the auth/join screens (§6).
 - **Chip / FoodChip** — cuisine + tag pills. Unselected: cream fill / `border` outline /
   muted text. Selected: solid `heat` (burnt orange) / `on-heat` text. Used for the closed
   `CUISINES` taxonomy (docs/01 §8) and decorative card tags.
@@ -183,7 +189,14 @@ tokens. They hold **no business logic and read no data** (CLAUDE.md §4).
   container). Presentational only — no data, no domain logic (CLAUDE.md §4).
 - **PriceTile / SegmentedTile** — `$`–`$$$$` selectable tiles; selected = amber fill.
 - **Field / Input** — pill or `radius-md`; 2px amber border + soft amber outer glow on focus;
-  faint placeholder.
+  faint placeholder. Optional `leadingIcon` slot insets a glyph at the left of the control
+  (auth/join screens — person, lock, mail); it overlays the left padding so the focus border
+  still wraps the whole pill, and tints `text-faint` → `brand` on focus.
+- **IconBadge** — a rounded container holding one decorative glyph, the anchor atop the
+  auth/join cards. `solid` = amber `brand` fill, charcoal glyph, `shadow-low`, a static 3°
+  tilt (the Join "restaurant" badge); `tonalCircle` = a circular faint-amber (`brand`/20)
+  surface with deep-amber `brand-deep` ink (the Forgot "info"/"lock"/"check" badge). No
+  motion (§10). Presentational only.
 - **Avatar** — circular; optional `online` presence dot; "+" variant for "Invite more".
 - **ProgressPill / Badge** — small caption pills ("Waiting…", "1.2 km", rating "4.8 ★",
   "(4/8)"). Rating star uses amber. `tone="onImage"` adds a shadow to read over a photo;

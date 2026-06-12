@@ -65,6 +65,13 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 - **Primitives:** Button (`social`, `primary`), Field, divider, Avatar.
 - **Wiring:** `signInWithOAuth({google})`, `signUp` / `signInWithPassword`,
   `resetPasswordForEmail` → `updateUser`; history via `get_match_history` (docs/04 §2, §3.11).
+- **Forgot password (`auth/reset`, Stitch "Forgot Password"):** the `PasswordResetView` centers
+  each state in a `Card` with a tonal-circle `IconBadge` (info → request, mail-check → "sent",
+  lock → set-new-password), an own in-card headline ("Lost your way?" / "Set a new password"), an
+  email/password `Input` with a `leadingIcon`, an `elevated` primary Button with a trailing arrow,
+  a "Back to Login" link (→ the Profile tab, `/history`), and a legal footer. The route passes the
+  shell **no** title/subtitle — the card owns the headline, so `FullScreenView`/`Screen` contributes
+  only the brand row + cream canvas.
 - **Invariant:** outside-a-room only; guests have no profile and see the empty/"sign in" state
   (docs/04 §3.11), never an error.
 
@@ -112,13 +119,21 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   The bare `app/room/join/index.tsx` / `page.tsx` (blank code) still render the form but nothing
   routes to them.
 - **Purpose:** confirm a name and join a room from an invite link. The code is prefilled from the
-  link and **locked** (`lockCode`, read-only): a host shared this exact code, so the invitee can't
-  edit it. The `JoinRoomForm` is **auth-aware**: a **guest** sees the name field; a **signed-in**
-  user sees a "Joining as {name}" readout instead (name field hidden) and joins with their
-  `profiles` display name (`useOwnProfile`) — never asked to re-type their name. The gate is the
-  resolved name, so a guest and the rare signed-in-but-no-profile state both fall back to name
-  entry. No mid-room sign-in: the form only chooses how the name is supplied (docs/04 §2).
-- **Primitives:** Field, Button (`secondary` Join, `text` Cancel).
+  link and **locked** (`lockCode`, read-only, shown in large type grouped `582-901` — the value
+  submitted to `join_room` stays the raw 6 digits, so validation is unchanged): a host shared this
+  exact code, so the invitee can't edit it. The `JoinRoomForm` is **auth-aware**: a **guest** sees
+  the name field; a **signed-in** user sees a "Joining as {name}" readout instead (name field
+  hidden) and joins with their `profiles` display name (`useOwnProfile`) — never asked to re-type
+  their name. The gate is the resolved name, so a guest and the rare signed-in-but-no-profile state
+  both fall back to name entry. No mid-room sign-in: the form only chooses how the name is supplied
+  (docs/04 §2).
+- **Style (Stitch "Join Room"):** the form sits in a `Card` topped by a centered amber `IconBadge`
+  (solid, utensils glyph); the name + room-code Inputs carry `leadingIcon`s (person / lock); the
+  primary action is an `elevated` "Join the Squad" Button with a trailing groups icon; a lightbulb
+  `tip` sits below the card. The page keeps the shared `FullScreenView`/`Screen` shell (brand row +
+  title "Join the Squad" + the invite subtitle). Web adds ambient blur-blobs; mobile omits them.
+- **Primitives:** Card, IconBadge, Field, Input (`leadingIcon`), Button (`primary` `elevated`
+  "Join the Squad", `text` Cancel).
 - **Wiring:** `join_room`. Errors: `ROOM_NOT_FOUND`, `ROOM_CLOSED`, `ALREADY_JOINED`,
   `ROOM_IN_SESSION`, `RATE_LIMITED` (docs/04 §3.2) → friendly inline messages. Because the locked
   code can't be edited, a **rejected** code is a dead end: the action switches to a **Cancel**

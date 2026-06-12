@@ -6,11 +6,11 @@ import { PasswordResetView } from "@/features/auth/password-reset-view";
  * the request and the recovery-session update steps (CLAUDE.md §4).
  */
 export default function PasswordResetPage() {
+  // No shell title/subtitle: the reset card owns its own centered headline + icon badge
+  // per state (Stitch "Forgot Password"), so the FullScreenView contributes only the
+  // brand row + cream canvas (docs/10 §3.2).
   return (
-    <FullScreenView
-      title="Reset password"
-      subtitle="We'll email you a link to set a new password."
-    >
+    <FullScreenView>
       <PasswordResetView />
     </FullScreenView>
   );

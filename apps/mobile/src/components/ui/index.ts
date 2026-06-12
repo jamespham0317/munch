@@ -9,6 +9,7 @@ export { Card } from "./card";
 export { Chip, FoodChip } from "./chip";
 export { ConfirmModal } from "./confirm-modal";
 export { Field } from "./field";
+export { IconBadge } from "./icon-badge";
 export { Input } from "./input";
 export { PriceTile, SegmentedTile } from "./price-tile";
 export { Badge, ProgressPill } from "./progress-pill";

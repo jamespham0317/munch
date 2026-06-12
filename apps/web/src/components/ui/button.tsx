@@ -41,6 +41,8 @@ export function Button({
   disabled = false,
   loading = false,
   leadingIcon,
+  trailingIcon,
+  elevated = false,
   "aria-label": ariaLabel,
 }: {
   label: string;
@@ -51,6 +53,14 @@ export function Button({
   loading?: boolean;
   /** Optional leading glyph — the `social` variant's provider-logo slot. */
   leadingIcon?: ReactNode;
+  /** Optional trailing glyph — e.g. the "Join the Squad" / "Send Reset Link" arrows. */
+  trailingIcon?: ReactNode;
+  /**
+   * Raise the button on a hard-offset amber "lip" (`shadow-pressable`) that collapses
+   * on press — the squishy primary key on the auth/join screens (09-design-system.md §6).
+   * Layers on the standard 2px press translate; only meaningful for filled variants.
+   */
+  elevated?: boolean;
   "aria-label"?: string;
 }) {
   const isDisabled = disabled || loading;
@@ -66,6 +76,7 @@ export function Button({
         "transition-transform active:translate-y-[var(--munch-press-translate-y)] motion-reduce:transition-none",
         "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/40",
         "disabled:opacity-50 disabled:active:translate-y-0",
+        elevated && "shadow-pressable active:shadow-none disabled:shadow-none",
         VARIANT_CLASSES[variant],
       )}
     >
@@ -78,6 +89,7 @@ export function Button({
         <>
           {leadingIcon}
           <span>{label}</span>
+          {trailingIcon}
         </>
       )}
     </button>

@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import { exchangeOAuthCode, updatePassword } from "@munch/api-client";
 import {
   passwordResetRequestSchema,
@@ -6,13 +7,39 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
 import { Link, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { type ReactNode, useEffect, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Button, Field, Input } from "../../components/ui";
+import { Button, Card, Field, IconBadge, Input } from "../../components/ui";
 import { getSupabaseClient } from "../../lib/supabase";
-import { colors, spacing, typography } from "../../theme";
+import { colors, radii, spacing, typography } from "../../theme";
 import { useEmailSignIn } from "./use-email-sign-in";
+
+/** "Back to Login" → the Profile tab, where the sign-in panel lives (docs/10 §3.2). */
+function BackToLogin() {
+  return (
+    <Link href="/history" asChild>
+      <Pressable style={styles.backRow}>
+        <Feather name="arrow-left" size={18} color={colors.heatStrong} />
+        <Text style={styles.backText}>Back to Login</Text>
+      </Pressable>
+    </Link>
+  );
+}
+
+/** The centered reset card + legal footer shared by every state (09-design-system.md §7). */
+function ResetCard({ children }: { children: ReactNode }) {
+  return (
+    <View style={styles.outer}>
+      <Card>
+        <View style={styles.cardInner}>{children}</View>
+      </Card>
+      <Text style={styles.footer}>
+        © {new Date().getFullYear()} Munch Social. All rights reserved.
+      </Text>
+    </View>
+  );
+}
 
 /**
  * Password reset (RN parity with apps/web's PasswordResetView; docs/04 §2), OUTSIDE any room.
@@ -98,43 +125,59 @@ export function PasswordResetView({ code }: { code?: string | undefined }) {
     const errorMessage =
       validationError ?? (update.isError ? update.error.message : null);
     return (
-      <View style={styles.container}>
-        <Text style={styles.heading}>Set a new password</Text>
-        <Field label="New password">
-          <Input
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoComplete="new-password"
-            placeholder="At least 8 characters"
-          />
-        </Field>
-        {errorMessage ? (
-          <Text style={styles.error} accessibilityRole="alert">
-            {errorMessage}
-          </Text>
-        ) : null}
-        <Button
-          label={update.isPending ? "Saving…" : "Save password"}
-          onPress={handleUpdate}
-          loading={update.isPending}
+      <ResetCard>
+        <IconBadge
+          variant="tonalCircle"
+          icon={<Feather name="lock" size={36} color={colors.brandDeep} />}
         />
-      </View>
+        <Text style={styles.heading}>Set a new password</Text>
+        <View style={styles.formBlock}>
+          <Field label="New password">
+            <Input
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="new-password"
+              placeholder="At least 8 characters"
+              leadingIcon={
+                <Feather name="lock" size={20} color={colors.textFaint} />
+              }
+              style={styles.pill}
+            />
+          </Field>
+          {errorMessage ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {errorMessage}
+            </Text>
+          ) : null}
+          <Button
+            label={update.isPending ? "Saving…" : "Save password"}
+            onPress={handleUpdate}
+            loading={update.isPending}
+            elevated
+            trailingIcon={
+              <Feather name="arrow-right" size={20} color={colors.onBrand} />
+            }
+          />
+        </View>
+      </ResetCard>
     );
   }
 
   // A code is present but the exchange failed (expired/used link) — surface the safe message.
   if (code && exchangeError) {
     return (
-      <View style={styles.container}>
+      <ResetCard>
+        <IconBadge
+          variant="tonalCircle"
+          icon={<Feather name="alert-circle" size={36} color={colors.error} />}
+        />
         <Text style={styles.error} accessibilityRole="alert">
           {exchangeError}
         </Text>
-        <Link href="/" style={styles.link}>
-          Back home
-        </Link>
-      </View>
+        <BackToLogin />
+      </ResetCard>
     );
   }
   // A code is present and we're still exchanging it for the recovery session.
@@ -144,14 +187,18 @@ export function PasswordResetView({ code }: { code?: string | undefined }) {
 
   if (requested) {
     return (
-      <View style={styles.container}>
+      <ResetCard>
+        <IconBadge
+          variant="tonalCircle"
+          icon={
+            <Feather name="check-circle" size={36} color={colors.brandDeep} />
+          }
+        />
         <Text style={styles.muted}>
           Check your email for a link to reset your password.
         </Text>
-        <Link href="/" style={styles.link}>
-          Back home
-        </Link>
-      </View>
+        <BackToLogin />
+      </ResetCard>
     );
   }
 
@@ -159,43 +206,75 @@ export function PasswordResetView({ code }: { code?: string | undefined }) {
     validationError ??
     (requestReset.isError ? requestReset.error.message : null);
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>Reset your password</Text>
-      <Field label="Email">
-        <Input
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          placeholder="you@example.com"
-        />
-      </Field>
-      {errorMessage ? (
-        <Text style={styles.error} accessibilityRole="alert">
-          {errorMessage}
-        </Text>
-      ) : null}
-      <Button
-        label={requestReset.isPending ? "Sending…" : "Send reset link"}
-        onPress={handleRequest}
-        loading={requestReset.isPending}
+    <ResetCard>
+      <IconBadge
+        variant="tonalCircle"
+        icon={<Feather name="info" size={36} color={colors.brandDeep} />}
       />
-      <Link href="/" style={styles.link}>
-        Back home
-      </Link>
-    </View>
+      <Text style={styles.heading}>Lost your way?</Text>
+      <Text style={styles.subtext}>
+        Enter your email address and we&apos;ll send you a link to reset your
+        password.
+      </Text>
+      <View style={styles.formBlock}>
+        <Field label="Email">
+          <Input
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            placeholder="Email Address"
+            leadingIcon={
+              <Feather name="mail" size={20} color={colors.textFaint} />
+            }
+            style={styles.pill}
+          />
+        </Field>
+        {errorMessage ? (
+          <Text style={styles.error} accessibilityRole="alert">
+            {errorMessage}
+          </Text>
+        ) : null}
+        <Button
+          label={requestReset.isPending ? "Sending…" : "Send Reset Link"}
+          onPress={handleRequest}
+          loading={requestReset.isPending}
+          elevated
+          trailingIcon={
+            <Feather name="arrow-right" size={20} color={colors.onBrand} />
+          }
+        />
+      </View>
+      <BackToLogin />
+    </ResetCard>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: spacing.gutter },
-  heading: { ...typography.headlineMd, color: colors.text },
-  muted: { ...typography.bodyMd, color: colors.textMuted },
-  error: { ...typography.bodyMd, color: colors.error },
-  link: {
-    ...typography.bodyMd,
-    color: colors.heatStrong,
-    paddingTop: spacing.base,
+  outer: { gap: spacing.lg, alignItems: "center" },
+  cardInner: { gap: spacing.md, alignItems: "center" },
+  // The centered card centers the badge + headings; the interactive block stretches full
+  // width so the Field/Input/Button don't collapse to their content width.
+  formBlock: { width: "100%", gap: spacing.md },
+  pill: { borderRadius: radii.full, backgroundColor: colors.surfaceHighest },
+  heading: {
+    ...typography.headlineMd,
+    color: colors.text,
+    textAlign: "center",
   },
+  subtext: {
+    ...typography.bodyMd,
+    color: colors.textMuted,
+    textAlign: "center",
+  },
+  muted: { ...typography.bodyMd, color: colors.textMuted, textAlign: "center" },
+  error: { ...typography.bodyMd, color: colors.error, textAlign: "center" },
+  backRow: { flexDirection: "row", alignItems: "center", gap: spacing.base },
+  backText: {
+    ...typography.labelMd,
+    color: colors.heatStrong,
+    textTransform: "uppercase",
+  },
+  footer: { ...typography.caption, color: colors.textFaint, opacity: 0.6 },
 });

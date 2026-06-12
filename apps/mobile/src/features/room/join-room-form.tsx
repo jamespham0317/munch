@@ -1,14 +1,20 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { joinRoomRequestSchema } from "@munch/core";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { Button, Field, Input } from "../../components/ui";
-import { colors, spacing, typography } from "../../theme";
+import { Button, Card, Field, IconBadge, Input } from "../../components/ui";
+import { colors, radii, spacing, typography } from "../../theme";
 import { useCurrentUser } from "../auth/use-current-user";
 import { useOwnProfile } from "../auth/use-own-profile";
 import { useJoinRoom } from "./use-join-room";
+
+/** Display a raw 6-digit join code grouped as `582-901` (presentation only — the value
+ *  submitted to join_room stays the raw digits, so validation is unchanged). */
+function formatCode(raw: string): string {
+  return raw.length === 6 ? `${raw.slice(0, 3)}-${raw.slice(3)}` : raw;
+}
 
 /**
  * Join-room form (RN parity with apps/web's JoinRoomForm), the INVITE-LINK target
@@ -77,65 +83,113 @@ export function JoinRoomForm({
     validationError ?? (joinRoom.isError ? joinRoom.error.message : null);
 
   return (
-    <View style={styles.form}>
-      {signedInName ? (
-        <Text style={styles.joiningAs}>
-          Joining as <Text style={styles.joiningAsName}>{signedInName}</Text>
+    <View style={styles.outer}>
+      <Card>
+        <View style={styles.form}>
+          <View style={styles.badgeRow}>
+            <IconBadge
+              icon={
+                <MaterialCommunityIcons
+                  name="silverware-fork-knife"
+                  size={32}
+                  color={colors.onBrand}
+                />
+              }
+            />
+          </View>
+          {signedInName ? (
+            <Text style={styles.joiningAs}>
+              Joining as{" "}
+              <Text style={styles.joiningAsName}>{signedInName}</Text>
+            </Text>
+          ) : resolvingName ? (
+            <Text style={styles.joiningAs}>Loading your profile…</Text>
+          ) : (
+            <Field label="Enter your name">
+              <Input
+                value={displayName}
+                onChangeText={setDisplayName}
+                maxLength={50}
+                placeholder="Hungry Human"
+                leadingIcon={
+                  <Feather name="user" size={20} color={colors.textFaint} />
+                }
+                style={styles.pill}
+              />
+            </Field>
+          )}
+          <Field label="Room code">
+            <Input
+              value={lockCode ? formatCode(code) : code}
+              onChangeText={setCode}
+              keyboardType="number-pad"
+              maxLength={lockCode ? 7 : 6}
+              placeholder="e.g. 582901"
+              editable={!lockCode}
+              leadingIcon={
+                <Feather name="lock" size={20} color={colors.textFaint} />
+              }
+              style={lockCode ? styles.lockedInput : styles.pill}
+            />
+          </Field>
+          {errorMessage ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {errorMessage}
+            </Text>
+          ) : null}
+          {/* A locked (deep-link) code that the server rejects is a dead end — it can't be
+              edited — so the action is a Cancel back to Match, not a retry (docs/10 §3.4). */}
+          {lockCode && joinRoom.isError ? (
+            <Button
+              variant="text"
+              label="Cancel"
+              leadingIcon={<Feather name="x" size={20} color={colors.brand} />}
+              onPress={() => router.replace("/")}
+            />
+          ) : (
+            <Button
+              label={joinRoom.isPending ? "Joining…" : "Join the Squad"}
+              onPress={handleSubmit}
+              loading={joinRoom.isPending}
+              disabled={resolvingName}
+              elevated
+              trailingIcon={
+                <Feather name="users" size={20} color={colors.onBrand} />
+              }
+            />
+          )}
+        </View>
+      </Card>
+      <View style={styles.tip}>
+        <MaterialCommunityIcons
+          name="lightbulb-outline"
+          size={16}
+          color={colors.textFaint}
+        />
+        <Text style={styles.tipText}>
+          Joining a squad lets everyone vote on nearby restaurants.
         </Text>
-      ) : resolvingName ? (
-        <Text style={styles.joiningAs}>Loading your profile…</Text>
-      ) : (
-        <Field label="Your name">
-          <Input
-            value={displayName}
-            onChangeText={setDisplayName}
-            maxLength={50}
-            placeholder="e.g. Alex"
-          />
-        </Field>
-      )}
-      <Field label="Room code">
-        <Input
-          value={code}
-          onChangeText={setCode}
-          keyboardType="number-pad"
-          maxLength={6}
-          placeholder="e.g. 582901"
-          editable={!lockCode}
-          style={lockCode ? styles.lockedInput : undefined}
-        />
-      </Field>
-      {errorMessage ? (
-        <Text style={styles.error} accessibilityRole="alert">
-          {errorMessage}
-        </Text>
-      ) : null}
-      {/* A locked (deep-link) code that the server rejects is a dead end — it can't be
-          edited — so the action is a Cancel back to Match, not a retry (docs/10 §3.4). */}
-      {lockCode && joinRoom.isError ? (
-        <Button
-          variant="text"
-          label="Cancel"
-          leadingIcon={<Feather name="x" size={20} color={colors.brand} />}
-          onPress={() => router.replace("/")}
-        />
-      ) : (
-        <Button
-          label={joinRoom.isPending ? "Joining…" : "Join room"}
-          onPress={handleSubmit}
-          loading={joinRoom.isPending}
-          disabled={resolvingName}
-        />
-      )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  outer: { gap: spacing.md, alignItems: "center" },
   form: { gap: spacing.gutter },
+  badgeRow: { alignItems: "center" },
+  pill: { borderRadius: radii.full },
   joiningAs: { ...typography.bodyMd, color: colors.textMuted },
   joiningAsName: { color: colors.text },
   error: { ...typography.bodyMd, color: colors.error },
-  // Locked (invite-link) code: read-only, dimmed to signal it can't be edited.
-  lockedInput: { opacity: 0.7, color: colors.textMuted },
+  // Locked (invite-link) code: read-only, prominent, dimmed to signal it can't be edited.
+  lockedInput: {
+    ...typography.headlineMd,
+    borderRadius: radii.full,
+    backgroundColor: colors.surfaceHighest,
+    color: colors.textMuted,
+    opacity: 0.8,
+  },
+  tip: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  tipText: { ...typography.caption, color: colors.textFaint },
 });

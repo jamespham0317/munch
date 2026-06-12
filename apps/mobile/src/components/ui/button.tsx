@@ -60,6 +60,8 @@ export function Button({
   disabled = false,
   loading = false,
   leadingIcon,
+  trailingIcon,
+  elevated = false,
   accessibilityLabel,
 }: {
   label: string;
@@ -69,6 +71,14 @@ export function Button({
   loading?: boolean;
   /** Optional leading glyph — the `social` variant's provider-logo slot. */
   leadingIcon?: ReactNode;
+  /** Optional trailing glyph — e.g. the "Join the Squad" / "Send Reset Link" arrows. */
+  trailingIcon?: ReactNode;
+  /**
+   * Raise the button on a hard-offset amber "lip" (`shadowPressable`) that collapses on
+   * press — the squishy primary key on the auth/join screens (09-design-system.md §6).
+   * Layers on the standard 2px press translate; only meaningful for filled variants.
+   */
+  elevated?: boolean;
   accessibilityLabel?: string;
 }) {
   const isDisabled = disabled || loading;
@@ -85,6 +95,8 @@ export function Button({
         { backgroundColor: VARIANT_BG[variant] },
         variant === "ghost" && styles.ghost,
         variant === "social" && shadow("shadowLow"),
+        // The amber lip collapses on press (and never shows while disabled).
+        elevated && !pressed && !isDisabled && shadow("shadowPressable"),
         pressed && !isDisabled && styles.pressed,
         pressed &&
           !isDisabled &&
@@ -99,6 +111,7 @@ export function Button({
         <>
           {leadingIcon ? <View>{leadingIcon}</View> : null}
           <Text style={[styles.label, { color: textColor }]}>{label}</Text>
+          {trailingIcon ? <View>{trailingIcon}</View> : null}
         </>
       )}
     </Pressable>

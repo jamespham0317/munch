@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { StyleSheet, TextInput, type TextInputProps } from "react-native";
+import { type ReactNode, useState } from "react";
+import { StyleSheet, TextInput, type TextInputProps, View } from "react-native";
 
 import { colors, radii, shadow, spacing, typography } from "../../theme";
 
@@ -9,10 +9,20 @@ import { colors, radii, shadow, spacing, typography } from "../../theme";
  * Presentational only (CLAUDE.md §4) — it forwards all TextInputProps so callers keep
  * their own value/handlers/validation. The 2px transparent resting border reserves the
  * space the focus border occupies, so focusing never shifts layout.
+ *
+ * `leadingIcon` insets a glyph at the left of the control (the auth/join screens — person,
+ * lock, mail). It overlays the input's left padding so the focus border still wraps the
+ * whole pill (RN parity with the web Input's leading-icon slot).
  */
-export function Input({ style, onFocus, onBlur, ...props }: TextInputProps) {
+export function Input({
+  style,
+  onFocus,
+  onBlur,
+  leadingIcon,
+  ...props
+}: TextInputProps & { leadingIcon?: ReactNode }) {
   const [focused, setFocused] = useState(false);
-  return (
+  const input = (
     <TextInput
       {...props}
       onFocus={(event) => {
@@ -24,8 +34,22 @@ export function Input({ style, onFocus, onBlur, ...props }: TextInputProps) {
         onBlur?.(event);
       }}
       placeholderTextColor={props.placeholderTextColor ?? colors.textFaint}
-      style={[styles.input, focused && styles.focused, style]}
+      style={[
+        styles.input,
+        leadingIcon ? styles.inputWithIcon : null,
+        focused && styles.focused,
+        style,
+      ]}
     />
+  );
+  if (!leadingIcon) return input;
+  return (
+    <View style={styles.iconWrap}>
+      <View style={styles.leadingIcon} pointerEvents="none">
+        {leadingIcon}
+      </View>
+      {input}
+    </View>
   );
 }
 
@@ -44,6 +68,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.sm,
     minHeight: 44,
+  },
+  // Reserve room for the overlaid leading glyph (icon sits at spacing.gutter).
+  inputWithIcon: { paddingLeft: 48 },
+  iconWrap: { position: "relative", justifyContent: "center" },
+  leadingIcon: {
+    position: "absolute",
+    left: spacing.gutter,
+    zIndex: 1,
   },
   focused: {
     borderColor: colors.brand,

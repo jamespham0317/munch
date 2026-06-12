@@ -14,11 +14,23 @@ export default async function JoinRoomByCodePage({
 }) {
   const { code } = await params;
   return (
-    <FullScreenView
-      title="Join with Code"
-      subtitle="You're invited! Confirm the details below to join the room."
-    >
-      <JoinRoomForm initialCode={code} lockCode />
-    </FullScreenView>
+    <>
+      {/* Ambient atmosphere (Stitch "Join Room") — soft, blurred brand/heat blobs behind the
+          content. Decorative and web-only; mobile leans on the cream Screen canvas (docs/10 §3.4). */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed -right-[10%] -top-[10%] -z-10 h-[40%] w-[40%] rounded-full bg-brand/5 blur-[100px]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed -bottom-[10%] -left-[10%] -z-10 h-[50%] w-[50%] rounded-full bg-heat/5 blur-[100px]"
+      />
+      <FullScreenView
+        title="Join the Squad"
+        subtitle="You've been invited! Ready to settle the food debate?"
+      >
+        <JoinRoomForm initialCode={code} lockCode />
+      </FullScreenView>
+    </>
   );
 }
