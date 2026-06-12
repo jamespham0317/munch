@@ -25,11 +25,13 @@ export default async function JoinRoomByCodePage({
         aria-hidden
         className="pointer-events-none fixed -bottom-[10%] -left-[10%] -z-10 h-[50%] w-[50%] rounded-full bg-heat/5 blur-[100px]"
       />
-      <FullScreenView
-        title="Join the Squad"
-        subtitle="You've been invited! Ready to settle the food debate?"
-      >
-        <JoinRoomForm initialCode={code} lockCode />
+      <FullScreenView>
+        <JoinRoomForm
+          title="Join the Squad"
+          subtitle="You've been invited! Ready to settle the food debate?"
+          initialCode={code}
+          lockCode
+        />
       </FullScreenView>
     </>
   );

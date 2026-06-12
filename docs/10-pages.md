@@ -45,7 +45,8 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 ### 3.1 Welcome / Home  ("Welcome to Munch")
 - **Routes:** mobile `app/index.tsx` · web `app/page.tsx`.
 - **Purpose:** entry. "Ready to eat?" → **Create a Room** (large amber card) or **Join with
-  Code** (name + code + Join). "How Munch Works" 3-step explainer.
+  Code** (name + code + Join). "How Munch Works" 3-step explainer. No inline Munch brand row here
+  — it now heads the room-flow screens (Create Room, Match, Host Resolution).
 - **Primitives:** Card, Button (primary/secondary), Field, list rows with colored icons.
 - **Wiring:** Create → create-room flow. Join joins **inline here for everyone** — no redirect
   to the join screen. A **guest** types a name + code; a **signed-in** user (resolved `profiles`
@@ -78,7 +79,7 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 ### 3.3 Create Room  ("Create a Room")
 - **Routes:** mobile `app/room/create.tsx` · web `app/room/create/page.tsx`.
 - **Purpose:** host sets anchor ("Where are we eating?"), cuisine chips, price range tiles,
-  radius slider → **Start Room**.
+  radius slider → **Start Room**. Topped by the **Munch brand row** (mobile).
 - **Primitives:** AnchorMap (anchor), FoodChip (cuisines), PriceTile, RadiusSlider, Button.
 - **Anchor:** set via the **AnchorMap** (MapLibre + OSM tiles, Phase 4.6), **not** manual
   lat/lng. A fixed center pin marks the anchor (= `map.getCenter()` on move-end); device
@@ -119,25 +120,35 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   The bare `app/room/join/index.tsx` / `page.tsx` (blank code) still render the form but nothing
   routes to them.
 - **Purpose:** confirm a name and join a room from an invite link. The code is prefilled from the
-  link and **locked** (`lockCode`, read-only, shown in large type grouped `582-901` — the value
-  submitted to `join_room` stays the raw 6 digits, so validation is unchanged): a host shared this
-  exact code, so the invitee can't edit it. The `JoinRoomForm` is **auth-aware**: a **guest** sees
-  the name field; a **signed-in** user sees a "Joining as {name}" readout instead (name field
-  hidden) and joins with their `profiles` display name (`useOwnProfile`) — never asked to re-type
-  their name. The gate is the resolved name, so a guest and the rare signed-in-but-no-profile state
-  both fall back to name entry. No mid-room sign-in: the form only chooses how the name is supplied
-  (docs/04 §2).
-- **Style (Stitch "Join Room"):** the form sits in a `Card` topped by a centered amber `IconBadge`
-  (solid, utensils glyph); the name + room-code Inputs carry `leadingIcon`s (person / lock); the
-  primary action is an `elevated` "Join the Squad" Button with a trailing groups icon; a lightbulb
-  `tip` sits below the card. The page keeps the shared `FullScreenView`/`Screen` shell (brand row +
-  title "Join the Squad" + the invite subtitle). Web adds ambient blur-blobs; mobile omits them.
-- **Primitives:** Card, IconBadge, Field, Input (`leadingIcon`), Button (`primary` `elevated`
-  "Join the Squad", `text` Cancel).
+  link and **locked** (`lockCode`, read-only, shown bold but at the name field's body size as the
+  raw 6 digits — no grouping dash — so the value submitted to `join_room` matches what's displayed
+  and validation is
+  unchanged): a host shared this exact code, so the invitee can't edit it. The `JoinRoomForm` is
+  **auth-aware**: a **guest** sees the name field; a **signed-in** user sees a "Joining as {name}"
+  readout instead (name field hidden) and joins with their `profiles` display name (`useOwnProfile`)
+  — never asked to re-type their name. The gate is the resolved name, so a guest and the rare
+  signed-in-but-no-profile state both fall back to name entry. No mid-room sign-in: the form only
+  chooses how the name is supplied (docs/04 §2).
+- **Style:** mirrors the Sign In page (`HistoryView` signed-out state). A centered **hero** — an
+  80×80 round amber circle (utensils glyph) with the `title` + `subtitle` centered below it — sits
+  **above** a **full-width** `Card` (the icon is no longer inside the card). The `title`/`subtitle`
+  copy is passed into `JoinRoomForm` by each route (so the form owns the hero, like `HistoryView`):
+  "Join with Code" (manual) / "Join the Squad" (invite link). The Inputs are plain bordered fields
+  (default `radii.md` corners, matching Sign In); the **name** field is labelled "Your name" with no
+  leading icon, and the **room-code** field carries a leading lock icon; the primary action is a
+  **flat** "Join the Squad" Button (not
+  elevated) with a trailing groups icon, followed by a low-emphasis `text` "Back" Button (leading
+  back-arrow) that routes to `"/"`; a lightbulb `tip` sits centered below the card. The locked
+  invite-code field keeps a dimmed read-only fill (`surface-highest`, muted, bold body-sized type) to signal
+  it can't be edited, on the same plain base. The page keeps the shared `FullScreenView`/`Screen`
+  shell (the form supplies the title/subtitle hero, so `FullScreenView` renders only its brand row +
+  column). Web adds ambient blur-blobs; mobile omits them.
+- **Primitives:** Field, Input (plain), Card, Button (`primary` "Join the Squad", `text` "Back").
 - **Wiring:** `join_room`. Errors: `ROOM_NOT_FOUND`, `ROOM_CLOSED`, `ALREADY_JOINED`,
-  `ROOM_IN_SESSION`, `RATE_LIMITED` (docs/04 §3.2) → friendly inline messages. Because the locked
-  code can't be edited, a **rejected** code is a dead end: the action switches to a **Cancel**
-  button back to Match (`"/"`) rather than a retry (the code stays locked).
+  `ROOM_IN_SESSION`, `RATE_LIMITED` (docs/04 §3.2) → friendly inline messages. The persistent
+  "Back" Button (`router.replace("/")`) is always the exit; because the locked code can't be edited,
+  a **rejected** code is a dead end, so the primary Join button is **disabled** and Back is the way
+  out rather than a futile retry.
 
 ### 3.5 Lobby  ("Lobby with QR Code")
 - **Routes:** mobile `app/room/[roomId]/lobby.tsx` · web `app/room/[roomId]/lobby/page.tsx`.
@@ -177,7 +188,8 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 
 ### 3.7 Match  ("It's a Match!")
 - **Routes:** mobile `app/room/[roomId]/result.tsx` · web `app/room/[roomId]/result/page.tsx`.
-- **Purpose:** "Everyone agreed!" confetti reveal — a **centered** header block (an amber
+- **Purpose:** "Everyone agreed!" confetti reveal — a top bar with the **Munch brand row** (left)
+  beside the close ✕ (right; mobile), then a **centered** header block (an amber
   "It's a Match!" badge with a party-popper glyph, headline, subcopy), then a full photo card
   with name, distance • price, rating, and **Get Directions** (external maps deep link) as the
   primary action **inside** the card; **Share Match** (OS share sheet) is a secondary button
@@ -194,7 +206,8 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   `awaiting_host_resolution`.
 - **Purpose:** "No Unanimous Match Yet." **Group's Top Pick** Decision Card + "N/M friends
   liked this"; **Settle for this**; **Widen the Search** (radius slider + cuisine chips +
-  price tiles + **Fetch New Deck**).
+  price tiles + **Fetch New Deck**). The **Munch brand row** heads both the host view and the
+  non-host "waiting on host" state (mobile).
 - **Primitives:** Card, ProgressPill, RadiusSlider, FoodChip, PriceTile, Button.
 - **Wiring:** `get_resolution_ranking` (host); `resolve_session` accept_top / widen
   (docs/04 §3.8–§3.9). Non-host members see a passive **"waiting on host"** state.

@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   type CuisineId,
   CUISINES,
@@ -64,6 +64,14 @@ export function ResolutionView({
     // until the host accepts (→ result via the match event) or widens (→ resume swiping).
     return (
       <View style={styles.container}>
+        <View style={styles.brandRow}>
+          <MaterialCommunityIcons
+            name="silverware-fork-knife"
+            size={24}
+            color={colors.heat}
+          />
+          <Text style={styles.brand}>Munch</Text>
+        </View>
         <Text style={styles.headline}>Deck's done!</Text>
         <Text style={styles.muted}>Waiting on the host to decide…</Text>
       </View>
@@ -222,6 +230,14 @@ function HostResolution({
 
   return (
     <View style={styles.container}>
+      <View style={styles.brandRow}>
+        <MaterialCommunityIcons
+          name="silverware-fork-knife"
+          size={24}
+          color={colors.heat}
+        />
+        <Text style={styles.brand}>Munch</Text>
+      </View>
       <Text style={styles.headline} accessibilityRole="header">
         {heading}
       </Text>
@@ -380,6 +396,8 @@ function formatDistance(metres: number): string {
 
 const styles = StyleSheet.create({
   container: { gap: spacing.md },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: spacing.base },
+  brand: { ...typography.titleLg, color: colors.text },
   section: { gap: spacing.sm },
   headline: { ...typography.displayLgMobile, color: colors.text },
   muted: { ...typography.bodyMd, color: colors.textMuted },

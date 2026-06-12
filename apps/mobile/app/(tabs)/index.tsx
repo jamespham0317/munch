@@ -1,4 +1,4 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { joinRoomRequestSchema } from "@munch/core";
 import { useRouter } from "expo-router";
 import { type ComponentProps, useState } from "react";
@@ -62,15 +62,6 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      <View style={styles.brandRow}>
-        <MaterialCommunityIcons
-          name="silverware-fork-knife"
-          size={24}
-          color={colors.heat}
-        />
-        <Text style={styles.brand}>Munch</Text>
-      </View>
-
       <Text style={styles.title} accessibilityRole="header">
         Ready to eat?
       </Text>
@@ -206,8 +197,6 @@ function Step({
 const STEP_ICON = 44;
 
 const styles = StyleSheet.create({
-  brandRow: { flexDirection: "row", alignItems: "center", gap: spacing.base },
-  brand: { ...typography.titleLg, color: colors.text },
   title: { ...typography.displayLgMobile, color: colors.text },
   subtitle: { ...typography.bodyMd, color: colors.textMuted },
 

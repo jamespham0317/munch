@@ -87,6 +87,14 @@ export function ResultView({ sessionId }: { sessionId: string }) {
       )}
 
       <View style={styles.topBar}>
+        <View style={styles.brandRow}>
+          <MaterialCommunityIcons
+            name="silverware-fork-knife"
+            size={24}
+            color={colors.heat}
+          />
+          <Text style={styles.brand}>Munch</Text>
+        </View>
         <Pressable
           onPress={() => router.replace("/")}
           accessibilityRole="button"
@@ -194,7 +202,13 @@ function shareMessage(restaurant: DeckRestaurant): string {
 
 const styles = StyleSheet.create({
   container: { gap: spacing.gutter, alignItems: "stretch" },
-  topBar: { flexDirection: "row", justifyContent: "flex-end" },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: spacing.base },
+  brand: { ...typography.titleLg, color: colors.text },
   header: { alignItems: "center", gap: spacing.base },
   matchBadge: { alignSelf: "center" },
   headline: {
