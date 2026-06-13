@@ -43,7 +43,19 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         {/* Dark (charcoal) status-bar content over the cream background. */}
         <StatusBar style="dark" />
-        <Stack screenOptions={{ headerShown: false }} />
+        {/* The app never pops the back stack — every Cancel/Back/End control (and the
+            auto-removed/host-ended redirects) does router.replace("/") back to the (tabs)
+            home. animationTypeForReplace: "pop" makes any replace *to* home play the
+            backward transition (home enters from the left, departing screen exits right),
+            the mirror of the default forward push, so a retreat reads as a retreat. Scoped
+            to (tabs) because that is the only screen reached by a backward action; deeper
+            forward navigations keep the default right-slide. Cross-platform (iOS + Android). */}
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen
+            name="(tabs)"
+            options={{ animationTypeForReplace: "pop" }}
+          />
+        </Stack>
       </QueryClientProvider>
     </GestureHandlerRootView>
   );
