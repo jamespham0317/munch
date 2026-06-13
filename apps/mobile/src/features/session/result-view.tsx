@@ -2,7 +2,6 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { cuisineLabel, type DeckRestaurant } from "@munch/core";
 import { useRouter } from "expo-router";
 import {
-  Dimensions,
   Linking,
   Pressable,
   Share,
@@ -10,14 +9,13 @@ import {
   Text,
   View,
 } from "react-native";
-import ConfettiCannon from "react-native-confetti-cannon";
-import { useReducedMotion } from "react-native-reanimated";
 
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { FoodChip } from "../../components/ui/chip";
 import { ProgressPill } from "../../components/ui/progress-pill";
 import { colors, spacing, typography } from "../../theme";
+import { MatchConfetti } from "./match-confetti";
 import { useMatch } from "./use-match";
 
 /**
@@ -32,12 +30,9 @@ import { useMatch } from "./use-match";
  * external maps app / the OS share sheet and NEVER call the provider (CLAUDE.md §2.1,
  * 09-design-system.md §8). The confetti is suppressed under reduce-motion (§10).
  */
-const SCREEN_WIDTH = Dimensions.get("window").width;
-
 export function ResultView({ sessionId }: { sessionId: string }) {
   const router = useRouter();
   const matchQuery = useMatch(sessionId);
-  const reduceMotion = useReducedMotion();
 
   if (matchQuery.isPending) {
     return <Text style={styles.muted}>Loading match…</Text>;
@@ -71,21 +66,6 @@ export function ResultView({ sessionId }: { sessionId: string }) {
 
   return (
     <View style={styles.container}>
-      {reduceMotion ? null : (
-        <ConfettiCannon
-          count={140}
-          origin={{ x: SCREEN_WIDTH / 2, y: -20 }}
-          autoStart
-          fadeOut
-          colors={[
-            colors.brand,
-            colors.heat,
-            colors.brandPressed,
-            colors.online,
-          ]}
-        />
-      )}
-
       <View style={styles.topBar}>
         <View style={styles.brandRow}>
           <MaterialCommunityIcons
@@ -172,6 +152,10 @@ export function ResultView({ sessionId }: { sessionId: string }) {
         onPress={() => void handleShare()}
         leadingIcon={<Feather name="share-2" size={18} color={colors.text} />}
       />
+
+      {/* Last child so it paints OVER the card; the overlay is non-interactive so the
+          actions above stay tappable. Self-suppresses under reduce-motion (§10). */}
+      <MatchConfetti />
     </View>
   );
 }
