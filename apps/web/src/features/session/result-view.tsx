@@ -80,18 +80,24 @@ export function ResultView({ sessionId }: { sessionId: string }) {
       </div>
 
       <div className="flex flex-col items-center gap-base text-center">
-        <ProgressPill
-          label="It's a Match!"
-          tone="match"
-          className="self-center"
-          leadingIcon={
-            <PartyPopper size={14} className="text-brand-deep" aria-hidden />
-          }
-        />
+        {/* Wrap in a centering row: the pill's base `self-start` would otherwise win over the
+            column's `items-center` (cx is a plain joiner, not tailwind-merge, so a `self-center`
+            override on the pill doesn't take). */}
+        <div className="flex w-full justify-center">
+          <ProgressPill
+            label="It's a Match!"
+            tone="match"
+            leadingIcon={
+              <PartyPopper size={14} className="text-brand-deep" aria-hidden />
+            }
+          />
+        </div>
         <h2 className="text-display-lg-mobile text-text md:text-display-lg">
           {headline}
         </h2>
-        <p className="max-w-md text-body-md text-text-muted">{subcopy}</p>
+        {/* Explicit rem width, not `max-w-md`: the seeded `--spacing-md` (24px) shadows Tailwind's
+            `max-w-md` token here (see globals.css), which crushed the subcopy to 24px wide. */}
+        <p className="max-w-[28rem] text-body-md text-text-muted">{subcopy}</p>
       </div>
 
       <Card
