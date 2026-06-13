@@ -67,13 +67,17 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 - **Primitives:** Button (`social`, `primary`), Field, divider, Avatar.
 - **Wiring:** `signInWithOAuth({google})`, `signUp` / `signInWithPassword`,
   `resetPasswordForEmail` → `updateUser`; history via `get_match_history` (docs/04 §2, §3.11).
-- **Forgot password (`auth/reset`, Stitch "Forgot Password"):** the `PasswordResetView` centers
-  each state in a `Card` with a tonal-circle `IconBadge` (info → request, mail-check → "sent",
-  lock → set-new-password), an own in-card headline ("Lost your way?" / "Set a new password"), an
-  email/password `Input` with a `leadingIcon`, an `elevated` primary Button with a trailing arrow,
-  a "Back to Login" link (→ the Profile tab, `/history`), and a legal footer. The route passes the
-  shell **no** title/subtitle — the card owns the headline, so `FullScreenView`/`Screen` contributes
-  only the brand row + cream canvas.
+- **Forgot password (`auth/reset`, Stitch "Forgot Password"):** the `PasswordResetView` styling
+  mirrors the Join-via-link page. The two **form steps** (request, set-new-password) put a
+  tonal-circle `IconBadge` (info → request, lock → set-new-password) + headline ("Lost your way?" /
+  "Set a new password") in a centered **hero above** a full-width `Card` that holds the form; the
+  **message states** (mail-check → "sent", error) keep the icon + message inside the `Card`. The
+  email `Input` has **no** leading icon (the password field keeps its lock); the primary Button is
+  **flat** (not `elevated`) with a trailing arrow. A **"Back"** control (the Join page's `text`
+  Button with a leading arrow) `router.replace`s to the Profile tab (`/history`) — on mobile that
+  carries `/history` in **from the left** via the `(tabs)` `animationTypeForReplace: "pop"`. The
+  route passes the shell **no** title/subtitle — the view owns its per-state headline, so
+  `FullScreenView`/`Screen` contributes only the brand row + cream canvas.
 - **Invariant:** outside-a-room only; guests have no profile and see the empty/"sign in" state
   (docs/04 §3.11), never an error.
 
