@@ -43,9 +43,6 @@ function ResetCard({ children }: { children: ReactNode }) {
       <Card className="flex w-full flex-col items-center gap-md text-center">
         {children}
       </Card>
-      <p className="text-caption text-text-faint/60">
-        © {new Date().getFullYear()} Munch Social. All rights reserved.
-      </p>
     </div>
   );
 }

@@ -34,9 +34,6 @@ function ResetCard({ children }: { children: ReactNode }) {
       <Card>
         <View style={styles.cardInner}>{children}</View>
       </Card>
-      <Text style={styles.footer}>
-        © {new Date().getFullYear()} Munch Social. All rights reserved.
-      </Text>
     </View>
   );
 }
@@ -276,5 +273,4 @@ const styles = StyleSheet.create({
     color: colors.heatStrong,
     textTransform: "uppercase",
   },
-  footer: { ...typography.caption, color: colors.textFaint, opacity: 0.6 },
 });
