@@ -100,12 +100,14 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 - **Wiring:** `create_room` (then lobby). Filters snapshot into the room. The map only populates
   `anchor_lat`/`anchor_lng`; the `create_room` contract is unchanged — a signed-in host's
   `host_display_name` is sourced from their profile, not retyped.
-- **Validation:** on **Start Room**, an empty (or whitespace-only) name shows a friendly inline
-  message under the "Your name" Field ("What should we call you? …") and blocks the call — the
-  name is the only realistically-reachable failure (the map auto-emits an anchor, the slider
-  defaults), and it applies only to the typed-name (guest) path since a signed-in name is
-  read-only and non-empty. Any residual anchor/radius failure falls back to a single catch-all
-  alert above the button. On-submit only; no live validation.
+- **Validation:** on **Start Room**, an empty (or whitespace-only) name shows a terse inline
+  message under the "Your name" Field ("Enter your name") and blocks the call; the form also
+  **scrolls the name field into view and focuses it** (opening the mobile keyboard) so the host
+  can correct it immediately — the name is the only realistically-reachable failure (the map
+  auto-emits an anchor, the slider defaults), and it applies only to the typed-name (guest) path
+  since a signed-in name is read-only and non-empty. Any residual anchor/radius failure falls
+  back to a single catch-all alert above the button (no scroll). On-submit only; no live
+  validation.
 - **Cancel:** a low-emphasis `text`-variant Button below **Start Room** abandons creation and
   routes to the Match tab (`"/"`, `useCancelCreateRoom`) — matching the room-exit convention
   (`useRoomExit` routes home to `/`). No room exists until **Start Room**, so it is a pure

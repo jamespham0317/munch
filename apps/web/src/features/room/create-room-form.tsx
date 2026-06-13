@@ -8,7 +8,7 @@ import {
   RADIUS_MAX_M,
 } from "@munch/core";
 import { Lock } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 
 import { AnchorMap } from "@/components/anchor-map";
 import { FiltersFieldset } from "@/components/filters-fieldset";
@@ -54,20 +54,27 @@ export function CreateRoomForm() {
   const [radius, setRadius] = useState(DEFAULT_RADIUS_M);
   const [nameError, setNameError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setNameError(null);
     setValidationError(null);
-    // Name first, with its own friendly inline message — it is the only
+    // Name first, with its own field-specific inline message — it is the only
     // realistically-reachable failure (the map auto-emits an anchor and the radius
     // slider defaults), so it gets a field-specific error rather than the catch-all.
     // Only guards the typed-name path: a signed-in host's profile name is read-only and
     // guaranteed non-empty (profiles.display_name is NOT NULL), so the check is skipped.
     if (!signedInName && hostDisplayName.trim().length === 0) {
-      setNameError(
-        "What should we call you? Add your name to create the room.",
-      );
+      setNameError("Enter your name");
+      // The name field is at the top of a long form (map, filters, buttons below), so on
+      // submit it may be scrolled off-screen — bring it into view and focus it so the host
+      // can type immediately. The input is already rendered (guest branch), so the ref is live.
+      nameInputRef.current?.focus();
+      nameInputRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
       return;
     }
     const parsed = createRoomRequestSchema.safeParse({
@@ -117,6 +124,7 @@ export function CreateRoomForm() {
           error={nameError ?? undefined}
         >
           <Input
+            ref={nameInputRef}
             id="host-name"
             value={hostDisplayName}
             onChange={(event) => setHostDisplayName(event.target.value)}
@@ -168,9 +176,6 @@ export function CreateRoomForm() {
         loading={createRoom.isPending}
         disabled={resolvingName}
       />
-      <p className="text-center text-caption text-text-muted">
-        Inviting friends will be the next step.
-      </p>
       {/* Ghost-outline Cancel below the primary action, matching the lobby "End room" control:
           abandons creation and returns to Match. No room exists yet, so it's a pure client-side
           discard. Disabled while a create is in flight (the create_room RPC may already be

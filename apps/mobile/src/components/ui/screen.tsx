@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import {
   ScrollView,
   type StyleProp,
@@ -26,6 +26,10 @@ type ScreenEdge = "top" | "bottom";
  * `padded` (default) applies the screen margin + gap; a screen with bespoke interior padding
  * (e.g. the centered Discover placeholder) passes `padded={false}` and supplies its own via
  * `contentStyle`. `edges` defaults to top-only and is kept configurable for future use.
+ *
+ * `scrollRef` is forwarded to the internal `ScrollView` so a screen can drive its scroll
+ * position — e.g. Create Room scrolling to the top (the name field) on an empty-name submit.
+ * Ignored when `scroll={false}` (no ScrollView to attach to).
  */
 export function Screen({
   children,
@@ -35,6 +39,7 @@ export function Screen({
   style,
   contentStyle,
   keyboardShouldPersistTaps = "handled",
+  scrollRef,
 }: {
   children: ReactNode;
   /** `false` renders a static `flex: 1` View instead of a ScrollView. */
@@ -48,6 +53,8 @@ export function Screen({
   /** Content style (contentContainerStyle when scrolling; merged into the View otherwise). */
   contentStyle?: StyleProp<ViewStyle>;
   keyboardShouldPersistTaps?: "always" | "never" | "handled";
+  /** Ref to the internal ScrollView, to drive scroll position. No-op when `scroll={false}`. */
+  scrollRef?: RefObject<ScrollView | null>;
 }) {
   // The inset clears the status bar / Dynamic Island; when padded, the 20px screen margin
   // rides on top of it so content keeps its normal breathing room below the island.
@@ -69,6 +76,7 @@ export function Screen({
   }
   return (
     <ScrollView
+      ref={scrollRef}
       style={[styles.screen, style]}
       contentContainerStyle={content}
       keyboardShouldPersistTaps={keyboardShouldPersistTaps}

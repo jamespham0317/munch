@@ -6,8 +6,8 @@ import {
   type PriceLevel,
   RADIUS_MAX_M,
 } from "@munch/core";
-import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useRef, useState } from "react";
+import { StyleSheet, Text, type TextInput, View } from "react-native";
 
 import { AnchorMap } from "../../components/anchor-map";
 import { FiltersFieldset } from "../../components/filters-fieldset";
@@ -34,8 +34,11 @@ import { useCancelCreateRoom, useCreateRoom } from "./use-create-room";
  * the locked Room-code field, docs/10 §3.3/§3.4). The gate is the resolved NAME, so a guest, and the rare
  * signed-in-but-no-profile state, both fall back to name entry and are never stuck. This only
  * chooses how the name is supplied; there is no mid-room sign-in here (docs/04 §2).
+ *
+ * `scrollToTop` is supplied by the screen (which owns the ScrollView) so an empty-name submit
+ * can bring the name field — the form's topmost element — back into view.
  */
-export function CreateRoomForm() {
+export function CreateRoomForm({ scrollToTop }: { scrollToTop?: () => void }) {
   const createRoom = useCreateRoom();
   const cancelCreateRoom = useCancelCreateRoom();
   const userQuery = useCurrentUser();
@@ -54,19 +57,23 @@ export function CreateRoomForm() {
   const [radius, setRadius] = useState(DEFAULT_RADIUS_M);
   const [nameError, setNameError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const nameInputRef = useRef<TextInput>(null);
 
   function handleSubmit() {
     setNameError(null);
     setValidationError(null);
-    // Name first, with its own friendly inline message — it is the only
+    // Name first, with its own field-specific inline message — it is the only
     // realistically-reachable failure (the map auto-emits an anchor and the radius
     // slider defaults), so it gets a field-specific error rather than the catch-all.
     // Only guards the typed-name path: a signed-in host's profile name is read-only and
     // guaranteed non-empty (profiles.display_name is NOT NULL), so the check is skipped.
     if (!signedInName && hostDisplayName.trim().length === 0) {
-      setNameError(
-        "What should we call you? Add your name to create the room.",
-      );
+      setNameError("Enter your name");
+      // The name field sits at the top of a long form (map, filters, buttons below), so on
+      // submit it may be scrolled off-screen — scroll back to it and focus it (opening the
+      // keyboard) so the host can type immediately.
+      scrollToTop?.();
+      nameInputRef.current?.focus();
       return;
     }
     const parsed = createRoomRequestSchema.safeParse({
@@ -112,6 +119,7 @@ export function CreateRoomForm() {
       ) : (
         <Field label="Your name" error={nameError ?? undefined}>
           <Input
+            ref={nameInputRef}
             value={hostDisplayName}
             onChangeText={setHostDisplayName}
             maxLength={50}

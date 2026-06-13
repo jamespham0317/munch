@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, type Ref, useState } from "react";
 import { StyleSheet, TextInput, type TextInputProps, View } from "react-native";
 
 import { colors, radii, shadow, spacing, typography } from "../../theme";
@@ -13,17 +13,22 @@ import { colors, radii, shadow, spacing, typography } from "../../theme";
  * `leadingIcon` insets a glyph at the left of the control (the auth/join screens — person,
  * lock, mail). It overlays the input's left padding so the focus border still wraps the
  * whole pill (RN parity with the web Input's leading-icon slot).
+ *
+ * `ref` forwards to the underlying `TextInput` (React 19 ref-as-prop) so callers can focus
+ * the control — e.g. the Create Room form focusing the name field on an empty-name submit.
  */
 export function Input({
   style,
   onFocus,
   onBlur,
   leadingIcon,
+  ref,
   ...props
-}: TextInputProps & { leadingIcon?: ReactNode }) {
+}: TextInputProps & { leadingIcon?: ReactNode; ref?: Ref<TextInput> }) {
   const [focused, setFocused] = useState(false);
   const input = (
     <TextInput
+      ref={ref}
       {...props}
       onFocus={(event) => {
         setFocused(true);
