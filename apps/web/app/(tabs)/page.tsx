@@ -87,65 +87,72 @@ export default function HomePage() {
         </Card>
       </Link>
 
-      <Card className="flex flex-col gap-sm">
-        <div className="flex items-center gap-base">
-          <Users size={20} className="text-heat" aria-hidden />
-          <span className="text-title-lg text-text">Join with Code</span>
-        </div>
-        <p className="text-caption text-text-muted">
-          Got an invite? Enter your name and the code below.
-        </p>
-        {/* Name: guests type it; a signed-in user joins with their profile name and skips the
-            field. The gate is the resolved name, so an unresolved profile falls back to entry. */}
-        {signedInName ? (
-          <Input
-            value={signedInName}
-            readOnly
-            aria-readonly
-            aria-label="Your name"
-            leadingIcon={<Lock size={20} aria-hidden />}
-            className="cursor-not-allowed bg-surface-highest text-body-md font-bold text-text-muted"
-          />
-        ) : resolvingName ? (
-          <p className="text-body-md text-text-muted">Loading your profile…</p>
-        ) : (
-          <Input
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") goToJoin();
-            }}
-            maxLength={50}
-            placeholder="Your name"
-            autoComplete="name"
-            aria-label="Your name"
-          />
-        )}
-        <div className="flex items-center gap-sm">
-          <Input
-            value={code}
-            onChange={(event) => setCode(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") goToJoin();
-            }}
-            inputMode="numeric"
-            maxLength={6}
-            placeholder="e.g. 582901"
-            aria-label="Room code"
-          />
-          <Button
-            label={joinRoom.isPending ? "Joining…" : "Join"}
-            variant="secondary"
-            onClick={goToJoin}
-            loading={joinRoom.isPending}
-            disabled={resolvingName}
-          />
-        </div>
-        {joinError ? (
-          <p role="alert" className="text-body-md text-error">
-            {joinError}
+      {/* The flex/gap layout must wrap the children directly — Card applies `className` to its
+          OUTER shell, not the inner content where children live, so a gap on <Card> never reached
+          the fields (they touched). Mirrors the Create-a-Room card's inner flex wrapper above. */}
+      <Card>
+        <div className="flex flex-col gap-sm">
+          <div className="flex items-center gap-base">
+            <Users size={20} className="text-heat" aria-hidden />
+            <span className="text-title-lg text-text">Join with Code</span>
+          </div>
+          <p className="text-caption text-text-muted">
+            Got an invite? Enter your name and the code below.
           </p>
-        ) : null}
+          {/* Name: guests type it; a signed-in user joins with their profile name and skips the
+            field. The gate is the resolved name, so an unresolved profile falls back to entry. */}
+          {signedInName ? (
+            <Input
+              value={signedInName}
+              readOnly
+              aria-readonly
+              aria-label="Your name"
+              leadingIcon={<Lock size={20} aria-hidden />}
+              className="cursor-not-allowed bg-surface-highest text-body-md font-bold text-text-muted"
+            />
+          ) : resolvingName ? (
+            <p className="text-body-md text-text-muted">
+              Loading your profile…
+            </p>
+          ) : (
+            <Input
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") goToJoin();
+              }}
+              maxLength={50}
+              placeholder="Your name"
+              autoComplete="name"
+              aria-label="Your name"
+            />
+          )}
+          <div className="flex items-center gap-sm">
+            <Input
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") goToJoin();
+              }}
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="e.g. 582901"
+              aria-label="Room code"
+            />
+            <Button
+              label={joinRoom.isPending ? "Joining…" : "Join"}
+              variant="secondary"
+              onClick={goToJoin}
+              loading={joinRoom.isPending}
+              disabled={resolvingName}
+            />
+          </div>
+          {joinError ? (
+            <p role="alert" className="text-body-md text-error">
+              {joinError}
+            </p>
+          ) : null}
+        </div>
       </Card>
 
       <h2 className="text-headline-md text-text">How Munch Works</h2>
