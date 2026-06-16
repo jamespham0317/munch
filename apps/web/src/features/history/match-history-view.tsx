@@ -1,47 +1,47 @@
 "use client";
 
 import type { MatchHistory } from "@munch/core";
-import { Calendar, UtensilsCrossed } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Badge, Button, Card } from "@/components/ui";
-import { AuthPanel } from "@/features/auth/auth-panel";
 import { useCurrentUser } from "@/features/auth/use-current-user";
 
 import { useMatchHistory } from "./use-match-history";
 
 /**
- * Profile destination (10-pages.md §3.2, "Profile & Sign In Updated"). Signed-in users see their
- * saved matches; guests (anonymous, no profile — CLAUDE.md §3) get the "sign in to save" state
- * with the account panel and never fetch history. The signed-in test is the auth identity's
- * anonymity flag, not the presence of a user_id (guests have one too). Screens stay thin —
- * data access is in the hook / @munch/api-client (CLAUDE.md §4).
+ * Match-history list (10-pages.md §3.2), reached from the profile hub's "View Match History"
+ * (ProfileView). Signed-in users see their saved matches; the read is gated on the signed-in
+ * identity (guests have no rows — CLAUDE.md §3). A guest who deep-links here is bounced back to
+ * the profile tab, where the sign-in gate lives. Screens stay thin — data access is in the hook
+ * / @munch/api-client (CLAUDE.md §4).
  */
-export function HistoryView() {
+export function MatchHistoryView() {
   const userQuery = useCurrentUser();
   const isSignedIn = userQuery.data ? !userQuery.data.isAnonymous : false;
   const historyQuery = useMatchHistory(isSignedIn);
+  const router = useRouter();
 
   if (userQuery.isPending) {
     return <HistorySkeleton />;
   }
 
-  // Guest or not signed in: invite them to sign in; do NOT read history (they have no rows).
+  // Defensive: the hub only links here when signed-in, so a guest reaching this route is sent
+  // back to the profile tab (where the sign-in gate lives) rather than shown an empty list.
   if (!isSignedIn) {
     return (
       <section className="flex flex-col gap-md">
-        <div className="flex flex-col items-center gap-sm text-center">
-          <span className="flex h-20 w-20 items-center justify-center rounded-full bg-brand">
-            <UtensilsCrossed size={32} className="text-on-brand" aria-hidden />
-          </span>
-          <h1 className="text-headline-md text-text">
-            Sign in to save your history
-          </h1>
-          <p className="text-body-md text-text-muted">
-            Don&apos;t lose your favorite matches and group picks!
-          </p>
-        </div>
-        <AuthPanel mode="signin" />
+        <h1 className="text-display-lg-mobile text-text md:text-display-lg">
+          Your matches
+        </h1>
+        <p className="text-body-md text-text-muted">
+          Sign in to see the places your group has matched on.
+        </p>
+        <Button
+          label="Go to Profile"
+          variant="ghost"
+          onClick={() => router.replace("/history")}
+        />
       </section>
     );
   }

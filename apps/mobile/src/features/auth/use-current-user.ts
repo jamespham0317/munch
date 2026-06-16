@@ -14,6 +14,8 @@ export interface CurrentUser {
   id: string;
   /** Anonymous guests have no profile (CLAUDE.md §3); guests still have a user_id. */
   isAnonymous: boolean;
+  /** Account email (email+password / Google); `null` for guests. Shown on the profile hub. */
+  email: string | null;
 }
 
 export const currentUserKey = ["session-user"] as const;
@@ -21,7 +23,13 @@ export const currentUserKey = ["session-user"] as const;
 async function fetchCurrentUser(): Promise<CurrentUser | null> {
   const { data } = await getSupabaseClient().auth.getSession();
   const user = data.session?.user;
-  return user ? { id: user.id, isAnonymous: user.is_anonymous ?? false } : null;
+  return user
+    ? {
+        id: user.id,
+        isAnonymous: user.is_anonymous ?? false,
+        email: user.email ?? null,
+      }
+    : null;
 }
 
 export function useCurrentUser() {

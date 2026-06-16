@@ -28,7 +28,7 @@ import { useJoinRoom } from "./use-join-room";
  * the rare signed-in-but-no-profile state, both fall back to name entry and are never stuck.
  * This only chooses how the name is supplied; there is no mid-room sign-in here (docs/04 §2).
  *
- * Layout mirrors the Sign In page (`HistoryView` signed-out hero): a centered icon + `title` +
+ * Layout mirrors the Sign In page (`ProfileView` signed-out hero): a centered icon + `title` +
  * `subtitle` hero above a full-width Card. The route passes the per-entry copy via `title` /
  * `subtitle` (docs/10 §3.4).
  */

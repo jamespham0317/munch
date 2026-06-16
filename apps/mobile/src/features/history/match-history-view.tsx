@@ -1,51 +1,46 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import type { MatchHistory } from "@munch/core";
 import { useRouter } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
 import { Badge, Button, Card } from "../../components/ui";
 import { colors, radii, spacing, typography } from "../../theme";
-import { AuthPanel } from "../auth/auth-panel";
 import { useCurrentUser } from "../auth/use-current-user";
 import { useMatchHistory } from "./use-match-history";
 
 /**
- * Profile tab (10-pages.md §3.2, "Profile & Sign In Updated"), RN parity with apps/web's
- * HistoryView. Signed-in users see their saved matches; guests (anonymous, no profile —
- * CLAUDE.md §3) get the "sign in to save" state with the account panel and never fetch
- * history. The signed-in test is the auth identity's anonymity flag, not the presence of a
- * user_id (guests have one too). Screens stay thin — data access is in the hook /
+ * Match-history list (10-pages.md §3.2), reached from the profile hub's "View Match History"
+ * (ProfileView). Signed-in users see their saved matches; the read is gated on the signed-in
+ * identity (guests have no rows — CLAUDE.md §3). A guest who deep-links here is bounced back to
+ * the profile tab — the auth gate lives there. Screens stay thin — data access is in the hook /
  * @munch/api-client (CLAUDE.md §4).
  */
-export function HistoryView() {
+export function MatchHistoryView() {
   const userQuery = useCurrentUser();
   const isSignedIn = userQuery.data ? !userQuery.data.isAnonymous : false;
   const historyQuery = useMatchHistory(isSignedIn);
+  const router = useRouter();
 
   if (userQuery.isPending) {
     return <HistorySkeleton />;
   }
 
-  // Guest or not signed in: invite them to sign in; do NOT read history (they have no rows).
+  // Defensive: the hub only links here when signed-in, so a guest reaching this route is sent
+  // back to the profile tab (where the sign-in gate lives) rather than shown an empty list.
   if (!isSignedIn) {
     return (
       <View style={styles.container}>
-        <View style={styles.hero}>
-          <View style={styles.avatar}>
-            <MaterialCommunityIcons
-              name="silverware-fork-knife"
-              size={32}
-              color={colors.onBrand}
-            />
-          </View>
-          <Text style={styles.heading} accessibilityRole="header">
-            Sign in to save your history
-          </Text>
-          <Text style={styles.subtitle}>
-            Don&apos;t lose your favorite matches and group picks!
-          </Text>
-        </View>
-        <AuthPanel mode="signin" />
+        <Text style={styles.title} accessibilityRole="header">
+          Your matches
+        </Text>
+        <Text style={styles.subtitle}>
+          Sign in to see the places your group has matched on.
+        </Text>
+        <Button
+          label="Go to Profile"
+          variant="ghost"
+          onPress={() => router.replace("/history")}
+        />
       </View>
     );
   }
@@ -156,25 +151,10 @@ function formatDate(iso: string): string {
 
 const styles = StyleSheet.create({
   container: { gap: spacing.md },
-  hero: { alignItems: "center", gap: spacing.sm },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: radii.full,
-    backgroundColor: colors.brand,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   title: { ...typography.displayLgMobile, color: colors.text },
-  heading: {
-    ...typography.headlineMd,
-    color: colors.text,
-    textAlign: "center",
-  },
   subtitle: {
     ...typography.bodyMd,
     color: colors.textMuted,
-    textAlign: "center",
   },
   list: { gap: spacing.gutter },
   rowBody: { gap: spacing.base },

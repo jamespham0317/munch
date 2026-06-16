@@ -32,7 +32,7 @@ A bottom **TabBar** (Discover · Match · Profile) wraps the in-app experience.
 |---|---|
 | **Discover** | Placeholder ("Under Construction") — see §3.9. Browse/feed is **post-v1**. |
 | **Match** | The room flow: lobby → session → result/resolution (the product core). |
-| **Profile** | Auth (signed-out) or account + match history (signed-in). |
+| **Profile** | Auth (signed-out) or the signed-in profile hub → match history (signed-in). |
 
 The auth surface is only reachable **outside a room** (docs/04 §2: no mid-room sign-in).
 
@@ -59,15 +59,26 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   welcome); the sign-in surface lives on the Profile tab (§2/§3.2), not here. There is no mid-room
   sign-in — this only chooses how the name is supplied (docs/04 §2).
 
-### 3.2 Auth / Profile  ("Profile & Sign In Updated")
-- **Routes:** mobile `app/auth/*` + `app/history.tsx` (Profile tab) · web `app/auth/*` +
-  `app/history/page.tsx`. Reset at `auth/reset`; account-created success at `auth/welcome`; web
-  OAuth return at `auth/callback`.
-- **Purpose:** "Sign in to save your history." **Continue with Google**; OR; email + password
-  with **Remember me** / **Forgot**; **Create an account** link. Signed-in: profile + history.
-- **Primitives:** Button (`social`, `primary`), Field, divider, Avatar.
+### 3.2 Auth / Profile  ("Profile & Sign In Updated" + "User Profile - Signed In")
+- **Routes:** mobile `app/(tabs)/history.tsx` (Profile tab) + `app/profile/match-history.tsx`
+  (the match-history list, a stack screen above the tabs) · web `app/(tabs)/history/page.tsx` +
+  `app/(tabs)/history/matches/page.tsx` (nested under `/history` so the Profile tab stays active).
+  Auth surfaces at mobile/web `app/auth/*`: reset at `auth/reset`; account-created success at
+  `auth/welcome`; web OAuth return at `auth/callback`.
+- **Purpose:** **Guest / signed-out** (unchanged): "Sign in to save your history." with
+  **Continue with Google**; OR; email + password with **Remember me** / **Forgot**; **Create an
+  account** link. **Signed-in** is a **profile hub** (Stitch "User Profile - Signed In"): a fixed,
+  uneditable **person icon** (no photo, no edit affordance, **no "Munch" header**), the account's
+  **name** (`useOwnProfile`, falling back to the email local-part) + **email**, a primary **"View
+  Match History"** button that routes to the match-history screen, a **disabled "Appearance"
+  placeholder** (no theming feature yet), and a **"Sign Out"** button that is **present but not
+  wired** (inert `onPress`/`onClick`).
+- **Primitives:** Button (`social`, `primary`, `ghost`), Field, divider, Card, IconBadge.
 - **Wiring:** `signInWithOAuth({google})`, `signUp` / `signInWithPassword`,
-  `resetPasswordForEmail` → `updateUser`; history via `get_match_history` (docs/04 §2, §3.11).
+  `resetPasswordForEmail` → `updateUser`. The signed-in hub (`ProfileView`) reads identity via
+  `useCurrentUser` (now incl. `email`) + the display name via `useOwnProfile`; the match-history
+  list (`MatchHistoryView`, reached via "View Match History" / a back control to `/history`) reads
+  `get_match_history` (docs/04 §2, §3.11). Sign-out itself is **deferred** (button inert).
 - **Forgot password (`auth/reset`, Stitch "Forgot Password"):** the `PasswordResetView` styling
   mirrors the Join-via-link page. The two **form steps** (request, set-new-password) put a
   tonal-circle `IconBadge` (info → request, lock → set-new-password) + headline ("Lost your way?" /
@@ -152,10 +163,10 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   — never asked to re-type their name. The gate is the resolved name, so a guest and the rare
   signed-in-but-no-profile state both fall back to name entry. No mid-room sign-in: the form only
   chooses how the name is supplied (docs/04 §2).
-- **Style:** mirrors the Sign In page (`HistoryView` signed-out state). A centered **hero** — an
+- **Style:** mirrors the Sign In page (`ProfileView` signed-out state). A centered **hero** — an
   80×80 round amber circle (utensils glyph) with the `title` + `subtitle` centered below it — sits
   **above** a **full-width** `Card` (the icon is no longer inside the card). The `title`/`subtitle`
-  copy is passed into `JoinRoomForm` by each route (so the form owns the hero, like `HistoryView`):
+  copy is passed into `JoinRoomForm` by each route (so the form owns the hero, like `ProfileView`):
   "Join with Code" (manual) / "Join the Squad" (invite link). The Inputs are plain bordered fields
   (default `radii.md` corners, matching Sign In); the **name** field is labelled "Your name" with no
   leading icon, and the **room-code** field carries a leading lock icon; the primary action is a

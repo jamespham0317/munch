@@ -1,10 +1,11 @@
-import { HistoryView } from "@/features/history/history-view";
+import { ProfileView } from "@/features/profile/profile-view";
 
 /**
- * Profile destination route (10-pages.md §2/§3.2). Thin pass-through; HistoryView gates on the
- * signed-in vs. guest state and owns its per-state header (CLAUDE.md §3, §4). The (tabs)
- * layout supplies the <main> + centered container.
+ * Profile destination route (10-pages.md §2/§3.2). Thin pass-through; ProfileView gates on the
+ * signed-in vs. guest state: signed-in users get the profile hub (with "View Match History"),
+ * guests get the "sign in to save" panel (CLAUDE.md §3, §4). The (tabs) layout supplies the
+ * <main> + centered container.
  */
-export default function HistoryPage() {
-  return <HistoryView />;
+export default function ProfilePage() {
+  return <ProfileView />;
 }
