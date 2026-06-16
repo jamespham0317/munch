@@ -16,6 +16,13 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(import.meta.dirname, "..", ".."),
   },
+  // Supabase site_url / additional_redirect_urls are all 127.0.0.1:3000 (supabase/config.toml),
+  // so every auth redirect (password-reset, OAuth callback) lands the browser on 127.0.0.1.
+  // Next 16's dev server otherwise only serves its HMR / dev-client runtime to its canonical
+  // `localhost` origin, so a page opened on 127.0.0.1 fails the HMR websocket handshake and never
+  // hydrates — the recovery effect never runs, so /auth/reset stays stuck on the request step.
+  // Allowing 127.0.0.1 as a dev origin lets those redirect targets hydrate. Dev-only knob.
+  allowedDevOrigins: ["127.0.0.1"],
   transpilePackages: ["@munch/core", "@munch/api-client", "@munch/ui"],
 };
 
