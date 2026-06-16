@@ -1,6 +1,6 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Screen } from "../../src/components/ui";
 import { MatchHistoryView } from "../../src/features/history/match-history-view";
@@ -8,30 +8,40 @@ import { colors, spacing, typography } from "../../src/theme";
 
 /**
  * Match-history screen (10-pages.md §3.2) — a forward push from the profile hub's "View Match
- * History" (ProfileView). A plain back control pops to the Profile tab (this is an ordinary
- * forward navigation, not a room-flow screen, so it pops rather than replacing to home — see
- * app/_layout.tsx). Thin wrapper around the MatchHistoryView feature (CLAUDE.md §4).
+ * History" (ProfileView). The top bar mirrors the Stitch "Match History" mockup: a back arrow
+ * (pops to the Profile tab — an ordinary forward navigation, not a room-flow screen, so it pops
+ * rather than replacing to home — see app/_layout.tsx) beside the Munch brand row. Thin wrapper
+ * around the MatchHistoryView feature (CLAUDE.md §4).
  */
 export default function MatchHistoryScreen() {
   const router = useRouter();
   return (
     <Screen>
-      <Pressable
-        onPress={() => router.back()}
-        accessibilityRole="button"
-        accessibilityLabel="Back to profile"
-        style={styles.back}
-        hitSlop={8}
-      >
-        <Feather name="chevron-left" size={24} color={colors.text} />
-        <Text style={styles.backLabel}>Profile</Text>
-      </Pressable>
+      <View style={styles.topBar}>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Back to profile"
+          hitSlop={spacing.base}
+        >
+          <Feather name="arrow-left" size={24} color={colors.text} />
+        </Pressable>
+        <View style={styles.brandRow}>
+          <MaterialCommunityIcons
+            name="silverware-fork-knife"
+            size={24}
+            color={colors.heat}
+          />
+          <Text style={styles.brand}>Munch</Text>
+        </View>
+      </View>
       <MatchHistoryView />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  back: { flexDirection: "row", alignItems: "center", gap: spacing.base },
-  backLabel: { ...typography.titleLg, color: colors.text },
+  topBar: { flexDirection: "row", alignItems: "center", gap: spacing.gutter },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: spacing.base },
+  brand: { ...typography.titleLg, color: colors.text },
 });

@@ -79,6 +79,22 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   `useCurrentUser` (now incl. `email`) + the display name via `useOwnProfile`; the match-history
   list (`MatchHistoryView`, reached via "View Match History" / a back control to `/history`) reads
   `get_match_history` (docs/04 §2, §3.11). Sign-out itself is **deferred** (button inert).
+- **Match History list (`MatchHistoryView`, Stitch "Match History"):** a top bar pairs an icon
+  back-arrow (returns to the Profile hub — `router.back()` mobile / a `/history` link web) with the
+  **Munch brand row** (fork-knife glyph in `heat` + "Munch", matching the app's other brand rows —
+  not the mockup's amber wordmark), then a **deep-amber** (`brand-deep`) `display-lg-mobile`
+  "Match History" title + "Revisit the spots where the magic happened." subtitle. Each match is a
+  **compact row** (not the old full-bleed photo Card): a `surface-sunken` `radius-lg` panel with
+  `shadow-low`, a 2px squishy press, a **colored left accent bar** cycling amber → burnt-orange →
+  deep-amber by index, an **80×80** `radius-md` thumbnail (`restaurantPhotoUrl`; no-photo fallback
+  is a `brand`/20% tile with a utensils glyph), the restaurant name (`title-lg`) beside a **date
+  pill** (the `Badge tone="match"` — `brand`/20% fill, `brand-deep` ink, "May 12" month+day, no
+  year), and a participant glyph (person/pair/group by `participantNames.length`) + "Matched with
+  …" (oxford-joined). Rows are **non-interactive** (no chevron — there is no match-detail screen in
+  v1; rich cards are post-v1, docs/07 §8). A persistent **"Craving more?"** footer (tonal-circle
+  `IconBadge` + `title-lg` + subcopy, **text-only**) sits below the list and **is** the empty
+  state when there are no matches. Loading is a row-shaped skeleton; the signed-in gate, the
+  guest-bounce, and the `get_match_history` read are unchanged (presentation only — CLAUDE.md §4).
 - **Forgot password (`auth/reset`, Stitch "Forgot Password"):** the `PasswordResetView` styling
   mirrors the Join-via-link page. The two **form steps** (request, set-new-password) put a
   tonal-circle `IconBadge` (info → request, lock → set-new-password) + headline ("Lost your way?" /
