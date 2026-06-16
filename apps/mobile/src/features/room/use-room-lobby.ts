@@ -1,4 +1,8 @@
-import { getRoom, subscribeRoomSessions } from "@munch/api-client";
+import {
+  getRoom,
+  subscribeRoomSessions,
+  subscribeRoomSettings,
+} from "@munch/api-client";
 import type { Room } from "@munch/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -59,6 +63,20 @@ export function useRoomLobby(roomId: string) {
       void queryClient.invalidateQueries({
         queryKey: activeSessionKey(roomId),
       });
+    });
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [roomId, queryClient]);
+
+  // Watch the room's settings row so a host's in-lobby anchor/filter/radius edit
+  // (update_room_filters) reaches every member live (rooms published in 0021). The
+  // editing host already invalidates on save; this pushes the change to non-hosts too. We only
+  // refetch the room — the changed columns are not read off the payload.
+  useEffect(() => {
+    const client = getSupabaseClient();
+    const channel = subscribeRoomSettings(client, roomId, () => {
+      void queryClient.invalidateQueries({ queryKey: roomKey(roomId) });
     });
     return () => {
       void client.removeChannel(channel);

@@ -3,14 +3,15 @@
 import {
   type CuisineId,
   DEFAULT_RADIUS_M,
+  type LatLng,
   type PriceLevel,
   RADIUS_MAX_M,
   type Room,
 } from "@munch/core";
 import { CheckCircle2, SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-import { AnchorSummary } from "@/components/anchor-summary";
+import { AnchorMap } from "@/components/anchor-map";
 import { FiltersFieldset } from "@/components/filters-fieldset";
 import { FiltersSummary } from "@/components/filters-summary";
 import { RadiusSlider } from "@/components/radius-slider";
@@ -19,22 +20,43 @@ import { Button, Card, Field, Sheet } from "@/components/ui";
 import { useUpdateRoomFilters } from "./use-update-room-filters";
 
 /**
- * Lobby filter editing. Filters are whole-room and host-controlled (CLAUDE.md §2.2): the host
- * edits them in a bottom sheet behind a "Filters" toggle, non-hosts see them read-only. Either
- * way they are the client half of "filters wired end-to-end" — the next start_session snapshots
- * them onto the session (CLAUDE.md §2.1). The control is lobby-only; once a session is active
- * update_room_filters raises SESSION_INVALID_STATE, whose safe message is surfaced rather than
- * crashing. Screens stay thin — all data access lives in the hook / @munch/api-client (CLAUDE.md
- * §4).
+ * Lobby filter editing. Filters AND the anchor are whole-room and host-controlled (CLAUDE.md
+ * §2.2): the host edits them in a bottom sheet behind a "Filters" toggle (anchor via the same
+ * map as Create Room), non-hosts see them read-only — the anchor as a locked,
+ * non-interactive map (docs/10 §3.5). Either way they are the client half of "filters wired
+ * end-to-end" — the next start_session snapshots them onto the session (CLAUDE.md §2.1). The
+ * control is lobby-only; once a session is active update_room_filters raises
+ * SESSION_INVALID_STATE, whose safe message is surfaced rather than crashing. Screens stay thin
+ * — all data access lives in the hook / @munch/api-client (CLAUDE.md §4). Edits push live to all
+ * members via the rooms realtime channel (subscribeRoomSettings, 0021) wired in useRoomLobby.
  */
+
+function formatKm(metres: number): string {
+  return `${(metres / 1000).toFixed(1)} km`;
+}
 
 /** Non-host read-only summary, rendered in the lobby column. */
 export function LobbyFiltersSummary({ room }: { room: Room }) {
+  // Memoized so the static map isn't torn down and rebuilt on every render — it remounts only
+  // when the host actually moves the anchor (delivered live via the rooms channel).
+  const center = useMemo<LatLng>(
+    () => ({ lat: room.anchorLat, lng: room.anchorLng }),
+    [room.anchorLat, room.anchorLng],
+  );
   return (
     <Card>
       <h2 className="text-title-lg text-text">Filters</h2>
-      <div className="mt-base flex flex-col gap-xs">
-        <AnchorSummary radiusM={room.defaultRadiusM} />
+      <div className="mt-base flex flex-col gap-base">
+        <div className="flex flex-col gap-xs">
+          <AnchorMap
+            radiusM={room.defaultRadiusM}
+            initialCenter={center}
+            readOnly
+          />
+          <p className="text-caption text-text-muted">
+            {formatKm(room.defaultRadiusM)} radius
+          </p>
+        </div>
         <FiltersSummary
           openNow={room.filterOpenNow}
           cuisines={room.filterCuisines}
@@ -65,12 +87,26 @@ export function LobbyFiltersButton({ room }: { room: Room }) {
     room.filterPriceLevels,
   );
   const [radius, setRadius] = useState(room.defaultRadiusM);
+  // Staged anchor: seeded from the room on open, updated as the host pans the map (the map's
+  // onAnchorChange emits its center). Committed only on Apply, like every other control here.
+  const [anchor, setAnchor] = useState<LatLng>({
+    lat: room.anchorLat,
+    lng: room.anchorLng,
+  });
+  // The map's starting center is the room's current anchor when the sheet opens. Memoized on the
+  // room anchor so it stays stable while the host pans (the room row only changes after Apply,
+  // which closes the sheet), avoiding a mid-edit map rebuild.
+  const initialCenter = useMemo<LatLng>(
+    () => ({ lat: room.anchorLat, lng: room.anchorLng }),
+    [room.anchorLat, room.anchorLng],
+  );
 
   function handleOpen() {
     setOpenNow(room.filterOpenNow);
     setCuisines(room.filterCuisines as CuisineId[]);
     setPriceLevels(room.filterPriceLevels);
     setRadius(room.defaultRadiusM);
+    setAnchor({ lat: room.anchorLat, lng: room.anchorLng });
     update.reset();
     setOpen(true);
   }
@@ -79,6 +115,8 @@ export function LobbyFiltersButton({ room }: { room: Room }) {
     if (update.isPending) return;
     update.mutate(
       {
+        anchor_lat: anchor.lat,
+        anchor_lng: anchor.lng,
         filters: { open_now: openNow, cuisines, price_levels: priceLevels },
         default_radius_m: Number.isFinite(radius) ? radius : DEFAULT_RADIUS_M,
       },
@@ -118,9 +156,19 @@ export function LobbyFiltersButton({ room }: { room: Room }) {
         }
       >
         <div className="flex flex-col gap-md">
-          {/* Anchor is host-controlled and set on Create Room via the map (no editable map in
-              the lobby, Phase 4.6) — shown read-only here; the radius stays editable below. */}
-          <AnchorSummary />
+          {/* Anchor is host-controlled (CLAUDE.md §2.2), edited via the same map as Create Room.
+              The host pans to set the anchor; the radius slider below drives the map zoom and the
+              fixed ring. */}
+          <div className="flex flex-col gap-base">
+            <span className="text-label-md uppercase text-text-muted">
+              Where are we eating?
+            </span>
+            <AnchorMap
+              radiusM={radius}
+              initialCenter={initialCenter}
+              onAnchorChange={(lat, lng) => setAnchor({ lat, lng })}
+            />
+          </div>
           <FiltersFieldset
             openNow={openNow}
             onOpenNowChange={setOpenNow}

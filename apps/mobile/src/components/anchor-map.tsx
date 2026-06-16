@@ -69,10 +69,18 @@ export function AnchorMap({
   radiusM,
   initialCenter,
   onAnchorChange,
+  readOnly = false,
 }: {
   radiusM: number;
   initialCenter?: LatLng;
-  onAnchorChange: (lat: number, lng: number) => void;
+  onAnchorChange?: (lat: number, lng: number) => void;
+  /**
+   * Read-only display (the lobby's non-host view, docs/10 §3.5): the map is centered on
+   * `initialCenter` (the room anchor) with the radius ring, but ALL interaction is disabled
+   * (drag-pan too, on top of the always-off zoom gestures) and no anchor is emitted. The
+   * editable Create Room / host-lobby-sheet usage leaves this false. Default false.
+   */
+  readOnly?: boolean;
 }) {
   const cameraRef = useRef<CameraRef>(null);
   // Keep the latest callback without re-running the mount effect.
@@ -85,8 +93,10 @@ export function AnchorMap({
 
   // Emit the starting center once so the form's anchor is never null/NaN, then
   // request geolocation: recenter on grant, stay on the fallback on denial (never block).
+  // Read-only display does neither — it just shows the room's anchor (centered) + ring.
   useEffect(() => {
-    onAnchorChangeRef.current(start.lat, start.lng);
+    if (readOnly) return;
+    onAnchorChangeRef.current?.(start.lat, start.lng);
     if (initialCenter) return;
 
     let cancelled = false;
@@ -119,7 +129,7 @@ export function AnchorMap({
     };
     // Run once on mount; radiusM/viewportPx are read fresh inside the closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialCenter]);
+  }, [initialCenter, readOnly]);
 
   // Radius slider change → only the map zoom changes; the fixed ring stays put. Use
   // the live center latitude so the ring keeps representing the true ground radius.
@@ -135,9 +145,10 @@ export function AnchorMap({
   function handleRegionDidChange(
     event: NativeSyntheticEvent<ViewStateChangeEvent>,
   ) {
+    if (readOnly) return;
     const [lng, lat] = event.nativeEvent.center;
     setCenter({ lat, lng });
-    onAnchorChangeRef.current(lat, lng);
+    onAnchorChangeRef.current?.(lat, lng);
   }
 
   function handleLayout(event: LayoutChangeEvent) {
@@ -157,11 +168,13 @@ export function AnchorMap({
         logo={false}
         // Slider-only zoom: disable every user zoom gesture (and rotate/pitch); pan
         // stays via the default-true dragPan. Programmatic Camera zoom is unaffected.
+        // readOnly also disables drag-pan — the static display can't move the anchor.
         touchZoom={false}
         doubleTapZoom={false}
         doubleTapHoldZoom={false}
         touchRotate={false}
         touchPitch={false}
+        dragPan={!readOnly}
       >
         <Camera
           ref={cameraRef}

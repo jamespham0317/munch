@@ -165,6 +165,40 @@ export function subscribeRoomSessions(
     .subscribe();
 }
 
+/** A row-change event on `rooms` delivered to a `subscribeRoomSettings` callback. */
+export type RoomSettingsChange = RealtimePostgresChangesPayload<{
+  id: string;
+}>;
+
+/**
+ * Subscribe to a room's settings row on `room-settings:{room_id}`. Fires `onChange` on any
+ * update of the `rooms` row so every member's lobby learns about a host's in-lobby anchor/
+ * filter/radius edit (update_room_filters) live (docs/04 §4, docs/10 §3.5). RLS
+ * (rooms_select_member from 0003) scopes deliveries to rooms the caller belongs to; 0021 added
+ * `rooms` to the supabase_realtime publication. The callback should invalidate the room query
+ * and refetch — the changed columns are not read off the payload. Returns the channel; the
+ * caller tears down via `client.removeChannel(channel)` — same pattern as subscribeRoom.
+ */
+export function subscribeRoomSettings(
+  client: SupabaseClient,
+  roomId: string,
+  onChange: (payload: RoomSettingsChange) => void,
+): RealtimeChannel {
+  return client
+    .channel(`room-settings:${roomId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "rooms",
+        filter: `id=eq.${roomId}`,
+      },
+      onChange,
+    )
+    .subscribe();
+}
+
 /**
  * Typed union of events delivered on the session channel: a `sessions` row status transition
  * or a new `matches` row. The match-event payload mirrors @munch/core's SessionMatchEvent

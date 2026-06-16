@@ -164,21 +164,30 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   **Start Swiping**. The squad count is the number of members joined (no per-member status text
   in v1).
 - **Primitives:** Card (amber code panel), QR, MemberList (Avatar + `online` dot),
-  ProgressPill, Button, LobbyFiltersButton/LobbyFiltersSummary, Sheet, RadiusSlider,
+  ProgressPill, Button, LobbyFiltersButton/LobbyFiltersSummary, Sheet, AnchorMap, RadiusSlider,
   LeaveRoomControl (ConfirmModal).
-- **Wiring:** realtime `room:{room_id}` presence; host `start_session`; `set_presence`.
+- **Wiring:** realtime `room:{room_id}` presence; the `rooms` settings channel
+  (`subscribeRoomSettings`) that pushes a host's anchor/filter edits to every member
+  live; host `start_session`; `set_presence`.
 - **Leave/End:** non-host "Leave room" / host "End room" (`useRoomExit`) confirm via the
   branded **ConfirmModal** (docs/09 §7) — not an OS alert. In the lobby the leave copy notes the
   member can still rejoin (the roster freezes only once a session starts — docs/04 §3.2).
-- **Anchor/filters:** the host-set anchor ("Pinned location" + radius) and filters show
-  **read-only** to all members (a `LobbyFiltersSummary` card in the column). The host instead gets
-  a **"Filters" toggle** (`tune`/sliders pill, on the Squad heading row — Stitch "Lobby") that
-  opens the editable anchor-summary + filters + **radius slider** (the same `RadiusSlider` as
-  Create Room, not a text field) in a bottom **Sheet** (docs/09 §7). **"Apply filters"** saves via
-  `update_room_filters` and closes the sheet on success; an error keeps it open; dismissing
-  (X/backdrop/back) discards unsaved edits. The snapshot still flows into `start_session`. No
-  editable map in the lobby — the anchor is set on Create Room (§3.3, Phase 4.6).
-- **Invariant:** only the host can start; aggregate presence only.
+- **Anchor/filters:** the host-set anchor and filters show to all members; the anchor
+  is a **map** (the `AnchorMap`), not a "Pinned location" caption. **Non-hosts** see a
+  **read-only, non-interactive** map (centered on the anchor with the radius ring, pan + zoom
+  disabled) plus a `… km radius` caption and the read-only filter summary (a `LobbyFiltersSummary`
+  card in the column). The **host** gets a **"Filters" toggle** (`tune`/sliders pill, on the Squad
+  heading row — Stitch "Lobby") that opens, in a bottom **Sheet** (docs/09 §7): an **editable
+  `AnchorMap`** (the same map as Create Room — pan to set the anchor) headed "Where are we eating?",
+  the **radius slider** (drives the map zoom, the same `RadiusSlider` as Create Room) + filters.
+  **"Apply filters"** saves the staged anchor + radius + filters via `update_room_filters`
+  (anchor sent as `anchor_lat`/`anchor_lng`, already in the contract — docs/04 §3.3) and closes the
+  sheet on success; an error keeps it open; dismissing (X/backdrop/back) discards unsaved edits.
+  Edits propagate live to every member via the `rooms` channel; the snapshot still flows into
+  `start_session`. The lobby map requests **no** geolocation — it seeds from the room's current
+  anchor (Create Room is where device location centers the map, §3.3).
+- **Invariant:** only the host can start; anchor + filters stay **host-controlled** (§2.2); a map
+  pan / slider / live update makes **no** provider call (§2.1); aggregate presence only.
 
 ### 3.6 Swiping Session  ("Swiping Session")
 - **Routes:** mobile `app/room/[roomId]/session.tsx` · web `app/room/[roomId]/session/page.tsx`.

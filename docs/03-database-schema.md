@@ -90,6 +90,10 @@ create index on rooms (code);
 - **RLS:** a member may select a room only if they have a `room_members` row for it (or by
   knowing the code during join, handled via a join RPC). Only the host may update room
   settings.
+- **Realtime:** `rooms` is in the `supabase_realtime` publication (migration 0021) so a
+  host's in-lobby anchor/filter edit reaches every member live (docs/04 §4). RLS still applies to
+  deliveries (`rooms_select_member`), and the published columns are already member-readable
+  settings — nothing sensitive is exposed.
 
 ---
 

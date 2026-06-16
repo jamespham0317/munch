@@ -59,10 +59,18 @@ export function AnchorMap({
   radiusM,
   initialCenter,
   onAnchorChange,
+  readOnly = false,
 }: {
   radiusM: number;
   initialCenter?: LatLng;
-  onAnchorChange: (lat: number, lng: number) => void;
+  onAnchorChange?: (lat: number, lng: number) => void;
+  /**
+   * Read-only display (the lobby's non-host view, docs/10 §3.5): the map is centered on
+   * `initialCenter` (the room anchor) with the radius ring, but ALL interaction is disabled
+   * (drag-pan too, on top of the always-off zoom gestures) and no anchor is emitted. The
+   * editable Create Room / host-lobby-sheet usage leaves this false. Default false.
+   */
+  readOnly?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MaplibreMap | null>(null);
@@ -99,29 +107,35 @@ export function AnchorMap({
         attributionControl: { customAttribution: OSM_ATTRIBUTION },
         // Slider-only zoom: disable every user zoom gesture; keep drag-pan (default).
         // `keyboard` binds both arrow-pan and +/- zoom and can't be split, so it goes
-        // too (drag-pan remains the way to move the map).
+        // too (drag-pan remains the way to move the map). In readOnly the map is a static
+        // display, so drag-pan is disabled too — the anchor can't move.
         scrollZoom: false,
         boxZoom: false,
         doubleClickZoom: false,
         touchZoomRotate: false,
         dragRotate: false,
         keyboard: false,
+        dragPan: !readOnly,
       });
       mapRef.current = map;
 
-      // Anchor = map center: emit it whenever the map settles. The ring is a fixed
-      // overlay centered on the map, so there is nothing to reposition here.
-      map.on("moveend", () => {
-        if (!map) return;
-        const center = map.getCenter();
-        onAnchorChangeRef.current(center.lat, center.lng);
-      });
+      // Read-only display: no anchor emission, no geolocation — the map just shows the
+      // room's current anchor (centered) with the radius ring.
+      if (!readOnly) {
+        // Anchor = map center: emit it whenever the map settles. The ring is a fixed
+        // overlay centered on the map, so there is nothing to reposition here.
+        map.on("moveend", () => {
+          if (!map) return;
+          const center = map.getCenter();
+          onAnchorChangeRef.current?.(center.lat, center.lng);
+        });
 
-      // Emit the starting center immediately so the form's anchor is never NaN.
-      onAnchorChangeRef.current(start.lat, start.lng);
+        // Emit the starting center immediately so the form's anchor is never NaN.
+        onAnchorChangeRef.current?.(start.lat, start.lng);
+      }
 
       // Opt-in geolocation: request once, recenter on grant, never block on denial.
-      if (!initialCenter && navigator.geolocation) {
+      if (!readOnly && !initialCenter && navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
             if (cancelled || !map) return;
@@ -152,7 +166,7 @@ export function AnchorMap({
       map?.remove();
       mapRef.current = null;
     };
-  }, [initialCenter]);
+  }, [initialCenter, readOnly]);
 
   // Track the container size so the fixed ring and the zoom math stay in sync with
   // responsive width changes.

@@ -190,10 +190,12 @@ getting stuck host-less, consistent with §13's "never an ambiguous or stuck sta
 - **Cuisine is a closed taxonomy** (`CUISINES` in `@munch/core`) — the picker offers a fixed
   v1 list, not free-text entry, so the ids stay stable map keys shared by the client picker and
   the server's cuisine→provider-type mapping.
-- **Radius:** host-controlled like the other filters — set on Create Room (the map-zoom slider,
-  Phase 4.6) and editable in the lobby, then snapshotted for the session and only loosened by the
-  host's **widen** control. Members do not adjust radius while swiping; everyone draws from the
-  same host-set pool.
+- **Radius & anchor:** host-controlled like the other filters — set on Create Room (the map-zoom
+  slider + map pin, Phase 4.6) and **editable in the lobby** (the host edits the **anchor on a map**
+  and the radius slider in the lobby Filters sheet), then snapshotted for the session
+  and only loosened by the host's **widen** control. Members do not adjust radius or anchor while
+  swiping; everyone draws from the same host-set pool. Non-host members see the anchor on a
+  read-only map in the lobby.
 - **Future (post-v1):** a "hybrid" mode where individual members may *narrow within* the
   host's set but never *expand beyond* it — preserving deck overlap. Dietary filters
   (vegetarian/vegan/halal/gluten-free) are a natural early addition.

@@ -152,6 +152,11 @@ Updates room anchor/filters/default radius while in `lobby`.
 - **Request:** same `filters` / `anchor` / `default_radius_m` shape as `create_room`
   (all fields optional; only provided fields change).
 - **Response:** `{ "room": { ...updated } }`
+- **Lobby map.** The host's lobby **Filters** sheet now edits the **anchor** too, via
+  the same `AnchorMap` as Create Room (docs/09 §7, docs/10 §3.5): panning stages a new
+  `anchor_lat`/`anchor_lng` and "Apply filters" sends them here alongside `default_radius_m` and
+  the filters. No contract change — `anchor_lat`/`anchor_lng` were already optional fields. The
+  update reaches every member live via the `rooms` realtime channel (§4).
 - **Errors:** `NOT_HOST`, `SESSION_INVALID_STATE` (cannot edit once a session is active).
 
 ---
@@ -475,6 +480,12 @@ Clients subscribe to per-room channels for live state. Recommended events:
   only. **Zero DB writes; never read by matchmaking.** A member absent from the Presence state
   shows no dot but may still be an active member (e.g. mid-reconnect) until the heartbeat sweeper
   removes them.
+- **`room-settings:{room_id}` — room settings (`postgres_changes` on `rooms`)** — a
+  host's in-lobby anchor/filter/radius edit (`update_room_filters`). `subscribeRoomSettings`
+  invalidates the room query so every member's lobby reflects the new anchor/filters/radius live
+  (the non-host map re-centers, the read-only summary updates). RLS (`rooms_select_member`) scopes
+  deliveries to members; `rooms` was added to the publication in migration 0021. The callback only
+  refetches — the changed columns aren't read off the payload.
 - **`session:{session_id}` changes** — status transitions
   (`lobby → active → awaiting_host_resolution → matched/resolved`, or `→ cancelled` when the
   host leaves/ends the room **or the last active member leaves**). A `matched` transition can now

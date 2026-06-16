@@ -203,14 +203,17 @@ tokens. They hold **no business logic and read no data** (CLAUDE.md §4).
   `tone="match"` is the celebratory eyebrow badge — a faint `brand`-amber fill (20%) with
   deep-amber `brandDeep` ink — used for "It's a Match!" on the match reveal (§3.7 of docs/10).
 - **RadiusSlider** — amber thumb + amber value pill; bounded to the host's anchor (see §9).
-- **AnchorMap** — the Create Room anchor picker (Phase 4.6): a MapLibre map over keyless
-  OpenStreetMap raster tiles with a **fixed center pin** (anchor = map center) and a translucent
-  **amber radius ring** (`brand` low-opacity fill + `heat` stroke). The ring is a **fixed-size
-  overlay** centered on the map — it never moves or resizes; the RadiusSlider is the **only**
-  zoom control (`zoomForRadius`) so the ring represents the selected radius and stays fully
-  visible. The map **pans but does not zoom on gesture** — every user zoom gesture (scroll,
-  pinch, double-tap, keyboard `+`/`-`) is disabled so the slider and ring can never desync.
-  The "© OpenStreetMap contributors" attribution is always visible. Built once per platform
+- **AnchorMap** — the anchor picker (Phase 4.6): a MapLibre map over keyless OpenStreetMap raster
+  tiles with a **fixed center pin** (anchor = map center) and a translucent **amber radius ring**
+  (`brand` low-opacity fill + `heat` stroke). The ring is a **fixed-size overlay** centered on the
+  map — it never moves or resizes; the RadiusSlider is the **only** zoom control (`zoomForRadius`)
+  so the ring represents the selected radius and stays fully visible. The map **pans but does not
+  zoom on gesture** — every user zoom gesture (scroll, pinch, double-tap, keyboard `+`/`-`) is
+  disabled so the slider and ring can never desync. The "© OpenStreetMap contributors" attribution
+  is always visible. Used **editable** on Create Room and in the host's lobby Filters sheet,
+  and in a **`readOnly`** mode for the lobby non-host view: seeded from
+  the room anchor via `initialCenter`, all interaction — **drag-pan too**, on top of the always-off
+  zoom gestures — disabled, no anchor emitted, no geolocation. Built once per platform
   (`maplibre-gl` web / `@maplibre/maplibre-react-native` mobile, no `react-native-web`);
   presentational only — reads no data and makes no provider call (CLAUDE.md §4, §2.1).
 - **Toggle** — "bite-out-of-a-circle" custom radio when selected (playful selection mark).
