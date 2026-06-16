@@ -1,6 +1,9 @@
 import { Feather } from "@expo/vector-icons";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
+  Animated,
+  Dimensions,
+  Easing,
   Modal,
   Pressable,
   ScrollView,
@@ -18,7 +21,10 @@ import { colors, radii, shadow, spacing, typography } from "../../theme";
  * §4); the caller owns the open state and any mutation. The scrim tap, the header close
  * button, and the Android back button dismiss (unless `dismissDisabled`, e.g. while a save
  * is in flight). The web twin is the DOM Sheet (createPortal). RN `Modal` over a dimmed
- * scrim, slide animation.
+ * scrim whose tint is applied INSTANTLY — only the panel slides up (and back down on
+ * dismiss), driven by its own `Animated` translate. (RN's built-in `animationType="slide"`
+ * sweeps scrim + panel together, which is why the scrim is non-animated instead; mirrors
+ * ConfirmModal — see its component doc.)
  */
 export function Sheet({
   open,
@@ -36,11 +42,36 @@ export function Sheet({
   /** Block scrim/back/close dismissal (e.g. while the caller's mutation runs). */
   dismissDisabled?: boolean;
 }) {
+  // The panel slides over an instantly-tinted scrim. The Modal stays mounted through the
+  // slide-down exit (`mounted`), then unmounts, so dismissing still animates the panel down —
+  // only the scrim's appearance is made instant (mirrors ConfirmModal; see its component doc).
+  const screenH = Dimensions.get("window").height;
+  const translateY = useRef(new Animated.Value(screenH)).current;
+  const [mounted, setMounted] = useState(open);
+
+  // Mount as soon as `open` goes true; the slide-out effect below unmounts after the exit.
+  useEffect(() => {
+    if (open) setMounted(true);
+  }, [open]);
+
+  // Drive the panel: slide up to rest on open, down off-screen on close (then unmount).
+  useEffect(() => {
+    if (!mounted) return;
+    Animated.timing(translateY, {
+      toValue: open ? 0 : screenH,
+      duration: open ? 260 : 200,
+      easing: open ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished && !open) setMounted(false);
+    });
+  }, [open, mounted, screenH, translateY]);
+
   return (
     <Modal
-      visible={open}
+      visible={mounted}
       transparent
-      animationType="slide"
+      animationType="none"
       onRequestClose={dismissDisabled ? undefined : onDismiss}
       statusBarTranslucent
     >
@@ -50,39 +81,48 @@ export function Sheet({
         accessibilityRole="button"
         accessibilityLabel="Close"
       >
-        {/* Swallow taps on the sheet so they don't reach the dismiss scrim. */}
-        <Pressable
-          style={[styles.sheet, shadow("shadowActive")]}
-          onPress={() => {}}
-          accessibilityViewIsModal
+        {/* The panel alone slides (Animated translate); the scrim above is instant. */}
+        <Animated.View
+          style={[styles.sheetWrap, { transform: [{ translateY }] }]}
         >
-          <View style={styles.handleRow}>
-            <View style={styles.handle} />
-          </View>
-          <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
-            <Pressable
-              onPress={onDismiss}
-              disabled={dismissDisabled}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              style={({ pressed }) => [
-                styles.closeButton,
-                pressed && !dismissDisabled && styles.closePressed,
-              ]}
-            >
-              <Feather name="x" size={24} color={colors.textMuted} />
-            </Pressable>
-          </View>
-          <ScrollView
-            style={styles.body}
-            contentContainerStyle={styles.bodyContent}
-            keyboardShouldPersistTaps="handled"
+          {/* Swallow taps on the sheet so they don't reach the dismiss scrim. */}
+          <Pressable
+            style={[
+              styles.sheet,
+              { maxHeight: screenH * 0.85 },
+              shadow("shadowActive"),
+            ]}
+            onPress={() => {}}
+            accessibilityViewIsModal
           >
-            {children}
-          </ScrollView>
-          {footer ? <View style={styles.footer}>{footer}</View> : null}
-        </Pressable>
+            <View style={styles.handleRow}>
+              <View style={styles.handle} />
+            </View>
+            <View style={styles.header}>
+              <Text style={styles.title}>{title}</Text>
+              <Pressable
+                onPress={onDismiss}
+                disabled={dismissDisabled}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={({ pressed }) => [
+                  styles.closeButton,
+                  pressed && !dismissDisabled && styles.closePressed,
+                ]}
+              >
+                <Feather name="x" size={24} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <ScrollView
+              style={styles.body}
+              contentContainerStyle={styles.bodyContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              {children}
+            </ScrollView>
+            {footer ? <View style={styles.footer}>{footer}</View> : null}
+          </Pressable>
+        </Animated.View>
       </Pressable>
     </Modal>
   );
@@ -103,11 +143,13 @@ const styles = StyleSheet.create({
     backgroundColor: charcoalAlpha(0.4),
     justifyContent: "flex-end",
   },
+  // Full-width wrapper that carries the slide transform; content-height so the scrim above
+  // the sheet stays tappable to dismiss.
+  sheetWrap: { width: "100%" },
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: radii.lg,
     borderTopRightRadius: radii.lg,
-    maxHeight: "85%",
     overflow: "hidden",
   },
   handleRow: { alignItems: "center", paddingVertical: spacing.base },
