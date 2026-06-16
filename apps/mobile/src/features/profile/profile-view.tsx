@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { Button, Card, ConfirmModal } from "../../components/ui";
@@ -13,8 +13,9 @@ import { useSignOut } from "../auth/use-sign-out";
 /**
  * Profile tab (10-pages.md §3.2, Stitch "User Profile - Signed In"). Signed-in users see the
  * profile hub — a fixed person icon (uneditable, no photo), their name + email, a "View Match
- * History" action that routes to the match-history screen, a disabled "Appearance" placeholder,
- * and a Sign Out button that ends the session after a confirm prompt (returning the user to the
+ * History" action that routes to the match-history screen, a disabled "Appearance",
+ * "Notifications", and "Privacy & Security" placeholder list, and a Sign Out button that ends
+ * the session after a confirm prompt (returning the user to the
  * guest gate below). Guests (anonymous, no profile — CLAUDE.md §3) keep the unchanged "sign in to
  * save" gate. Screens stay thin — data lives in the hooks / @munch/api-client (CLAUDE.md §4).
  */
@@ -84,21 +85,40 @@ function SignedInHub({ email }: { email: string | null }) {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Preferences</Text>
         <Card padding="none">
-          {/* Disabled placeholder: no theming feature exists yet, so the row is shown
+          {/* Disabled placeholders: these settings don't exist yet, so each row is shown
               greyed and non-interactive (no Pressable, no handler). */}
-          <View style={styles.prefRow} accessibilityElementsHidden>
-            <View style={styles.prefLeft}>
-              <View style={styles.prefIcon}>
-                <MaterialCommunityIcons
-                  name="palette-outline"
-                  size={20}
-                  color={colors.brand}
-                />
-              </View>
-              <Text style={styles.prefLabel}>Appearance</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color={colors.textMuted} />
-          </View>
+          <PrefRow
+            icon={
+              <MaterialCommunityIcons
+                name="palette-outline"
+                size={20}
+                color={colors.brand}
+              />
+            }
+            label="Appearance"
+          />
+          <PrefRow
+            icon={
+              <MaterialCommunityIcons
+                name="bell-outline"
+                size={20}
+                color={colors.brand}
+              />
+            }
+            label="Notifications"
+            divider
+          />
+          <PrefRow
+            icon={
+              <MaterialCommunityIcons
+                name="shield-check-outline"
+                size={20}
+                color={colors.brand}
+              />
+            }
+            label="Privacy & Security"
+            divider
+          />
         </Card>
       </View>
 
@@ -131,6 +151,30 @@ function SignedInHub({ email }: { email: string | null }) {
         dismissLabel="Cancel"
         confirmLoading={signOut.isPending}
       />
+    </View>
+  );
+}
+
+/** A greyed, non-interactive Preferences row — placeholder for a not-yet-built setting. */
+function PrefRow({
+  icon,
+  label,
+  divider,
+}: {
+  icon: ReactNode;
+  label: string;
+  divider?: boolean;
+}) {
+  return (
+    <View
+      style={[styles.prefRow, divider ? styles.prefDivider : null]}
+      accessibilityElementsHidden
+    >
+      <View style={styles.prefLeft}>
+        <View style={styles.prefIcon}>{icon}</View>
+        <Text style={styles.prefLabel}>{label}</Text>
+      </View>
+      <Feather name="chevron-right" size={20} color={colors.textMuted} />
     </View>
   );
 }
@@ -198,6 +242,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: spacing.md,
     opacity: 0.45,
+  },
+  prefDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
   prefLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   prefIcon: {

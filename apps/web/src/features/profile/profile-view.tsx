@@ -1,15 +1,17 @@
 "use client";
 
 import {
+  Bell,
   ChevronRight,
   Clock,
   LogOut,
   Palette,
+  ShieldCheck,
   User,
   UtensilsCrossed,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { Button, Card, ConfirmModal } from "@/components/ui";
 import { AuthPanel } from "@/features/auth/auth-panel";
@@ -20,8 +22,9 @@ import { useSignOut } from "@/features/auth/use-sign-out";
 /**
  * Profile destination (10-pages.md §3.2, Stitch "User Profile - Signed In"). Signed-in users see
  * the profile hub — a fixed person icon (uneditable, no photo), their name + email, a "View Match
- * History" action that routes to the match-history screen, a disabled "Appearance" placeholder,
- * and a Sign Out button that ends the session after a confirm prompt (returning the user to the
+ * History" action that routes to the match-history screen, a disabled "Appearance",
+ * "Notifications", and "Privacy & Security" placeholder list, and a Sign Out button that ends
+ * the session after a confirm prompt (returning the user to the
  * guest gate below). Guests (anonymous, no profile — CLAUDE.md §3) keep the unchanged "sign in to
  * save" gate. Screens stay thin — data lives in the hooks / @munch/api-client (CLAUDE.md §4).
  */
@@ -87,20 +90,22 @@ function SignedInHub({ email }: { email: string | null }) {
       <div className="flex flex-col gap-sm">
         <h2 className="text-title-lg text-text">Preferences</h2>
         <Card padding="none">
-          {/* Disabled placeholder: no theming feature exists yet, so the row is shown
-              greyed and non-interactive. */}
-          <div
-            aria-disabled
-            className="pointer-events-none flex items-center justify-between p-md opacity-[0.45]"
-          >
-            <div className="flex items-center gap-sm">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-highest">
-                <Palette size={20} className="text-brand" aria-hidden />
-              </span>
-              <span className="text-body-lg text-text">Appearance</span>
-            </div>
-            <ChevronRight size={20} className="text-text-muted" aria-hidden />
-          </div>
+          {/* Disabled placeholders: these settings don't exist yet, so each row is
+              shown greyed and non-interactive. */}
+          <PrefRow
+            icon={<Palette size={20} className="text-brand" aria-hidden />}
+            label="Appearance"
+          />
+          <PrefRow
+            icon={<Bell size={20} className="text-brand" aria-hidden />}
+            label="Notifications"
+            divider
+          />
+          <PrefRow
+            icon={<ShieldCheck size={20} className="text-brand" aria-hidden />}
+            label="Privacy & Security"
+            divider
+          />
         </Card>
       </div>
 
@@ -134,6 +139,34 @@ function SignedInHub({ email }: { email: string | null }) {
         confirmLoading={signOut.isPending}
       />
     </section>
+  );
+}
+
+/** A greyed, non-interactive Preferences row — placeholder for a not-yet-built setting. */
+function PrefRow({
+  icon,
+  label,
+  divider,
+}: {
+  icon: ReactNode;
+  label: string;
+  divider?: boolean;
+}) {
+  return (
+    <div
+      aria-disabled
+      className={`pointer-events-none flex items-center justify-between p-md opacity-[0.45]${
+        divider ? " border-t border-border" : ""
+      }`}
+    >
+      <div className="flex items-center gap-sm">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-highest">
+          {icon}
+        </span>
+        <span className="text-body-lg text-text">{label}</span>
+      </div>
+      <ChevronRight size={20} className="text-text-muted" aria-hidden />
+    </div>
   );
 }
 
