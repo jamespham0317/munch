@@ -65,6 +65,12 @@ const activeShadow = shadow("shadowActive");
 const styles = StyleSheet.create({
   input: {
     ...typography.bodyMd,
+    // A single-line TextInput must NOT carry the body line-height: RN mis-measures the
+    // text box from it, clipping descenders at the bottom and forcing the control to grow
+    // past minHeight once text is entered. Drop it and let the 44px minHeight + centered
+    // alignment size the field. (No multiline Input exists in the app — verified.)
+    lineHeight: undefined,
+    textAlignVertical: "center",
     color: colors.text,
     backgroundColor: colors.surfaceRaised,
     borderRadius: radii.md,
