@@ -1,6 +1,6 @@
 import { AntDesign } from "@expo/vector-icons";
 import { registerRequestSchema, signInRequestSchema } from "@munch/core";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -18,6 +18,7 @@ import { useEmailSignIn } from "./use-email-sign-in";
  * against the @munch/core schemas (docs/06 §3) with the server re-validating.
  */
 export function AuthPanel({ mode }: { mode: "signin" | "register" }) {
+  const router = useRouter();
   const { register, signIn, google } = useEmailSignIn();
 
   const [authMode, setAuthMode] = useState<"signin" | "register">(mode);
@@ -29,7 +30,6 @@ export function AuthPanel({ mode }: { mode: "signin" | "register" }) {
   // control matches the design without changing auth behavior.
   const [rememberMe, setRememberMe] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [registered, setRegistered] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
 
   const isRegister = authMode === "register";
@@ -49,7 +49,11 @@ export function AuthPanel({ mode }: { mode: "signin" | "register" }) {
         );
         return;
       }
-      register.mutate(parsed.data, { onSuccess: () => setRegistered(true) });
+      // Email confirmation stays ON, so register never establishes a session here; route to the
+      // celebratory "Account Created" screen, which points the user to confirm + sign in (docs/10 §3.2).
+      register.mutate(parsed.data, {
+        onSuccess: () => router.push("/auth/welcome"),
+      });
     } else {
       const parsed = signInRequestSchema.safeParse({ email, password });
       if (!parsed.success) {
@@ -72,13 +76,6 @@ export function AuthPanel({ mode }: { mode: "signin" | "register" }) {
 
   if (signedIn) {
     return <Text style={styles.muted}>You&apos;re signed in.</Text>;
-  }
-  if (registered) {
-    return (
-      <Text style={styles.muted}>
-        Check your email to confirm your account, then sign in.
-      </Text>
-    );
   }
 
   const mutationError = register.isError

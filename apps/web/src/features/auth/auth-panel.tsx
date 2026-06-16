@@ -2,6 +2,7 @@
 
 import { registerRequestSchema, signInRequestSchema } from "@munch/core";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import { Button, Card, Field, Input, Toggle } from "@/components/ui";
@@ -18,6 +19,7 @@ import { useEmailSignIn } from "./use-email-sign-in";
  * and the server re-validates.
  */
 export function AuthPanel({ mode }: { mode: "signin" | "register" }) {
+  const router = useRouter();
   const { register, signIn, google } = useEmailSignIn();
 
   const [authMode, setAuthMode] = useState<"signin" | "register">(mode);
@@ -29,7 +31,6 @@ export function AuthPanel({ mode }: { mode: "signin" | "register" }) {
   // control matches the design without changing auth behavior.
   const [rememberMe, setRememberMe] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [registered, setRegistered] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
 
   const isRegister = authMode === "register";
@@ -50,8 +51,10 @@ export function AuthPanel({ mode }: { mode: "signin" | "register" }) {
         );
         return;
       }
+      // Email confirmation stays ON, so register never establishes a session here; route to the
+      // celebratory "Account Created" screen, which points the user to confirm + sign in (docs/10 §3.2).
       register.mutate(parsed.data, {
-        onSuccess: () => setRegistered(true),
+        onSuccess: () => router.push("/auth/welcome"),
       });
     } else {
       const parsed = signInRequestSchema.safeParse({ email, password });
@@ -77,13 +80,6 @@ export function AuthPanel({ mode }: { mode: "signin" | "register" }) {
   if (signedIn) {
     return (
       <p className="text-body-md text-text-muted">You&apos;re signed in.</p>
-    );
-  }
-  if (registered) {
-    return (
-      <p className="text-body-md text-text-muted">
-        Check your email to confirm your account, then sign in.
-      </p>
     );
   }
 

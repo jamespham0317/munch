@@ -61,7 +61,8 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
 
 ### 3.2 Auth / Profile  ("Profile & Sign In Updated")
 - **Routes:** mobile `app/auth/*` + `app/history.tsx` (Profile tab) · web `app/auth/*` +
-  `app/history/page.tsx`. Reset at `auth/reset`; web OAuth return at `auth/callback`.
+  `app/history/page.tsx`. Reset at `auth/reset`; account-created success at `auth/welcome`; web
+  OAuth return at `auth/callback`.
 - **Purpose:** "Sign in to save your history." **Continue with Google**; OR; email + password
   with **Remember me** / **Forgot**; **Create an account** link. Signed-in: profile + history.
 - **Primitives:** Button (`social`, `primary`), Field, divider, Avatar.
@@ -77,7 +78,22 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   Button with a leading arrow) `router.replace`s to the Profile tab (`/history`) — on mobile that
   carries `/history` in **from the left** via the `(tabs)` `animationTypeForReplace: "pop"`. The
   route passes the shell **no** title/subtitle — the view owns its per-state headline, so
-  `FullScreenView`/`Screen` contributes only the brand row + cream canvas.
+  `FullScreenView`/`Screen` contributes only the brand row + cream canvas. On **mobile** the screen
+  is **vertically centred** (the `Screen` scroll content is `flexGrow`-centred, falling back to
+  scroll on overflow — e.g. with the keyboard up).
+- **Account created (`auth/welcome`, Stitch "Account Created Successfully"):** the celebratory
+  success screen shown after `AuthPanel` registers an email+password account (`register` `onSuccess`
+  → `router.push("/auth/welcome")`, replacing the old inline "check your email" line). Standalone
+  full-screen (`AccountCreatedView` inside the shared shell — web `FullScreenView`, mobile `Screen`,
+  the brand row + cream canvas, no tab nav), like the Forgot Password page, and **vertically centred
+  on mobile** (the `Screen` scroll content is `flexGrow`-centred, falling back to scroll on overflow).
+  A centered hero (tonal-circle `IconBadge` with a party-popper glyph, `display-lg-mobile` "Welcome to
+  the Feast!", `body-lg` subcopy), then a single **"Go to Sign In"** button — the mockup's secondary
+  "Go to Profile" and the earlier "Back" control are both dropped. **Email confirmation stays ON**
+  (`supabase/config.toml`), so the user is **not** signed in here: the copy points them to confirm
+  their email, the CTA is "Go to Sign In" (not the mockup's "Start a Session"), and it
+  `router.replace("/history")` to the Profile sign-in surface. Presentation only — no mutation, no
+  provider call (CLAUDE.md §4).
 - **Invariant:** outside-a-room only; guests have no profile and see the empty/"sign in" state
   (docs/04 §3.11), never an error.
 
