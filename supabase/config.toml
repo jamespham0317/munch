@@ -165,6 +165,12 @@ site_url = "http://127.0.0.1:3000"
 additional_redirect_urls = [
   "http://127.0.0.1:3000/auth/callback",
   "http://127.0.0.1:3000/auth/reset",
+  # Next's dev server prints `http://localhost:3000`, so the app builds redirectTo from the
+  # `localhost` origin too. GoTrue honors only EXACT allow-list matches; an unlisted target is
+  # silently dropped to bare `site_url`, stranding the reset/OAuth flow on the home page instead
+  # of /auth/reset. List both dev origins so the path survives whichever one you browse.
+  "http://localhost:3000/auth/callback",
+  "http://localhost:3000/auth/reset",
   "munch://auth/callback",
   "munch://auth/reset",
 ]
