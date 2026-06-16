@@ -15,17 +15,26 @@ import {
 /**
  * Unit tests for the Phase-4.5 account-auth boundary (docs/04 §2; CLAUDE.md §3). No real auth
  * server — the Supabase Auth SDK is stubbed. The contracts under test:
- *   * a failed sign-in maps to a SAFE ApiError (UNAUTHENTICATED) with the canonical message,
- *     never the raw GoTrue text (which can echo an email);
+ *   * a wrong-password sign-in maps to a SAFE INVALID_CREDENTIALS ApiError, and sign-up with an
+ *     existing email to EMAIL_EXISTS — never the raw GoTrue text (which can echo an email);
  *   * register surfaces needsEmailConfirmation when signUp returns no session, and writes no
  *     profile (there is no session yet);
  *   * ensureProfile refuses while the user is anonymous (guests stay profile-less) and otherwise
  *     resolves the display name from user_metadata.
  */
 
-/** A GoTrue auth error as errors.ts duck-types it (`__isAuthError` + optional `status`). */
-function authError(message: string, status?: number): unknown {
-  return { __isAuthError: true, status, message, name: "AuthApiError" };
+/** A GoTrue auth error as errors.ts duck-types it (`__isAuthError` + optional `status`/`code`). */
+function authError(
+  message: string,
+  opts?: { status?: number; code?: string },
+): unknown {
+  return {
+    __isAuthError: true,
+    status: opts?.status,
+    code: opts?.code,
+    message,
+    name: "AuthApiError",
+  };
 }
 
 /** Build a SupabaseClient whose `auth` methods resolve to the given canned values. */
@@ -66,20 +75,42 @@ describe("registerWithEmailPassword", () => {
     });
     expect(result.data).toEqual({ needsEmailConfirmation: false });
   });
+
+  it("maps an already-registered email to a safe EMAIL_EXISTS ApiError", async () => {
+    const signUp = vi.fn().mockResolvedValue({
+      data: { user: null, session: null },
+      error: authError("User already registered: a@b.com", {
+        status: 422,
+        code: "user_already_exists",
+      }),
+    });
+    const result = await registerWithEmailPassword(authClient({ signUp }), {
+      email: "a@b.com",
+      password: "password123",
+      displayName: "Ada",
+    });
+    expect(result.data).toBeNull();
+    expect(result.error?.error.code).toBe("EMAIL_EXISTS");
+    // Never the raw text (which echoed the email).
+    expect(result.error?.error.message).not.toContain("a@b.com");
+  });
 });
 
 describe("signInWithEmailPassword", () => {
-  it("maps a bad-credentials auth error to a safe UNAUTHENTICATED ApiError", async () => {
+  it("maps a wrong-password auth error to a safe INVALID_CREDENTIALS ApiError", async () => {
     const signInWithPassword = vi.fn().mockResolvedValue({
       data: { session: null },
-      error: authError("Invalid login credentials: a@b.com"),
+      error: authError("Invalid login credentials: a@b.com", {
+        status: 400,
+        code: "invalid_credentials",
+      }),
     });
     const result = await signInWithEmailPassword(
       authClient({ signInWithPassword }),
       { email: "a@b.com", password: "wrong-password" },
     );
     expect(result.data).toBeNull();
-    expect(result.error?.error.code).toBe("UNAUTHENTICATED");
+    expect(result.error?.error.code).toBe("INVALID_CREDENTIALS");
     // Never the raw text (which echoed the email).
     expect(result.error?.error.message).not.toContain("a@b.com");
   });

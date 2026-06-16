@@ -23,6 +23,8 @@ export type ClientResult<T> =
 const DEFAULT_MESSAGE: Record<ErrorCode, string> = {
   UNAUTHENTICATED: "You need to be signed in.",
   FORBIDDEN: "You don't have access to that.",
+  INVALID_CREDENTIALS: "Incorrect email or password.",
+  EMAIL_EXISTS: "An account with this email already exists. Try signing in.",
   ROOM_NOT_FOUND: "No room for that code.",
   ROOM_CLOSED: "That room is closed.",
   ROOM_IN_SESSION: "This room's session has already started.",
@@ -44,11 +46,38 @@ function isPostgrestError(error: unknown): error is PostgrestError {
   );
 }
 
-/** A GoTrue auth error (`@supabase/auth-js`); carries `__isAuthError` and an HTTP `status`. */
-function isAuthError(error: unknown): error is { status?: number } {
+/**
+ * A GoTrue auth error (`@supabase/auth-js`); carries `__isAuthError`, an HTTP `status`, and a
+ * stable machine `code` (e.g. `invalid_credentials`, `user_already_exists`).
+ */
+function isAuthError(
+  error: unknown,
+): error is { status?: number; code?: string } {
   return (
     typeof error === "object" && error !== null && "__isAuthError" in error
   );
+}
+
+/**
+ * Stable GoTrue `code` → safe `ErrorCode`. We classify on the machine code, never the raw
+ * message (which can echo the email). `invalid_credentials` covers both a wrong password and an
+ * unknown email — GoTrue collapses them to prevent enumeration, and so do we. Sign-up with an
+ * existing email surfaces under a few code spellings across GoTrue versions; all map to EMAIL_EXISTS.
+ */
+const AUTH_CODE_MAP: Record<string, ErrorCode> = {
+  invalid_credentials: "INVALID_CREDENTIALS",
+  user_already_exists: "EMAIL_EXISTS",
+  email_exists: "EMAIL_EXISTS",
+  user_already_registered: "EMAIL_EXISTS",
+};
+
+/** Classify a GoTrue error: 429 → rate limit, known `code` → its mapping, else null (fallback). */
+function classifyAuthError(raw: {
+  status?: number;
+  code?: string;
+}): ErrorCode | null {
+  if (raw.status === 429) return "RATE_LIMITED";
+  return (raw.code ? AUTH_CODE_MAP[raw.code] : undefined) ?? null;
 }
 
 /**
@@ -102,10 +131,11 @@ export function toApiError(
         ? "FORBIDDEN"
         : (asRpcErrorCode(raw.message) ?? fallback);
   } else if (isAuthError(raw)) {
-    // GoTrue auth errors (sign-in / OTP / guest upgrade): surface only a coarse, safe
-    // classification — HTTP 429 is the email/OTP rate limit; everything else uses `fallback`.
-    // The raw message (which can contain an email) is never surfaced.
-    code = raw.status === 429 ? "RATE_LIMITED" : fallback;
+    // GoTrue auth errors (sign-in / sign-up / OTP / OAuth): classify on the stable machine
+    // `code` (HTTP 429 = rate limit; bad credentials and an existing email get their own
+    // user-facing codes), falling back otherwise. The raw message (which can contain an email)
+    // is never surfaced.
+    code = classifyAuthError(raw) ?? fallback;
   }
   // Log the raw error for diagnostics; never surface it (docs/06 §8 "log the rest").
   console.error("[api-client] supabase error mapped to", code, raw);

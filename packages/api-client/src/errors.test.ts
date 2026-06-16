@@ -20,8 +20,8 @@ function postgrestError(code: string, message: string) {
 }
 
 /** Minimal GoTrue auth error shape `isAuthError` recognizes (`__isAuthError` present). */
-function authError(status: number, message: string) {
-  return { __isAuthError: true, status, message };
+function authError(status: number, message: string, code?: string) {
+  return { __isAuthError: true, status, message, code };
 }
 
 // The doc-04 codes the RPCs raise as their exception MESSAGE (0005/0010/0011 convention).
@@ -94,7 +94,36 @@ describe("toApiError", () => {
     expect(result.error.message).not.toContain("alice@example.com");
   });
 
-  it("uses the fallback for a non-429 auth error and never surfaces its raw text", () => {
+  it("maps a GoTrue invalid_credentials onto INVALID_CREDENTIALS without leaking the email", () => {
+    const result = toApiError(
+      authError(
+        400,
+        "Invalid login credentials: alice@example.com",
+        "invalid_credentials",
+      ),
+      "UNAUTHENTICATED",
+    );
+    expect(result.error.code).toBe("INVALID_CREDENTIALS");
+    expect(result.error.message).toBe(
+      makeApiError("INVALID_CREDENTIALS").error.message,
+    );
+    expect(result.error.message).not.toContain("alice@example.com");
+  });
+
+  it("maps a GoTrue user_already_exists onto EMAIL_EXISTS without leaking the email", () => {
+    const result = toApiError(
+      authError(
+        422,
+        "User already registered: alice@example.com",
+        "user_already_exists",
+      ),
+      "UNAUTHENTICATED",
+    );
+    expect(result.error.code).toBe("EMAIL_EXISTS");
+    expect(result.error.message).not.toContain("alice@example.com");
+  });
+
+  it("uses the fallback for an unclassified (no-code) non-429 auth error and never surfaces its raw text", () => {
     const result = toApiError(
       authError(400, "invalid login for alice@example.com"),
       "UNAUTHENTICATED",

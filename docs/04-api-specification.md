@@ -25,11 +25,14 @@ Supabase session (anonymous sessions count). Errors use a consistent shape:
 { "error": { "code": "ROOM_NOT_FOUND", "message": "No room for that code." } }
 ```
 
-Common error codes: `UNAUTHENTICATED`, `FORBIDDEN`, `ROOM_NOT_FOUND`, `ROOM_CLOSED`,
-`ROOM_IN_SESSION`, `NOT_HOST`, `SESSION_INVALID_STATE`, `ALREADY_JOINED`, `RATE_LIMITED`,
-`PROVIDER_ERROR`, `VALIDATION_ERROR`. `ROOM_IN_SESSION` (Phase 4.7) is raised by `join_room`
-when a session already exists for the room — the roster freezes at session start, so no new or
-returning member can join once swiping has begun (§3.2).
+Common error codes: `UNAUTHENTICATED`, `FORBIDDEN`, `INVALID_CREDENTIALS`, `EMAIL_EXISTS`,
+`ROOM_NOT_FOUND`, `ROOM_CLOSED`, `ROOM_IN_SESSION`, `NOT_HOST`, `SESSION_INVALID_STATE`,
+`ALREADY_JOINED`, `RATE_LIMITED`, `PROVIDER_ERROR`, `VALIDATION_ERROR`. `ROOM_IN_SESSION`
+(Phase 4.7) is raised by `join_room` when a session already exists for the room — the roster
+freezes at session start, so no new or returning member can join once swiping has begun (§3.2).
+`INVALID_CREDENTIALS` (sign-in with a wrong password / unknown email — collapsed to prevent
+enumeration) and `EMAIL_EXISTS` (sign-up with an already-registered email) are the account-auth
+codes the api-client classifies from GoTrue's machine `code`, never the raw message (§2).
 
 ---
 

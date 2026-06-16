@@ -38,6 +38,11 @@ export const passwordSchema = z.string().min(8);
 export const errorCodeSchema = z.enum([
   "UNAUTHENTICATED",
   "FORBIDDEN",
+  // Account auth (docs/04 §2): sign-in with a wrong password / unknown email, and sign-up with
+  // an already-registered email. Kept deliberately coarse so the raw GoTrue text (which can echo
+  // the email) is never surfaced; INVALID_CREDENTIALS does not reveal whether the email exists.
+  "INVALID_CREDENTIALS",
+  "EMAIL_EXISTS",
   "ROOM_NOT_FOUND",
   "ROOM_CLOSED",
   "NOT_HOST",

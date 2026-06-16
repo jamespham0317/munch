@@ -63,8 +63,9 @@ export async function signOut(
 // stays a guest for that room (CLAUDE.md §3). Every account is its own fresh/existing real
 // user (`auth.uid()`), established before creating or joining a room. A profiles row is the
 // guest/account boundary: written only by `ensureProfile`, only for a permanent
-// (non-anonymous) user. Raw GoTrue errors are mapped to a safe `ApiError` (UNAUTHENTICATED),
-// never surfaced — a bad password or unconfirmed email reads as UNAUTHENTICATED.
+// (non-anonymous) user. Raw GoTrue errors are mapped to a safe `ApiError`, never surfaced — a
+// wrong password / unknown email reads as INVALID_CREDENTIALS, an already-registered email as
+// EMAIL_EXISTS, and anything unclassified falls back to UNAUTHENTICATED (see errors.ts).
 
 interface ProfileRow {
   id: string;
@@ -88,7 +89,8 @@ function mapProfileRow(row: ProfileRow): Profile {
  * available to {@link ensureProfile} after the user confirms and signs in. With email
  * confirmation enabled, `signUp` returns a user but NO session, so no profile is written here —
  * the result only reports whether confirmation is still required. Confirm, then
- * {@link signInWithEmailPassword}.
+ * {@link signInWithEmailPassword}. Signing up with an already-registered email maps to a safe
+ * EMAIL_EXISTS ApiError (the raw GoTrue text, which can echo the email, is never surfaced).
  */
 export async function registerWithEmailPassword(
   client: SupabaseClient,
@@ -109,9 +111,9 @@ export async function registerWithEmailPassword(
 }
 
 /**
- * Sign in to an existing email + password account; returns the new session. A bad password or
- * an unconfirmed email maps to UNAUTHENTICATED — the raw GoTrue text (which can echo the email)
- * is never surfaced.
+ * Sign in to an existing email + password account; returns the new session. A wrong password or
+ * an unknown email maps to INVALID_CREDENTIALS (GoTrue collapses the two to prevent enumeration);
+ * the raw GoTrue text (which can echo the email) is never surfaced.
  */
 export async function signInWithEmailPassword(
   client: SupabaseClient,
