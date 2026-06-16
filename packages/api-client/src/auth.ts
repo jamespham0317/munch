@@ -38,6 +38,24 @@ export async function ensureGuestSession(
   return signInAnonymously(client);
 }
 
+/**
+ * End the current auth session (docs/04 §2). Used by the Profile hub's Sign Out control, which
+ * is only reachable outside a room (CLAUDE.md §3). supabase-js clears the locally persisted
+ * session even when the server-side revoke fails, so the caller can always proceed to the
+ * signed-out UI; any GoTrue error is still mapped to a safe `ApiError` and never surfaced raw.
+ * No anonymous session is minted here — `ensureGuestSession` does that lazily on the next
+ * create/join.
+ */
+export async function signOut(
+  client: SupabaseClient,
+): Promise<ClientResult<void>> {
+  const { error } = await client.auth.signOut();
+  if (error) {
+    return { data: null, error: toApiError(error, "UNAUTHENTICATED") };
+  }
+  return { data: undefined, error: null };
+}
+
 // --- accounts (docs/04 §2; CLAUDE.md §3) ------------------------------------
 // Two account methods sit beside the guest flow: email + password (register with email
 // confirmation, sign in, password reset) and Google OAuth. Auth happens only OUTSIDE a room

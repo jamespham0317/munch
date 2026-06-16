@@ -71,11 +71,14 @@ Mockup titles in parentheses. Mobile/web routes are existing (docs/05 §3–§4)
   uneditable **person icon** (no photo, no edit affordance, **no "Munch" header**), the account's
   **name** (`useOwnProfile`, falling back to the email local-part) + **email**, a primary **"View
   Match History"** button that routes to the match-history screen, a **disabled "Appearance"
-  placeholder** (no theming feature yet), and a **"Sign Out"** button that is **present but not
-  wired** (inert `onPress`/`onClick`).
+  placeholder** (no theming feature yet), and a **"Sign Out"** button that **confirms via
+  `ConfirmModal`, then ends the session** (`useSignOut` → api-client `signOut`) and returns the
+  user to the signed-out gate on this same surface (no navigation).
 - **Primitives:** Button (`social`, `primary`, `ghost`), Field, divider, Card, IconBadge.
 - **Wiring:** `signInWithOAuth({google})`, `signUp` / `signInWithPassword`,
-  `resetPasswordForEmail` → `updateUser`. The signed-in hub (`ProfileView`) reads identity via
+  `resetPasswordForEmail` → `updateUser`; **sign-out** via `signOut` (api-client), which on success
+  invalidates `useCurrentUser` (flipping the hub to the signed-out gate) and drops the per-account
+  caches (`useOwnProfile`, match history). The signed-in hub (`ProfileView`) reads identity via
   `useCurrentUser` (now incl. `email`) + the display name via `useOwnProfile`; the match-history
   list (`MatchHistoryView`, reached via "View Match History" / a back control to `/history`) reads
   `get_match_history` (docs/04 §2, §3.11). Sign-out itself is **deferred** (button inert).

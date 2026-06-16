@@ -1,20 +1,22 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { Button, Card } from "../../components/ui";
+import { Button, Card, ConfirmModal } from "../../components/ui";
 import { colors, radii, spacing, typography } from "../../theme";
 import { AuthPanel } from "../auth/auth-panel";
 import { useCurrentUser } from "../auth/use-current-user";
 import { useOwnProfile } from "../auth/use-own-profile";
+import { useSignOut } from "../auth/use-sign-out";
 
 /**
  * Profile tab (10-pages.md §3.2, Stitch "User Profile - Signed In"). Signed-in users see the
  * profile hub — a fixed person icon (uneditable, no photo), their name + email, a "View Match
  * History" action that routes to the match-history screen, a disabled "Appearance" placeholder,
- * and a Sign Out button that is present but not yet wired. Guests (anonymous, no profile —
- * CLAUDE.md §3) keep the unchanged "sign in to save" gate. Screens stay thin — data lives in the
- * hooks / @munch/api-client (CLAUDE.md §4).
+ * and a Sign Out button that ends the session after a confirm prompt (returning the user to the
+ * guest gate below). Guests (anonymous, no profile — CLAUDE.md §3) keep the unchanged "sign in to
+ * save" gate. Screens stay thin — data lives in the hooks / @munch/api-client (CLAUDE.md §4).
  */
 export function ProfileView() {
   const userQuery = useCurrentUser();
@@ -55,6 +57,8 @@ export function ProfileView() {
 function SignedInHub({ email }: { email: string | null }) {
   const router = useRouter();
   const nameQuery = useOwnProfile();
+  const signOut = useSignOut();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   // The profile name is the canonical label; fall back to the email local-part, then a neutral
   // label, so the header never renders blank while the profile read settles.
   const displayName = nameQuery.data ?? emailLocalPart(email) ?? "Your profile";
@@ -102,11 +106,31 @@ function SignedInHub({ email }: { email: string | null }) {
         <Button
           label="Sign Out"
           variant="ghost"
-          // TODO: wire sign-out — present but intentionally inert for now.
-          onPress={() => {}}
+          onPress={() => setConfirmOpen(true)}
+          disabled={signOut.isPending}
           leadingIcon={<Feather name="log-out" size={18} color={colors.text} />}
         />
+        {signOut.isError ? (
+          <Text style={styles.error} accessibilityRole="alert">
+            {signOut.error.message}
+          </Text>
+        ) : null}
       </View>
+
+      <ConfirmModal
+        open={confirmOpen}
+        // On success the auth-identity invalidation flips ProfileView to the guest gate,
+        // unmounting this hub (and the modal) — so we only need to close it on error.
+        onConfirm={() =>
+          signOut.mutate(undefined, { onError: () => setConfirmOpen(false) })
+        }
+        onDismiss={() => setConfirmOpen(false)}
+        title="Sign out?"
+        body="You'll need to sign in again to see your match history."
+        confirmLabel="Sign Out"
+        dismissLabel="Cancel"
+        confirmLoading={signOut.isPending}
+      />
     </View>
   );
 }
@@ -186,7 +210,8 @@ const styles = StyleSheet.create({
   },
   prefLabel: { ...typography.bodyLg, color: colors.text },
 
-  signOut: { alignItems: "center", paddingTop: spacing.base },
+  signOut: { alignItems: "center", gap: spacing.xs, paddingTop: spacing.base },
+  error: { ...typography.bodyMd, color: colors.error, textAlign: "center" },
 
   skeletonFill: { backgroundColor: colors.surfaceRaised },
   skeletonName: {

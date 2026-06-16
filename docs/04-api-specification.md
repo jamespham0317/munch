@@ -55,6 +55,11 @@ the helpers (`packages/api-client/src/auth.ts`); raw auth errors are mapped to t
 - **Password reset (email accounts):** `resetPasswordForEmail(email)` sends a recovery link;
   the user sets a new password via `updateUser({ password })` on the recovery session. Google
   accounts manage their own credentials.
+- **Sign out:** `signOut()` ends the current session. Exposed on the Profile hub (signed-in
+  state), which — like sign-in — is reachable **only outside a room**. supabase-js clears the
+  locally persisted session even if the server-side revoke fails, so the UI always returns to the
+  signed-out gate; raw GoTrue errors are mapped to the safe `ApiError` shape. No anonymous session
+  is minted on sign-out — `ensureGuestSession` does that lazily on the next create/join.
 
 **No mid-room sign-in.** Authentication (register, sign in, Google) is available **only outside
 a room** — on the home/landing surface. Once a member has joined a room (lobby **or** active

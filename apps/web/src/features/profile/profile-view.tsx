@@ -9,19 +9,21 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-import { Button, Card } from "@/components/ui";
+import { Button, Card, ConfirmModal } from "@/components/ui";
 import { AuthPanel } from "@/features/auth/auth-panel";
 import { useCurrentUser } from "@/features/auth/use-current-user";
 import { useOwnProfile } from "@/features/auth/use-own-profile";
+import { useSignOut } from "@/features/auth/use-sign-out";
 
 /**
  * Profile destination (10-pages.md §3.2, Stitch "User Profile - Signed In"). Signed-in users see
  * the profile hub — a fixed person icon (uneditable, no photo), their name + email, a "View Match
  * History" action that routes to the match-history screen, a disabled "Appearance" placeholder,
- * and a Sign Out button that is present but not yet wired. Guests (anonymous, no profile —
- * CLAUDE.md §3) keep the unchanged "sign in to save" gate. Screens stay thin — data lives in the
- * hooks / @munch/api-client (CLAUDE.md §4).
+ * and a Sign Out button that ends the session after a confirm prompt (returning the user to the
+ * guest gate below). Guests (anonymous, no profile — CLAUDE.md §3) keep the unchanged "sign in to
+ * save" gate. Screens stay thin — data lives in the hooks / @munch/api-client (CLAUDE.md §4).
  */
 export function ProfileView() {
   const userQuery = useCurrentUser();
@@ -58,6 +60,8 @@ export function ProfileView() {
 function SignedInHub({ email }: { email: string | null }) {
   const router = useRouter();
   const nameQuery = useOwnProfile();
+  const signOut = useSignOut();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   // The profile name is the canonical label; fall back to the email local-part, then a neutral
   // label, so the header never renders blank while the profile read settles.
   const displayName = nameQuery.data ?? emailLocalPart(email) ?? "Your profile";
@@ -100,15 +104,35 @@ function SignedInHub({ email }: { email: string | null }) {
         </Card>
       </div>
 
-      <div className="flex justify-center pt-base">
+      <div className="flex flex-col items-center gap-xs pt-base">
         <Button
           label="Sign Out"
           variant="ghost"
-          // TODO: wire sign-out — present but intentionally inert for now.
-          onClick={() => {}}
+          onClick={() => setConfirmOpen(true)}
+          disabled={signOut.isPending}
           leadingIcon={<LogOut size={18} aria-hidden />}
         />
+        {signOut.isError ? (
+          <p role="alert" className="text-body-md text-error">
+            {signOut.error.message}
+          </p>
+        ) : null}
       </div>
+
+      <ConfirmModal
+        open={confirmOpen}
+        // On success the auth-identity invalidation flips ProfileView to the guest gate,
+        // unmounting this hub (and the modal) — so we only need to close it on error.
+        onConfirm={() =>
+          signOut.mutate(undefined, { onError: () => setConfirmOpen(false) })
+        }
+        onDismiss={() => setConfirmOpen(false)}
+        title="Sign out?"
+        body="You'll need to sign in again to see your match history."
+        confirmLabel="Sign Out"
+        dismissLabel="Cancel"
+        confirmLoading={signOut.isPending}
+      />
     </section>
   );
 }

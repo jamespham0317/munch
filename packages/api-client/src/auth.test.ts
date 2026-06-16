@@ -8,6 +8,7 @@ import {
   requestPasswordReset,
   signInWithEmailPassword,
   signInWithGoogle,
+  signOut,
   updatePassword,
 } from "./auth";
 
@@ -138,6 +139,25 @@ describe("requestPasswordReset / updatePassword", () => {
     });
     expect(result.error).toBeNull();
     expect(updateUser).toHaveBeenCalledWith({ password: "new-password" });
+  });
+});
+
+describe("signOut", () => {
+  it("returns no error on a clean sign-out", async () => {
+    const signOutFn = vi.fn().mockResolvedValue({ error: null });
+    const result = await signOut(authClient({ signOut: signOutFn }));
+    expect(result.error).toBeNull();
+    expect(signOutFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("maps a sign-out failure to a safe ApiError, never raw text", async () => {
+    const signOutFn = vi
+      .fn()
+      .mockResolvedValue({ error: authError("network down") });
+    const result = await signOut(authClient({ signOut: signOutFn }));
+    expect(result.data).toBeNull();
+    expect(result.error?.error.code).toBe("UNAUTHENTICATED");
+    expect(result.error?.error.message).not.toContain("network down");
   });
 });
 
